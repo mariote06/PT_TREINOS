@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ciclos — Prescrição de Treino</title>
+<style>
+  :root{
+    --bg: #1C1B19;
+    --surface: #242220;
+    --surface-raised: #2C2A26;
+    --line: #3A372F;
+    --chalk: #EDE9DD;
+    --chalk-dim: #A8A296;
+    --ochre: #C69214;
+    --ochre-dim: #8A6710;
+    --iron: #5B6B62;
+    --danger: #A8503D;
+    --radius-s: 3px;
+    --radius-m: 6px;
+    --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @font-face{
+    font-family:'Oswald';
+    src: local('Oswald');
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    background: var(--bg);
+    color: var(--chalk);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a{ color: inherit; }
+
+  /* Layout */
+  .app{
+    display:flex;
+    min-height: 100vh;
+  }
+  .rail{
+    width: 220px;
+    flex-shrink: 0;
+    background: #171614;
+    border-right: 1px solid var(--line);
+    display:flex;
+    flex-direction: column;
+    padding: 24px 0;
+  }
+  .rail-brand{
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    padding: 0 20px 24px 20px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .rail-brand span{ color: var(--ochre); }
+  .rail-nav{ display:flex; flex-direction: column; margin-top: 12px; }
+  .rail-btn{
+    background: none;
+    border: none;
+    color: var(--chalk-dim);
+    text-align: left;
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: 12px 20px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .rail-btn:hover{ color: var(--chalk); background: rgba(255,255,255,0.02); }
+  .rail-btn.active{
+    color: var(--chalk);
+    border-left-color: var(--ochre);
+    background: rgba(198,146,20,0.07);
+    font-weight: 600;
+  }
+  .rail-foot{
+    margin-top: auto;
+    padding: 16px 20px 0 20px;
+    font-size: 12px;
+    color: #6b665c;
+    border-top: 1px solid var(--line);
+  }
+
+  .main{
+    flex: 1;
+    padding: 40px 48px;
+    max-width: 1100px;
+  }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  .view-head{
+    display:flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .view-title{
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: 0;
+  }
+  .view-sub{ color: var(--chalk-dim); font-size: 14px; margin-top: 4px; }
+
+  /* Buttons */
+  .btn{
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: var(--radius-s);
+    border: 1px solid var(--line);
+    background: var(--surface-raised);
+    color: var(--chalk);
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .btn:hover{ border-color: var(--chalk-dim); }
+  .btn-primary{
+    background: var(--ochre);
+    border-color: var(--ochre);
+    color: #1C1B19;
+  }
+  .btn-primary:hover{ background: #d9a220; border-color: #d9a220; }
+  .btn-ghost{ background: none; border-color: transparent; color: var(--chalk-dim); padding: 9px 10px; }
+  .btn-ghost:hover{ color: var(--chalk); }
+  .btn-danger{ color: var(--danger); }
+  .btn-sm{ padding: 5px 10px; font-size: 12px; }
+
+  /* Cards / lists */
+  .list{ display:flex; flex-direction:column; gap: 1px; background: var(--line); border-radius: var(--radius-m); overflow: hidden; border: 1px solid var(--line); }
+  .list-row{
+    background: var(--surface);
+    padding: 14px 18px;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .list-row-main{ display:flex; flex-direction: column; gap: 2px; }
+  .list-row-title{ font-weight: 600; }
+  .list-row-meta{ font-size: 13px; color: var(--chalk-dim); }
+  .list-row-actions{ display:flex; gap: 4px; flex-shrink:0; }
+
+  .tag{
+    display:inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    color: var(--chalk-dim);
+  }
+
+  .empty{
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--chalk-dim);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-m);
+  }
+  .empty strong{ color: var(--chalk); display:block; margin-bottom: 6px; font-size: 16px;}
+
+  /* Forms */
+  .field{ margin-bottom: 14px; }
+  .field label{ display:block; font-size: 13px; color: var(--chalk-dim); margin-bottom: 5px; }
+  .field input, .field select, .field textarea{
+    width: 100%;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    color: var(--chalk);
+    padding: 9px 11px;
+    border-radius: var(--radius-s);
+    font-family: var(--font-body);
+    font-size: 14px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{
+    outline: none;
+    border-color: var(--ochre);
+  }
+  .row-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row-3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .row-4{ display:grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+
+  /* Modal */
+  .modal-backdrop{
+    display:none;
+    position: fixed; inset:0;
+    background: rgba(10,10,8,0.65);
+    align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.active{ display:flex; }
+  .modal{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    padding: 28px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 86vh;
+    overflow-y: auto;
+  }
+  .modal h3{ font-family: var(--font-display); font-weight:600; font-size: 20px; margin: 0 0 18px 0; }
+  .modal-actions{ display:flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+  /* Exercise picker inside workout builder */
+  .exline{
+    display:grid;
+    grid-template-columns: 1.6fr 0.6fr 0.6fr 0.7fr 0.7fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .exline:last-child{ border-bottom:none; }
+  .exline input, .exline select{ padding: 7px 8px; font-size: 13px; }
+  .exline .exname{ font-weight: 600; font-size: 14px; }
+
+  .col-label{ font-size: 11px; color: var(--chalk-dim); text-transform: none; padding-bottom: 4px; }
+
+  /* Cycle grid */
+  .cycle-meta{ display:flex; gap: 24px; margin-bottom: 22px; flex-wrap: wrap; }
+  .cycle-stat{ }
+  .cycle-stat .num{ font-family: var(--font-display); font-size: 28px; color: var(--ochre); line-height:1; }
+  .cycle-stat .lbl{ font-size: 12px; color: var(--chalk-dim); margin-top: 2px; }
+
+  .week-block{
+    border: 1px solid var(--line);
+    border-radius: var(--radius-m);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .week-head{
+    background: var(--surface-raised);
+    padding: 10px 16px;
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  .week-head-left{ display:flex; align-items:center; gap: 10px; }
+  .week-num{ font-family: var(--font-display); font-size: 17px; color: var(--ochre); }
+  .week-progress-input{ width: 70px; padding: 4px 6px; font-size: 12px; }
+  .week-body{ padding: 14px 16px; display:none; }
+  .week-block.open .week-body{ display:block; }
+  .day-slot{
+    display:flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .day-slot:last-child{ border-bottom: none; }
+  .day-name{ width: 110px; flex-shrink:0; color: var(--chalk-dim); font-size: 13px; }
+  .day-assign{ flex:1; display:flex; align-items:center; gap:8px; }
+  .day-assign select{ flex:1; padding: 7px 8px; font-size: 13px; }
+
+  .select-line{ display:flex; gap: 10px; align-items:center; margin-bottom: 18px; }
+  .select-line select{ background: var(--surface-raised); border: 1px solid var(--line); color: var(--chalk); padding: 8px 10px; border-radius: var(--radius-s); font-size: 14px; min-width: 220px; }
+
+  ::-webkit-scrollbar{ width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track{ background: var(--bg); }
+  ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 10px; }
+
+  @media (max-width: 780px){
+    .app{ flex-direction: column; }
+    .rail{ width: 100%; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .rail-brand{ display:none; }
+    .rail-nav{ flex-direction: row; margin-top:0; }
+    .rail-btn{ border-left:none; border-bottom: 3px solid transparent; white-space: nowrap; }
+    .rail-btn.active{ border-left:none; border-bottom-color: var(--ochre); }
+    .rail-foot{ display:none; }
+    .main{ padding: 24px 18px; }
+    .row-2, .row-3, .row-4{ grid-template-columns: 1fr; }
+    .exline{ grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
+    .cycle-meta{ gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="rail">
+    <div class="rail-brand">CICLO<span>.</span></div>
+    <div class="rail-nav">
+      <button class="rail-btn active" data-view="clientes">Clientes</button>
+      <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
+      <button class="rail-btn" data-view="treinos">Treinos</button>
+      <button class="rail-btn" data-view="ciclos">Ciclos</button>
+    </div>
+    <div class="rail-foot">Dados guardados neste dispositivo</div>
+  </div>
+
+  <div class="main">
+
+    <!-- CLIENTES -->
+    <div class="view active" id="view-clientes">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Clientes</h1>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos.</div>
+        </div>
+        <button class="btn btn-primary" onclick="openClientModal()">+ Novo cliente</button>
+      </div>
+      <div id="clientes-list"></div>
+    </div>
+
+    <!-- BIBLIOTECA -->
+    <div class="view" id="view-biblioteca">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Biblioteca de exercícios</h1>
+          <div class="view-sub">Exercícios disponíveis para montar os treinos.</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn" onclick="loadBaseLibrary()">Carregar biblioteca base</button>
+          <button class="btn btn-primary" onclick="openExerciseModal()">+ Novo exercício</button>
+        </div>
+      </div>
+      <div class="select-line">
+        <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="renderLibrary()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
+        <select id="lib-group" onchange="renderLibrary()"><option value="">Todos os grupos</option></select>
+      </div>
+      <div id="lib-count" class="view-sub" style="margin-bottom:12px;"></div>
+      <div id="biblioteca-list"></div>
+    </div>
+
+    <!-- TREINOS -->
+    <div class="view" id="view-treinos">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Treinos</h1>
+          <div class="view-sub">Modelos de sessão — combinações de exercícios, séries e cargas.</div>
+        </div>
+        <button class="btn btn-primary" onclick="openWorkoutModal()">+ Novo treino</button>
+      </div>
+      <div id="treinos-list"></div>
+    </div>
+
+    <!-- CICLOS -->
+    <div class="view" id="view-ciclos">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Ciclos de treino</h1>
+          <div class="view-sub">Periodização por cliente — semanas, sessões e progressão.</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com IA</button>
+          <button class="btn btn-primary" onclick="openCycleModal()">+ Novo ciclo</button>
+        </div>
+      </div>
+
+      <div class="select-line">
+        <select id="cycle-client-filter" onchange="renderCycles()">
+          <option value="">Todos os clientes</option>
+        </select>
+      </div>
+
+      <div id="ciclos-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: gerar ciclo com IA -->
+<div class="modal-backdrop" id="modal-ai">
+  <div class="modal" style="max-width:640px;">
+    <h3>Gerar ciclo com IA</h3>
+    <div class="field">
+      <label>Cliente</label>
+      <select id="ai-cliente"></select>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Objetivo</label>
+        <select id="ai-objetivo">
+          <option>Hipertrofia</option>
+          <option>Força</option>
+          <option>Perda de gordura</option>
+          <option>Condição física geral</option>
+          <option>Tonificação</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nível</label>
+        <select id="ai-nivel">
+          <option>Iniciante</option>
+          <option selected>Intermédio</option>
+          <option>Avançado</option>
+        </select>
+      </div>
+    </div>
+    <div class="row-3">
+      <div class="field">
+        <label>Dias por semana</label>
+        <input id="ai-dias" type="number" min="1" max="6" value="3">
+      </div>
+      <div class="field">
+        <label>Semanas</label>
+        <input id="ai-semanas" type="number" min="2" max="12" value="4">
+      </div>
+      <div class="field">
+        <label>Equipamento</label>
+        <select id="ai-equip">
+          <option>Ginásio completo</option>
+          <option>Halteres e bancos</option>
+          <option>Casa, sem material</option>
+          <option>Casa, com elásticos</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Limitações ou lesões (opcional)</label>
+      <textarea id="ai-limitacoes" rows="2" placeholder="Ex: desconforto no ombro direito, evitar impacto..."></textarea>
+    </div>
+    <div style="font-size:12px; color:var(--chalk-dim); margin-bottom:12px;">
+      Sugestão automática. Não substitui a avaliação de um profissional. Em caso de dor, lesão ou condição de saúde, consulta primeiro o teu treinador ou médico.
+    </div>
+    <details style="margin-bottom:12px;">
+      <summary style="cursor:pointer; font-size:13px; color:var(--chalk-dim);">Definições do serviço de IA</summary>
+      <div class="field" style="margin-top:10px;">
+        <label>Endereço do serviço</label>
+        <input id="ai-endpoint" type="text" placeholder="https://o-teu-worker.workers.dev">
+      </div>
+    </details>
+    <div id="ai-status" style="font-size:13px; color:var(--chalk-dim); min-height:20px;"></div>
+    <div id="ai-preview"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-ai')">Fechar</button>
+      <button class="btn" id="ai-generate-btn" onclick="generateAI()">Gerar</button>
+      <button class="btn btn-primary" id="ai-import-btn" style="display:none;" onclick="importAI()">Importar para a app</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: reprodução de vídeo -->
+<div class="modal-backdrop" id="modal-video-play">
+  <div class="modal" style="max-width:640px;">
+    <h3 id="video-play-title">Vídeo</h3>
+    <video id="video-play-el" controls style="width:100%; border-radius:var(--radius-s); background:#000;"></video>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeVideoPlayer()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: cliente -->
+<div class="modal-backdrop" id="modal-cliente">
+  <div class="modal">
+    <h3>Novo cliente</h3>
+    <div class="field">
+      <label>Nome</label>
+      <input id="cliente-nome" type="text" placeholder="Nome do cliente">
+    </div>
+    <div class="field">
+      <label>Notas (opcional)</label>
+      <textarea id="cliente-notas" rows="2" placeholder="Objetivo, restrições, etc."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveClient()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: exercício -->
+<div class="modal-backdrop" id="modal-exercicio">
+  <div class="modal">
+    <h3>Novo exercício</h3>
+    <div class="field">
+      <label>Nome</label>
+      <input id="ex-nome" type="text" placeholder="Ex: Agachamento livre">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Grupo muscular</label>
+        <select id="ex-grupo">
+          <option>Pernas</option>
+          <option>Glúteos</option>
+          <option>Peito</option>
+          <option>Costas</option>
+          <option>Ombros</option>
+          <option>Bíceps</option>
+          <option>Tríceps</option>
+          <option>Antebraço</option>
+          <option>Core</option>
+          <option>Cardio</option>
+          <option>Corpo inteiro</option>
+          <option>Mobilidade</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Equipamento</label>
+        <input id="ex-equip" type="text" placeholder="Ex: Barra, halteres...">
+      </div>
+    </div>
+    <div class="field">
+      <label>Padrão de movimento (para o diagrama)</label>
+      <select id="ex-padrao">
+        <option value="agachamento">Agachamento</option>
+        <option value="dobradica">Dobradiça de anca</option>
+        <option value="empurrar_h">Empurrar horizontal</option>
+        <option value="empurrar_v">Empurrar vertical</option>
+        <option value="puxar_h">Puxar horizontal</option>
+        <option value="puxar_v">Puxar vertical</option>
+        <option value="core">Core / estabilização</option>
+        <option value="cardio">Cardio</option>
+        <option value="isolamento">Isolamento</option>
+        <option value="mobilidade">Mobilidade / alongamento</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Vídeo de execução (opcional)</label>
+      <div style="display:flex; gap:16px; margin-bottom:8px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--chalk); cursor:pointer;">
+          <input type="radio" name="ex-video-type" value="link" checked onchange="toggleVideoInputType()"> Link (URL)
+        </label>
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:var(--chalk); cursor:pointer;">
+          <input type="radio" name="ex-video-type" value="file" onchange="toggleVideoInputType()"> Carregar ficheiro
+        </label>
+      </div>
+      <input id="ex-video-link" type="text" placeholder="https://... (YouTube, Drive, etc.)">
+      <input id="ex-video-file" type="file" accept="video/*" style="display:none;" onchange="handleVideoFile(this)">
+      <div id="ex-video-file-name" style="font-size:12px; color:var(--chalk-dim); margin-top:6px;"></div>
+    </div>
+    <div class="field">
+      <label>Notas de execução (opcional)</label>
+      <textarea id="ex-notas" rows="2" placeholder="Pontos de atenção, cues técnicos..."></textarea>
+    </div>
+    <div class="field">
+      <label>Link de imagem própria (opcional)</label>
+      <input id="ex-imagem" type="text" placeholder="https://...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-exercicio')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveExercise()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: treino -->
+<div class="modal-backdrop" id="modal-treino">
+  <div class="modal" style="max-width:720px;">
+    <h3 id="treino-modal-title">Novo treino</h3>
+    <div class="field">
+      <label>Nome do treino</label>
+      <input id="treino-nome" type="text" placeholder="Ex: Treino A — Pernas/Ombros">
+    </div>
+    <div class="field">
+      <label>Exercícios</label>
+      <div id="treino-exlines"></div>
+      <button class="btn btn-sm" style="margin-top:8px;" onclick="addExline()">+ Adicionar exercício</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-treino')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveWorkout()">Guardar treino</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ciclo -->
+<div class="modal-backdrop" id="modal-ciclo">
+  <div class="modal">
+    <h3>Novo ciclo</h3>
+    <div class="field">
+      <label>Cliente</label>
+      <select id="ciclo-cliente"></select>
+    </div>
+    <div class="field">
+      <label>Nome do ciclo</label>
+      <input id="ciclo-nome" type="text" placeholder="Ex: Mesociclo Hipertrofia">
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Data de início</label>
+        <input id="ciclo-inicio" type="date">
+      </div>
+      <div class="field">
+        <label>Duração (semanas)</label>
+        <input id="ciclo-semanas" type="number" min="1" max="16" value="4">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-ciclo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCycle()">Criar ciclo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const STORE_KEY = 'ciclo_pt_data_v1';
+
+function loadData(){
+  const raw = localStorage.getItem(STORE_KEY);
+  if(raw) return JSON.parse(raw);
+  return { clients: [], exercises: [], workouts: [], cycles: [] };
+}
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); renderAll(); }
+let DATA = loadData();
+function uid(){ return 'id' + Math.random().toString(36).slice(2,10); }
+
+// ---------- NAV ----------
+document.querySelectorAll('.rail-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.rail-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+
+// ---------- CLIENTES ----------
+function openClientModal(){
+  document.getElementById('cliente-nome').value='';
+  document.getElementById('cliente-notas').value='';
+  openModal('modal-cliente');
+}
+function saveClient(){
+  const nome = document.getElementById('cliente-nome').value.trim();
+  if(!nome) return;
+  DATA.clients.push({ id: uid(), nome, notas: document.getElementById('cliente-notas').value.trim() });
+  closeModal('modal-cliente');
+  saveData();
+}
+function deleteClient(id){
+  if(!confirm('Remover este cliente? Os ciclos associados também serão removidos.')) return;
+  DATA.clients = DATA.clients.filter(c=>c.id!==id);
+  DATA.cycles = DATA.cycles.filter(c=>c.clientId!==id);
+  saveData();
+}
+function renderClients(){
+  const list = document.getElementById('clientes-list');
+  if(DATA.clients.length===0){
+    list.innerHTML = `<div class="empty"><strong>Ainda não há clientes</strong>Adiciona o primeiro cliente para começar a atribuir ciclos.</div>`;
+    return;
+  }
+  list.innerHTML = `<div class="list">` + DATA.clients.map(c=>{
+    const numCycles = DATA.cycles.filter(cy=>cy.clientId===c.id).length;
+    return `<div class="list-row">
+      <div class="list-row-main">
+        <div class="list-row-title">${esc(c.nome)}</div>
+        <div class="list-row-meta">${numCycles} ciclo${numCycles===1?'':'s'}${c.notas ? ' · '+esc(c.notas) : ''}</div>
+      </div>
+      <div class="list-row-actions">
+        <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteClient('${c.id}')">Remover</button>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+// ---------- BIBLIOTECA ----------
+function toggleVideoInputType(){
+  const type = document.querySelector('input[name="ex-video-type"]:checked').value;
+  document.getElementById('ex-video-link').style.display = type==='link' ? 'block' : 'none';
+  document.getElementById('ex-video-file').style.display = type==='file' ? 'block' : 'none';
+}
+let pendingVideoData = null;
+function handleVideoFile(input){
+  const file = input.files[0];
+  pendingVideoData = null;
+  if(!file) return;
+  const maxBytes = 8 * 1024 * 1024;
+  document.getElementById('ex-video-file-name').textContent = `${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  if(file.size > maxBytes){
+    alert('Este ficheiro é grande demais para guardar no browser (limite prático ~8MB). Usa antes um link (ex: partilha do Google Drive ou YouTube não listado).');
+    input.value = '';
+    document.getElementById('ex-video-file-name').textContent = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => { pendingVideoData = reader.result; };
+  reader.readAsDataURL(file);
+}
+function openVideoPlayer(id){
+  const e = DATA.exercises.find(x=>x.id===id);
+  if(!e || !e.videoData) return;
+  document.getElementById('video-play-title').textContent = e.nome;
+  document.getElementById('video-play-el').src = e.videoData;
+  openModal('modal-video-play');
+}
+function closeVideoPlayer(){
+  document.getElementById('video-play-el').pause();
+  document.getElementById('video-play-el').src = '';
+  closeModal('modal-video-play');
+}
+
+function openExerciseModal(){
+  document.getElementById('ex-nome').value='';
+  document.getElementById('ex-equip').value='';
+  document.getElementById('ex-notas').value='';
+  document.getElementById('ex-imagem').value='';
+  document.getElementById('ex-padrao').value='agachamento';
+  document.getElementById('ex-video-link').value='';
+  document.getElementById('ex-video-file').value='';
+  document.getElementById('ex-video-file-name').textContent='';
+  document.querySelector('input[name="ex-video-type"][value="link"]').checked = true;
+  pendingVideoData = null;
+  toggleVideoInputType();
+  openModal('modal-exercicio');
+}
+function saveExercise(){
+  const nome = document.getElementById('ex-nome').value.trim();
+  if(!nome) return;
+  const videoType = document.querySelector('input[name="ex-video-type"]:checked').value;
+  DATA.exercises.push({
+    id: uid(),
+    nome,
+    grupo: document.getElementById('ex-grupo').value,
+    equip: document.getElementById('ex-equip').value.trim(),
+    notas: document.getElementById('ex-notas').value.trim(),
+    padrao: document.getElementById('ex-padrao').value,
+    imagem: document.getElementById('ex-imagem').value.trim(),
+    videoLink: videoType==='link' ? document.getElementById('ex-video-link').value.trim() : '',
+    videoData: videoType==='file' ? (pendingVideoData || '') : ''
+  });
+  pendingVideoData = null;
+  closeModal('modal-exercicio');
+  saveData();
+}
+const BASE_EXERCISES = [
+  {"nome":"Extenção do Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Extenção do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Extenção/Flexão do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Flexão do Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Flexão do pulso por detrás das costas","grupo":"Antebraço","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Bicep Curl","grupo":"Bíceps","equip":"","padrao":"isolamento"},
+  {"nome":"Bicep Curl (Paralelas)","grupo":"Bíceps","equip":"Paralelas","padrao":"isolamento"},
+  {"nome":"Bicep curl alternado HT","grupo":"Bíceps","equip":"","padrao":"isolamento"},
+  {"nome":"Bicep curl com insistências","grupo":"Bíceps","equip":"","padrao":"isolamento"},
+  {"nome":"Bíceps Martelo","grupo":"Bíceps","equip":"","padrao":"isolamento"},
+  {"nome":"Concentrado (em Pé no Banco) (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Concentrado (Polia Alta)","grupo":"Bíceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Concentrado (Sentado) (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Curl (Barra)","grupo":"Bíceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Curl (Barra) (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Curl (Corda) (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Curl (Elástico)","grupo":"Bíceps","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Curl (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Curl (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Curl (Pronação) (Barra)","grupo":"Bíceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Curl (TRX)","grupo":"Bíceps","equip":"TRX","padrao":"isolamento"},
+  {"nome":"Curl Martelo (Banco Inclinado) (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Curl Unilateral (Elástico)","grupo":"Bíceps","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Curl Unilateral (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Curl Unilateral (TRX)","grupo":"Bíceps","equip":"TRX","padrao":"isolamento"},
+  {"nome":"Flexão Cotovelo (barra) (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Flexão Cotovelo (corda) (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Flexão Cotovelo (unilateral) (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Martelo (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Puxada à Nuca (Polia)","grupo":"Bíceps","equip":"Polia","padrao":"puxar_v"},
+  {"nome":"Rosca Bíceps Barra","grupo":"Bíceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Rosca Bíceps Halteres","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Rosca Bíceps Unilateral","grupo":"Bíceps","equip":"","padrao":"isolamento"},
+  {"nome":"Scott (Barra)","grupo":"Bíceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Scott (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Zottman Curl (Halteres)","grupo":"Bíceps","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Air Bike","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Bear Crawl","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Bicicleta","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Burpee na cadeira","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Burpees","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Canguru","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Climber","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Deslocamento Lateral","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Eliptica","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Hand Release Burpee","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Jumping Jacks","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Lateral Jumps","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Mountain Climbers","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Passadeira","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Remo","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Skierg","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Skiping (Trampolim)","grupo":"Cardio","equip":"Trampolim","padrao":"cardio"},
+  {"nome":"Skipping","grupo":"Cardio","equip":"Peso corporal","padrao":"cardio"},
+  {"nome":"Star jump","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Subir e descer escadas","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"Tuck jumps HT","grupo":"Cardio","equip":"","padrao":"cardio"},
+  {"nome":"\"V\" (Abd/Adução Perna)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Ab-roller (Roda abdominal)","grupo":"Core","equip":"Roda abdominal","padrao":"core"},
+  {"nome":"Abdominal Bend Over","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal com Pernas Verticais","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal Crunch","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal crunch com corda polia alta","grupo":"Core","equip":"Polia","padrao":"core"},
+  {"nome":"Abdominal crunch cruzado","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal crunch invertido TRX","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Abdominal curto no colchão","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal Inferior Alternado","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal Obliquo _ Banco Lombar (Halteres)","grupo":"Core","equip":"Halteres","padrao":"core"},
+  {"nome":"Abdominal obliquo lateral","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal pés a barra","grupo":"Core","equip":"Barra","padrao":"core"},
+  {"nome":"Abdominal V","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Barquinhos","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Bend Over (Polia)","grupo":"Core","equip":"Polia","padrao":"core"},
+  {"nome":"Bird Dog","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Bird Dog Plank","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Birdog","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Body extension","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Bola de Mão para Mão (Prancha) (Medicine ball)","grupo":"Core","equip":"Medicine ball","padrao":"core"},
+  {"nome":"Bycicle Crunch","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Cat Cow","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crab Toes HT","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crunch","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crunch (Banco declinado)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crunch (com elástico) (Bosu)","grupo":"Core","equip":"Bosu","padrao":"core"},
+  {"nome":"Crunch (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Crunch (Kettlebell)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crunch (Kettlebell) (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Crunch (Prancha) (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Crunch AB-trainer","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Crunch com Rotação","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Crunch Lateral","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Escaladores (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Extenção M. Inferior","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Extenção M. Inferior Alt","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Farm Carry (Kettlebell)","grupo":"Core","equip":"Kettlebell","padrao":"core"},
+  {"nome":"Full Extension (Kettlebell)","grupo":"Core","equip":"Kettlebell","padrao":"core"},
+  {"nome":"Full Extension (Medicine ball)","grupo":"Core","equip":"Medicine ball","padrao":"core"},
+  {"nome":"Hollow (GHD)","grupo":"Core","equip":"GHD","padrao":"core"},
+  {"nome":"Hollow Hold","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Hollow Rock","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Joelho ao Cotovelo Perna Esticada","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Joelho ao Peito","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Joelho ao peito em pé","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Knees Raise (Paralelas)","grupo":"Core","equip":"Paralelas","padrao":"core"},
+  {"nome":"Knees to Elbows (Barra fixa)","grupo":"Core","equip":"Barra fixa","padrao":"core"},
+  {"nome":"L Sit (Argolas)","grupo":"Core","equip":"Argolas","padrao":"core"},
+  {"nome":"L.sit (Paralelas)","grupo":"Core","equip":"Paralelas","padrao":"core"},
+  {"nome":"Lateral Climbers (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Lateral Mountain Climber","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Lumberjack ascencende (Polia)","grupo":"Core","equip":"Polia","padrao":"core"},
+  {"nome":"Lumberjack Ascendente (Elástico)","grupo":"Core","equip":"Elástico","padrao":"core"},
+  {"nome":"Lumberjack Descendente (Elástico)","grupo":"Core","equip":"Elástico","padrao":"core"},
+  {"nome":"Lumberjack Descendente (Polia)","grupo":"Core","equip":"Polia","padrao":"core"},
+  {"nome":"Mão ao Pé Alt","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Mãos Calcanhares","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Mountain Climbers (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Plank Jack","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Plank Jacks","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Plank Shoulder Taps","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Prancha & Crunch (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Prancha & Crunch Obliquo (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Prancha (Cotovelo / Mão Alt.)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Prancha (Ext. Frexão Alt. Braços) (Bosu)","grupo":"Core","equip":"Bosu","padrao":"core"},
+  {"nome":"Prancha de braços no trx+crunch","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Prancha Dinamica","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Prancha Frontal","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Prancha Frontal (2 Apoios)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Prancha Frontal (Bosu)","grupo":"Core","equip":"Bosu","padrao":"core"},
+  {"nome":"Prancha Frontal (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Prancha Frontal com salto","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Prancha Lateral","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Prancha Lateral (Bosu)","grupo":"Core","equip":"Bosu","padrao":"core"},
+  {"nome":"Prancha Lateral (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Prancha lateral com elevação da perna","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Remada em prancha na matrix (Máquina)","grupo":"Core","equip":"Máquina","padrao":"core"},
+  {"nome":"Ring Plank (Argolas)","grupo":"Core","equip":"Argolas","padrao":"core"},
+  {"nome":"Roll Out (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
+  {"nome":"Rot. Tronco c/ Perna Alt","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Russian Twist","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Sit Up + Twist (Fitball)","grupo":"Core","equip":"Fitball","padrao":"core"},
+  {"nome":"Sit Ups","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Spiderman","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Toes to Bar (Barra fixa)","grupo":"Core","equip":"Barra fixa","padrao":"core"},
+  {"nome":"Upper Crunch (Máquina)","grupo":"Core","equip":"Máquina","padrao":"core"},
+  {"nome":"V Ups (Alternados)","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"V-Ups","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Vela","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Vela + Kick","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"1 Push Up + 6 Mountain Climbers","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Agachamento + Elevação lateral Da Perna","grupo":"Corpo inteiro","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento + Remada (Polia)","grupo":"Corpo inteiro","equip":"Polia","padrao":"agachamento"},
+  {"nome":"Arm Extension","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Bicep Curl + Press Ombros","grupo":"Corpo inteiro","equip":"","padrao":"empurrar_v"},
+  {"nome":"Bodyweight men makers","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Box Jump (Caixa)","grupo":"Corpo inteiro","equip":"Caixa","padrao":"agachamento"},
+  {"nome":"Box Step Up (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Box Step Up (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Box Step Up (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Burpee (TRX)","grupo":"Corpo inteiro","equip":"TRX","padrao":"cardio"},
+  {"nome":"Burpees Box Jump (Caixa)","grupo":"Corpo inteiro","equip":"Caixa","padrao":"cardio"},
+  {"nome":"Caminhar a Urso","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Circular (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Clean & Jerk (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Clean & Jerk (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Clean & Press (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Clean (Fitbag)","grupo":"Corpo inteiro","equip":"Fitbag","padrao":"dobradica"},
+  {"nome":"Clean (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Clean and Press (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Clean and Press (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Clean&Jerk (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Cluster (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Cluster (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Clusters (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Cossack Squat (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Cossack Squat (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Crab Reach","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Deadlift (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Deadlift High Pull (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Deficit Push Ups (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Devil Press (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Devil Thruster (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Dive Bomber","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Double Rotation (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Double Unders (Corda)","grupo":"Corpo inteiro","equip":"Corda","padrao":"cardio"},
+  {"nome":"Down up","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Down up HT","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Farmer Carry (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"core"},
+  {"nome":"Farmer Carry (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"core"},
+  {"nome":"Flexão de Braços + Toque no Ombro","grupo":"Corpo inteiro","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão de Braços Mãos Afastadas + Mãos Junta","grupo":"Corpo inteiro","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão e extensão joelho com maos nos pés","grupo":"Corpo inteiro","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão Losangolo","grupo":"Corpo inteiro","equip":"","padrao":"empurrar_h"},
+  {"nome":"Front Rack Lunge (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Front Rack Lunge (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Gorilla Row (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"puxar_h"},
+  {"nome":"Ground to Overhead (Disco)","grupo":"Corpo inteiro","equip":"Disco","padrao":"empurrar_v"},
+  {"nome":"Half Moon Snatch (Fitbag)","grupo":"Corpo inteiro","equip":"Fitbag","padrao":"empurrar_v"},
+  {"nome":"Hang Clean (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Hang Cluster (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Hang Cluster (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Hang Cluster (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Hang Power Clean & Jerk (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Hang Power Clean & Jerk (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Hang Power Clean (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Hang Power Clean (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Hang Power Clean (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Hang Power Clean&Jerk (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Hang Power Snatch (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Hang Squat Clean (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Hang Squat Clean (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Hang Squat Clean (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Hang Squat Snatch (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Inch Worm + Flexão de Braços","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Inch worm HT","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Jumping Rope","grupo":"Corpo inteiro","equip":"Peso corporal","padrao":"cardio"},
+  {"nome":"KTBs (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"cardio"},
+  {"nome":"Lateral Jumps + Marreta (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Lombares Cruzados","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Lunge + high pull NT","grupo":"Corpo inteiro","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge + Remada Unilateral (Polia)","grupo":"Corpo inteiro","equip":"Polia","padrao":"agachamento"},
+  {"nome":"Man Makers (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"cardio"},
+  {"nome":"Manguito (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Monkey bars","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Mountain climbers + Beerpe","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Muscle Snatch (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Onda Alter Reverse Lunge (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Onda Alternada (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Onda Simul Reverse Lunge (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Onda Simultânea (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"OverHead Carry (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"core"},
+  {"nome":"OverHead Carry (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"core"},
+  {"nome":"OverHead Lung (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Overhead Lunge (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Overhead Lunge (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Overhead Squat (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Passagens com a toalha lateral","grupo":"Corpo inteiro","equip":"Toalha","padrao":"cardio"},
+  {"nome":"Passagens com cabo (Polia)","grupo":"Corpo inteiro","equip":"Polia","padrao":"cardio"},
+  {"nome":"Passagens com toalha","grupo":"Corpo inteiro","equip":"Toalha","padrao":"cardio"},
+  {"nome":"Peso Morto (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Polichinelo (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Power Clean (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Power Snatch (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Prancha Lateral + Abdução Perna","grupo":"Corpo inteiro","equip":"Peso corporal","padrao":"cardio"},
+  {"nome":"Prancha Lateral + Rotação","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Push Press (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Push Press (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Renegade Row (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"puxar_h"},
+  {"nome":"Reverse Lunge + Elevação Frontal do Joelho","grupo":"Corpo inteiro","equip":"","padrao":"agachamento"},
+  {"nome":"Reverse scorpion","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Ring Muscle Ups (Argolas)","grupo":"Corpo inteiro","equip":"Argolas","padrao":"puxar_v"},
+  {"nome":"Rotation Lunge Swings (Fitbag)","grupo":"Corpo inteiro","equip":"Fitbag","padrao":"cardio"},
+  {"nome":"Russian Twist (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"core"},
+  {"nome":"Russian Twist em Pé (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"core"},
+  {"nome":"Scotts Press (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Shouder to Overhead (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Shoulder To Overhead (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Single Arm Farmer Carry (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"core"},
+  {"nome":"Single Arm Farmer Carry (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"core"},
+  {"nome":"Single Arm OH Lunge (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Single Arm Overhead Lunge (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Single Arm OverHead Squat (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Single Arm Snatch (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Single Arm Snatch (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Single Arm Squat Snatch (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Single Arm Thruster (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Single Arm Thruster (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Snatch (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Snatch (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Sotts Press (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Sotts Press (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Split Jerk (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Sprint Lateral (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"cardio"},
+  {"nome":"Squat Clean (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Squat Clean (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Squat Clean (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Squat Snatch (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Stone Ladder (Slam ball)","grupo":"Corpo inteiro","equip":"Slam ball","padrao":"cardio"},
+  {"nome":"Super Man Reach","grupo":"Corpo inteiro","equip":"Peso corporal","padrao":"cardio"},
+  {"nome":"Swing (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Swing com Garrafão","grupo":"Corpo inteiro","equip":"","padrao":"dobradica"},
+  {"nome":"Swing com saco","grupo":"Corpo inteiro","equip":"","padrao":"dobradica"},
+  {"nome":"Swing máquina 8","grupo":"Corpo inteiro","equip":"Máquina","padrao":"dobradica"},
+  {"nome":"Swing Unilateral (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Thruster (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Thruster (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Thruster (Polia)","grupo":"Corpo inteiro","equip":"Polia","padrao":"agachamento"},
+  {"nome":"Thruster HT","grupo":"Corpo inteiro","equip":"","padrao":"agachamento"},
+  {"nome":"Thrusters (Barra)","grupo":"Corpo inteiro","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Toes To Ring (Argolas)","grupo":"Corpo inteiro","equip":"Argolas","padrao":"core"},
+  {"nome":"Turkish Get Up (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"cardio"},
+  {"nome":"V- ups","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Wall ball","grupo":"Corpo inteiro","equip":"","padrao":"cardio"},
+  {"nome":"Wall Climber","grupo":"Corpo inteiro","equip":"Peso corporal","padrao":"cardio"},
+  {"nome":"WallBall (Medicine ball)","grupo":"Corpo inteiro","equip":"Medicine ball","padrao":"cardio"},
+  {"nome":"Z Press (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
+  {"nome":"Aberturas T (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Aberturas Y (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Adução (CrossOver) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Arch Lift (GHD)","grupo":"Costas","equip":"GHD","padrao":"dobradica"},
+  {"nome":"Back extension (Fitball)","grupo":"Costas","equip":"Fitball","padrao":"dobradica"},
+  {"nome":"Deadlift (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"dobradica"},
+  {"nome":"Elavação na Barra Fixa Mão em Pronação","grupo":"Costas","equip":"","padrao":"puxar_v"},
+  {"nome":"Elevação na Barra Fixa Mão em Supinação","grupo":"Costas","equip":"","padrao":"puxar_v"},
+  {"nome":"Extenção Tronco","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Extenção Tronco (Banco)","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Extenção Tronco/Perna Alt","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Helicopter (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Lat Pulldown (ao Peito) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
+  {"nome":"Lat Pulldown (c/ Pegas) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_v"},
+  {"nome":"Lat Pulldown (Pega Fechada) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
+  {"nome":"Lat Pulldown (Supinação) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
+  {"nome":"Lat Pulldown (Unilateral) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
+  {"nome":"Lat pulldown à nuca (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
+  {"nome":"Low Row","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Lower Back","grupo":"Costas","equip":"","padrao":"isolamento"},
+  {"nome":"Lower Back (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Peck Back (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Pull Down (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Pull over na matrix (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Pull Up (Barra fixa)","grupo":"Costas","equip":"Barra fixa","padrao":"puxar_v"},
+  {"nome":"Pull Up (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"puxar_v"},
+  {"nome":"Pull Up (Martelo) (Barra fixa)","grupo":"Costas","equip":"Barra fixa","padrao":"puxar_v"},
+  {"nome":"Pull Up (Pronação) (Barra fixa)","grupo":"Costas","equip":"Barra fixa","padrao":"puxar_v"},
+  {"nome":"Pull Up (Supinação) (Barra fixa)","grupo":"Costas","equip":"Barra fixa","padrao":"puxar_v"},
+  {"nome":"Pull ups (Argolas)","grupo":"Costas","equip":"Argolas","padrao":"puxar_v"},
+  {"nome":"Pull Ups (Barra fixa)","grupo":"Costas","equip":"Barra fixa","padrao":"puxar_v"},
+  {"nome":"Pulley Row (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Pulley Row (Supinação) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Pulley Row (Unilateral) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Pulley row pega junta máquina 7","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Pullover com barra (Polia)","grupo":"Costas","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Pullover com corda (Polia)","grupo":"Costas","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Puxada de Sentado para de Pé (Corda)","grupo":"Costas","equip":"Corda","padrao":"puxar_v"},
+  {"nome":"Remada (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"puxar_h"},
+  {"nome":"Remada (em Pé) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada (Paralelas)","grupo":"Costas","equip":"Paralelas","padrao":"puxar_h"},
+  {"nome":"Remada (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Remada Baixa","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Remada Baixa \"T\" (Landmine)","grupo":"Costas","equip":"Landmine","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Barra)","grupo":"Costas","equip":"Barra","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (em Lunge) (Polia)","grupo":"Costas","equip":"Polia","padrao":"agachamento"},
+  {"nome":"Remada Baixa (Fitbag)","grupo":"Costas","equip":"Fitbag","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Kettlebell)","grupo":"Costas","equip":"Kettlebell","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Pronação) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Sentado no Banco) (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Supinação) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Unilateral) (Kettlebell)","grupo":"Costas","equip":"Kettlebell","padrao":"puxar_h"},
+  {"nome":"Remada Baixa (Unilateral) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada Baixa Com Insistências","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Remada Baixa Unil. (Banco) (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"puxar_h"},
+  {"nome":"Remada Baixa Unil. (Em Lunge) (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Remada baixa unilateral","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Remada Bulgara","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Remada com gymstick","grupo":"Costas","equip":"Gymstick","padrao":"puxar_h"},
+  {"nome":"Remada com Toalha","grupo":"Costas","equip":"Toalha","padrao":"puxar_h"},
+  {"nome":"Remada Dorsal T (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Remada em Pé","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Remada Horizontal (Pronada) (Paralelas)","grupo":"Costas","equip":"Paralelas","padrao":"puxar_h"},
+  {"nome":"Remada Horizontal (Supinada) (Paralelas)","grupo":"Costas","equip":"Paralelas","padrao":"puxar_h"},
+  {"nome":"Remada na matrix com pegas (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_h"},
+  {"nome":"Remada na multipower peso corporal","grupo":"Costas","equip":"Multipower","padrao":"puxar_h"},
+  {"nome":"Remada no trx com pés na bola suiça","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Remada Unil. (Prancha) (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"puxar_h"},
+  {"nome":"Remada Unilateral (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
+  {"nome":"Remada Unilateral Cabo (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_h"},
+  {"nome":"Remada Unilateral Halteres","grupo":"Costas","equip":"Halteres","padrao":"puxar_h"},
+  {"nome":"Ring Pull Ups (Argolas)","grupo":"Costas","equip":"Argolas","padrao":"puxar_v"},
+  {"nome":"Ring Rows (Argolas)","grupo":"Costas","equip":"Argolas","padrao":"puxar_h"},
+  {"nome":"Superman (Ext/Flexão Braço)","grupo":"Costas","equip":"Peso corporal","padrao":"dobradica"},
+  {"nome":"Superman row em pé","grupo":"Costas","equip":"","padrao":"dobradica"},
+  {"nome":"Upper Back","grupo":"Costas","equip":"","padrao":"puxar_h"},
+  {"nome":"Voos (Banco a 45º) (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Voos (CrossOver) (Polia)","grupo":"Costas","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Voos (Halteres)","grupo":"Costas","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Voos com halteres no banco","grupo":"Costas","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Voos com halteres no solo","grupo":"Costas","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Abdução (Deitado de Lado)","grupo":"Glúteos","equip":"Peso corporal","padrao":"isolamento"},
+  {"nome":"Abdução (Deitado de Lado) (Caneleiras)","grupo":"Glúteos","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Abdução (Deitado de Lado) (Elástico)","grupo":"Glúteos","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Abdução (Deitado lateral) (Elástico)","grupo":"Glúteos","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Abdução com banda isométrica","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Abdução da anca (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Abdução em 4 Apoios (Elástico)","grupo":"Glúteos","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Abductor","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Abdutor (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Abdutores (Máquina)","grupo":"Glúteos","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Adductor","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Adução da anca (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Aduçao e abduçao da perna com elevação do joelho","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Adutor (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Adutores com deslizamento","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Elevação da Bacia","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Elevação da Bacia no Solo com peso","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Elevação da bacia pés no banco","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Elevação Da Bacia Unilateral","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Elevação MI multipower","grupo":"Glúteos","equip":"Multipower","padrao":"dobradica"},
+  {"nome":"Elevação MI Unilateral com Caneleiras/Banco","grupo":"Glúteos","equip":"Caneleiras","padrao":"dobradica"},
+  {"nome":"Elevação Pélvica com Peso","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Elevação pelvica unilateral","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Extensão da Anca","grupo":"Glúteos","equip":"","padrao":"dobradica"},
+  {"nome":"Glúteo (Máquina)","grupo":"Glúteos","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Hip Thrust (Máquina)","grupo":"Glúteos","equip":"Máquina","padrao":"dobradica"},
+  {"nome":"Kick Back (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"dobradica"},
+  {"nome":"Kick- Back na Multi Power (Multipower)","grupo":"Glúteos","equip":"Multipower","padrao":"isolamento"},
+  {"nome":"Monster Walk (Elástico)","grupo":"Glúteos","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Monster walk Lateral","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Monster Wlak","grupo":"Glúteos","equip":"","padrao":"isolamento"},
+  {"nome":"Alongamento Abdominal","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Abductores","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Aductores","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Aductores 1","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento de antebraço","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento de Antebraço e Punho","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento de Lombares","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento deltoide posterior","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Dorsal","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Dorsal em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Flexores Antebraço","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Gémeo Na Parede","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Gémeos","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Gluteo","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Glúteos","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento isquiotibiais unilateral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Isquiotibial","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Isquiotibial 1","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Isquiotibial 2","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento isquiotibial em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento isquiotibial na cadeira","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento isquiotibial unilateral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Joelho ao Peito","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento lombar com rotação dos joelhos","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Lombares","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Lombares 1","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento mãos aos pés","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento peitora","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Peitoral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Peitoral em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento peitoral na parede","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Posterior com Rotaçao do Tronco","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Quadricep Joelho no Solo","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Quadrícepes","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Quadricipete","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Quadricipit","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Romboides","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Trapézios","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Tríceps","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento tricipete","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamentos romboides em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamentos True Strecht","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamneto Do Ombro Unilateral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"CatCow","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Child Position","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Mobilidade Anca 4 apoios HT","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Pigeon Stretch","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Pose de criança","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"True Transverse","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Wall angels","grupo":"Mobilidade","equip":"Peso corporal","padrao":"mobilidade"},
+  {"nome":"Abdução de braço na horizontal","grupo":"Ombros","equip":"","padrao":"isolamento"},
+  {"nome":"Abdução do Braço","grupo":"Ombros","equip":"","padrao":"isolamento"},
+  {"nome":"Arnold Press HT","grupo":"Ombros","equip":"","padrao":"empurrar_v"},
+  {"nome":"Deltoide Press (Máquina)","grupo":"Ombros","equip":"Máquina","padrao":"empurrar_v"},
+  {"nome":"Desenvolvimento Alternado Halteres","grupo":"Ombros","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Desenvolvimento Halteres","grupo":"Ombros","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Elevação frontal","grupo":"Ombros","equip":"","padrao":"isolamento"},
+  {"nome":"Elevação Frontal (Barra)","grupo":"Ombros","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Elevação Frontal (Fitbag)","grupo":"Ombros","equip":"Fitbag","padrao":"isolamento"},
+  {"nome":"Elevação Frontal (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Elevação Frontal (Polia)","grupo":"Ombros","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Elevação Frontal (TRX)","grupo":"Ombros","equip":"TRX","padrao":"isolamento"},
+  {"nome":"Elevação Frontal unilateral (Polia)","grupo":"Ombros","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Elevação lateral","grupo":"Ombros","equip":"","padrao":"isolamento"},
+  {"nome":"Elevação Lateral (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Elevação lateral (Posterior) (Polia)","grupo":"Ombros","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Elevações Laterais (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Encolhimento (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Encolhimento (Multipower)","grupo":"Ombros","equip":"Multipower","padrao":"isolamento"},
+  {"nome":"Encolhimento Ombros (Multipower)","grupo":"Ombros","equip":"Multipower","padrao":"isolamento"},
+  {"nome":"Handstand Push Up","grupo":"Ombros","equip":"Peso corporal","padrao":"empurrar_v"},
+  {"nome":"Press (Barra)","grupo":"Ombros","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Press (Landmine)","grupo":"Ombros","equip":"Landmine","padrao":"empurrar_v"},
+  {"nome":"Press (Pé) (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Press (Polia)","grupo":"Ombros","equip":"Polia","padrao":"empurrar_v"},
+  {"nome":"Press (Sentado) (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Press Atrás (Barra)","grupo":"Ombros","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Press Atrás (Multipower)","grupo":"Ombros","equip":"Multipower","padrao":"empurrar_v"},
+  {"nome":"Press de ombro","grupo":"Ombros","equip":"","padrao":"empurrar_v"},
+  {"nome":"Push Press (Barra)","grupo":"Ombros","equip":"Barra","padrao":"empurrar_v"},
+  {"nome":"Push Press (Fitbag)","grupo":"Ombros","equip":"Fitbag","padrao":"empurrar_v"},
+  {"nome":"Remada Alta","grupo":"Ombros","equip":"","padrao":"puxar_v"},
+  {"nome":"Remada Alta (Barra)","grupo":"Ombros","equip":"Barra","padrao":"puxar_v"},
+  {"nome":"Remada Alta (Fitbag)","grupo":"Ombros","equip":"Fitbag","padrao":"puxar_v"},
+  {"nome":"Remada Alta (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"puxar_v"},
+  {"nome":"Remada Alta (Multipower)","grupo":"Ombros","equip":"Multipower","padrao":"puxar_v"},
+  {"nome":"Remada Alta (Polia)","grupo":"Ombros","equip":"Polia","padrao":"puxar_v"},
+  {"nome":"Remada Alta (TRX)","grupo":"Ombros","equip":"TRX","padrao":"puxar_v"},
+  {"nome":"Rotação Externa (Polia)","grupo":"Ombros","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Rotação Interna (Polia)","grupo":"Ombros","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Shoulder Press","grupo":"Ombros","equip":"","padrao":"empurrar_v"},
+  {"nome":"Shoulder Press (Fitbag)","grupo":"Ombros","equip":"Fitbag","padrao":"empurrar_v"},
+  {"nome":"Shoulder to Shoulder Press (Fitbag)","grupo":"Ombros","equip":"Fitbag","padrao":"empurrar_v"},
+  {"nome":"Voo Ascendente + Frontal Descend (Halteres)","grupo":"Ombros","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Voos (Elástico)","grupo":"Ombros","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Voos laterais","grupo":"Ombros","equip":"","padrao":"isolamento"},
+  {"nome":"Abertura Ascendente (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Abertura de braços invertidas","grupo":"Peito","equip":"","padrao":"isolamento"},
+  {"nome":"Abertura unilateral (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Aberturas (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Aberturas (TRX)","grupo":"Peito","equip":"TRX","padrao":"isolamento"},
+  {"nome":"Aberturas Descendente (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Aberturas inclinadas no banco 8/9","grupo":"Peito","equip":"","padrao":"isolamento"},
+  {"nome":"Aberturas no banco (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Aberturas Peitoral","grupo":"Peito","equip":"","padrao":"isolamento"},
+  {"nome":"Bench Press","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Chest Press (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"empurrar_h"},
+  {"nome":"Chest Press (Pega inferior) (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"empurrar_h"},
+  {"nome":"Crucifixo (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Crucifixo (Polia) (Fitball)","grupo":"Peito","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Crucifixo com Halter (Fitball)","grupo":"Peito","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Crucifixo Declinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Crucifixo em pé Cabo (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Crucifixo Inclinado","grupo":"Peito","equip":"","padrao":"isolamento"},
+  {"nome":"Crucifixo Inclinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Crucifixo Invertido Cabo (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Crucifixo Invertido Halteres","grupo":"Peito","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Crucifixo Recto","grupo":"Peito","equip":"","padrao":"isolamento"},
+  {"nome":"Dips (Paralelas)","grupo":"Peito","equip":"Paralelas","padrao":"empurrar_h"},
+  {"nome":"Elevated Pike PushUps (Paralelas)","grupo":"Peito","equip":"Paralelas","padrao":"empurrar_h"},
+  {"nome":"Fexões na smith machine (Multipower)","grupo":"Peito","equip":"Multipower","padrao":"empurrar_h"},
+  {"nome":"Flexão de braços com pés no banco","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão de braços junto ao corpo","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão de braços mãos afastadas","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão de braços unilateral","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexoes","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexões de Braço (TRX)","grupo":"Peito","equip":"TRX","padrao":"empurrar_h"},
+  {"nome":"Flexões na smith machine (Multipower)","grupo":"Peito","equip":"Multipower","padrao":"empurrar_h"},
+  {"nome":"Inch Worm Push Up","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Inclined Push Ups (Paralelas)","grupo":"Peito","equip":"Paralelas","padrao":"empurrar_h"},
+  {"nome":"Peck Deck (Elástico)","grupo":"Peito","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Peck Deck (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Pectoral Machine","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Peitoral (TRX)","grupo":"Peito","equip":"TRX","padrao":"empurrar_h"},
+  {"nome":"Peitotal _ Aberturas (no banco) (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Pike Push Up Pés na Cadeira","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Press Inclinado (Polia)","grupo":"Peito","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Pullover (Barra)","grupo":"Peito","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Pullover (Halter) (Fitball)","grupo":"Peito","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Pullover (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Push Up","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Push Up (Joelhos)","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Push Up (Mãos na Caixa)","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Push Up (Medicine ball)","grupo":"Peito","equip":"Medicine ball","padrao":"empurrar_h"},
+  {"nome":"Push Up (Triângulo)","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Push Up Release","grupo":"Peito","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Push up to down dog","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Push Ups (Argolas)","grupo":"Peito","equip":"Argolas","padrao":"empurrar_h"},
+  {"nome":"Push ups máquina 3","grupo":"Peito","equip":"Máquina","padrao":"empurrar_h"},
+  {"nome":"Release push ups","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Supino (TRX)","grupo":"Peito","equip":"TRX","padrao":"empurrar_h"},
+  {"nome":"Supino com Garrafão","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Supino Declinado","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Supino Declinado (Barra)","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Supino Declinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Supino declindo com barra","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Supino Inclinado (Barra)","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Supino Inclinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Supino Inclinado (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"empurrar_h"},
+  {"nome":"Supino Plano (Barra)","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Supino Plano (Barra) (Fitball)","grupo":"Peito","equip":"Fitball","padrao":"empurrar_h"},
+  {"nome":"Supino Plano (Fitball)","grupo":"Peito","equip":"Fitball","padrao":"empurrar_h"},
+  {"nome":"Supino Plano (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Supino Plano (Multipower)","grupo":"Peito","equip":"Multipower","padrao":"empurrar_h"},
+  {"nome":"Supino Plano HT","grupo":"Peito","equip":"","padrao":"empurrar_h"},
+  {"nome":"Abdução (4 Apoios) (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Abdução (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Adução (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Adução (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Afundos com pés no banco","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com barra","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Agachamento com barra à frente","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Agachamento com discos","grupo":"Pernas","equip":"Disco","padrao":"agachamento"},
+  {"nome":"Agachamento com elevação dos calcanhare com peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com Elevação dos Calcanhares Isometria","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com insistencia","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com Peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com salto","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com salto Lateral","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento Isometrico + Transição para Posição de","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento mais Salto Lateral","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento Máquina","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Agachamento Sumo (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Agachamento Sumo HT","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento sumo+ remada alta","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Air Squat","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Back Squat (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Back Squat (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Back Squat (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"agachamento"},
+  {"nome":"Bons dias","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Bons Dias (Barra)","grupo":"Pernas","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Box lunge com KTB (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Box Ste Over (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"isolamento"},
+  {"nome":"Box step over","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Calcanhar ao Glúteo","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Cross Over Glute Kick Back (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"dobradica"},
+  {"nome":"Dead Lift","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Dead Lift (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Dead lift unilateral","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Dead Lift Unilateral+ Elevação do Joelho","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Deadlift","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Deadlift (Barra)","grupo":"Pernas","equip":"Barra","padrao":"dobradica"},
+  {"nome":"Deadlift (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"dobradica"},
+  {"nome":"Deadlift (Unilateral) (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"dobradica"},
+  {"nome":"Deadlift Unilateral (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Elevação do calcanhar unilateral","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Exercicio de Gemeos em Pé","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Extenção Glúteo (Caneleira) (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Extensão (TRX)","grupo":"Pernas","equip":"TRX","padrao":"isolamento"},
+  {"nome":"Extensão/Flexão MI (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"empurrar_h"},
+  {"nome":"Flexão Plantar","grupo":"Pernas","equip":"","padrao":"empurrar_h"},
+  {"nome":"Flexão Plantar (Barra)","grupo":"Pernas","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Flexão Plantar (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"empurrar_h"},
+  {"nome":"Flexão Plantar (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"empurrar_h"},
+  {"nome":"Flexão Plantar (Prensa) (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Flexão Plantar (Step)","grupo":"Pernas","equip":"Step","padrao":"empurrar_h"},
+  {"nome":"Frog Lifts (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Front Lunges (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Front Squat (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Front Squat (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Front Squat (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Front Squat (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Front Squat (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"agachamento"},
+  {"nome":"FrontSquat (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Gémeos (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Glute Kick Back (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"dobradica"},
+  {"nome":"Goblet Squat (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Good Morning (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"dobradica"},
+  {"nome":"Half squat get up","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Harmstring curl (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Hip Abduction (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Hip Press (TRX)","grupo":"Pernas","equip":"TRX","padrao":"empurrar_h"},
+  {"nome":"Hip Thruster (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"dobradica"},
+  {"nome":"In&Out Squat (Step)","grupo":"Pernas","equip":"Step","padrao":"agachamento"},
+  {"nome":"Insistências na Leg Press","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Jumping Lunge","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Jumping Lunge (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Jumping Squat","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Jumping Squat (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Jumping Squats","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Kick Back (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"dobradica"},
+  {"nome":"Lateral Box Step Up (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"agachamento"},
+  {"nome":"Leg Curl","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Leg Curl (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Leg Curl (Elástico)","grupo":"Pernas","equip":"Elástico","padrao":"isolamento"},
+  {"nome":"Leg Curl (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Leg Curl (Polia)","grupo":"Pernas","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Leg Extension","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Leg Extension (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Leg Press (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Leg Press (Sumo) (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Lunge","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Lunge (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Lunge (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"agachamento"},
+  {"nome":"Lunge (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Lunge a frente e atrás mais agachamento","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge Alternado (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Lunge Alternado (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Lunge Bulgaro","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge Bulgaro (Banco)","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Lunge Bulgaro (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Lunge Bulgaro (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Lunge com insistências","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge com rotaçao do tronco","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge dinâmico","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge Front and Reverse","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge lateral","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Lunge Lateral com peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Over Head Squat (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Overhead Lunge (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Overhead Squat (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Peso morto","grupo":"Pernas","equip":"","padrao":"dobradica"},
+  {"nome":"Pistol","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Pistol (Bosu)","grupo":"Pernas","equip":"Bosu","padrao":"agachamento"},
+  {"nome":"Pistol (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"agachamento"},
+  {"nome":"Pistol (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Pistol (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Ponte de Glúteos","grupo":"Pernas","equip":"Peso corporal","padrao":"dobradica"},
+  {"nome":"Ponte de Glúteos (Banco)","grupo":"Pernas","equip":"Peso corporal","padrao":"dobradica"},
+  {"nome":"Ponte de Glúteos (Carga Extra) (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"dobradica"},
+  {"nome":"Ponte de Glúteos (Carga Extra) (Step)","grupo":"Pernas","equip":"Step","padrao":"dobradica"},
+  {"nome":"Ponte de Glúteos (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"dobradica"},
+  {"nome":"Ponte de Glúteos (Step)","grupo":"Pernas","equip":"Step","padrao":"dobradica"},
+  {"nome":"Prensa 45º (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Reverse Lunge com insistencias","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Reverse lunge na lateral","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Reverse pistol no step","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Salto + Bear Walk","grupo":"Pernas","equip":"","padrao":"isolamento"},
+  {"nome":"Salto para a frente mais agachamento","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Senta e levanta no banco","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Side Lunge (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Single Leg Deadlift (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"dobradica"},
+  {"nome":"Spiderman lunge","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Squat","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat (Apoio assimétrico) (Step)","grupo":"Pernas","equip":"Step","padrao":"agachamento"},
+  {"nome":"Squat (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Squat (Encostado na Parede)","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"agachamento"},
+  {"nome":"Squat (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"agachamento"},
+  {"nome":"Squat (Insistências)","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"agachamento"},
+  {"nome":"Squat (Mini band)","grupo":"Pernas","equip":"Mini band","padrao":"agachamento"},
+  {"nome":"Squat (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
+  {"nome":"Squat + Lunge Alternado","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat Jump","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat Sumo","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Squat Sumo (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Squat Sumo (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
+  {"nome":"Squat Sumo (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"agachamento"},
+  {"nome":"Squat to Stand","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Standing Hip Extension (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"isolamento"},
+  {"nome":"Step up (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"agachamento"},
+  {"nome":"Step up (Unilateral) (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"agachamento"},
+  {"nome":"Subidas à caixa (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"isolamento"},
+  {"nome":"Subir e Descer (Caixa)","grupo":"Pernas","equip":"Caixa","padrao":"isolamento"},
+  {"nome":"Sumo Squat (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"agachamento"},
+  {"nome":"Walking Lunge (Barra)","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
+  {"nome":"Walking Lunges","grupo":"Pernas","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Wall Sit com peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Wall-Sit","grupo":"Pernas","equip":"Peso corporal","padrao":"isolamento"},
+  {"nome":"Barra Reta (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Bench Dips (Paralelas)","grupo":"Tríceps","equip":"Paralelas","padrao":"empurrar_h"},
+  {"nome":"C/Corda (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Dips (Banco)","grupo":"Tríceps","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Dips (Barra fixa)","grupo":"Tríceps","equip":"Barra fixa","padrao":"empurrar_h"},
+  {"nome":"Dips (entre Bancos)","grupo":"Tríceps","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Dips (Step)","grupo":"Tríceps","equip":"Peso corporal","padrao":"agachamento"},
+  {"nome":"Dips no banco","grupo":"Tríceps","equip":"Peso corporal","padrao":"empurrar_h"},
+  {"nome":"Exten Cotovelo (Pega invertida) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Exten. Cotovelo (supinação barra) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extens. Cotovelo (b. triangular) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extensão Cotovelo (barra) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extensão Cotovelo (corda) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extensão Cotovelo (supinação) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extensão Cotovelo Unilateral (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Extensão Triceps no Solo","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Kick Back (Halteres)","grupo":"Tríceps","equip":"Halteres","padrao":"dobradica"},
+  {"nome":"Press à Barriga (Barra)","grupo":"Tríceps","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Press à Nuca (Elástico)","grupo":"Tríceps","equip":"Elástico","padrao":"empurrar_h"},
+  {"nome":"Press à Nuca (Halteres)","grupo":"Tríceps","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Press à testa ( barra) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Press à Testa (Barra)","grupo":"Tríceps","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Press à Testa (corda) (Polia)","grupo":"Tríceps","equip":"Polia","padrao":"empurrar_h"},
+  {"nome":"Press à Testa (Halteres)","grupo":"Tríceps","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Press Barriga","grupo":"Tríceps","equip":"","padrao":"empurrar_h"},
+  {"nome":"Press Barriga (Barra)","grupo":"Tríceps","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Ring Dips (Argolas)","grupo":"Tríceps","equip":"Argolas","padrao":"empurrar_h"},
+  {"nome":"Tricep Testa HT","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tríceps Coice","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tríceps Francês","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tríceps Testa","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tricipe barra triangular","grupo":"Tríceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Tricipe c/corda","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tricipe c/corda à testa","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Trícipe com gymstick","grupo":"Tríceps","equip":"Gymstick","padrao":"isolamento"},
+  {"nome":"Tricipe extensão horizontal","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tricipe invertido c/barra reta","grupo":"Tríceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Tricipe invertido com barra","grupo":"Tríceps","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Tricipe unilateral","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tricipe unilateral pega invertida","grupo":"Tríceps","equip":"","padrao":"isolamento"},
+  {"nome":"Tricipite Francês","grupo":"Tríceps","equip":"","padrao":"isolamento"}
+];
+
+function loadBaseLibrary(){
+  const existingNames = new Set(DATA.exercises.map(e=>e.nome.toLowerCase()));
+  const toAdd = BASE_EXERCISES.filter(e=>!existingNames.has(e.nome.toLowerCase()));
+  if(toAdd.length===0){ alert('A biblioteca base já está toda carregada.'); return; }
+  if(!confirm(`Isto vai adicionar ${toAdd.length} exercícios à biblioteca. Continuar?`)) return;
+  toAdd.forEach(e=>{
+    DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: '', padrao: e.padrao, imagem: '' });
+  });
+  saveData();
+}
+
+function deleteExercise(id){
+  if(!confirm('Remover este exercício da biblioteca?')) return;
+  DATA.exercises = DATA.exercises.filter(e=>e.id!==id);
+  saveData();
+}
+const PATTERN_LABELS = {
+  agachamento: 'Agachamento', dobradica: 'Dobradiça de anca', empurrar_h: 'Empurrar horizontal',
+  empurrar_v: 'Empurrar vertical', puxar_h: 'Puxar horizontal', puxar_v: 'Puxar vertical',
+  core: 'Core / estabilização', cardio: 'Cardio', isolamento: 'Isolamento', mobilidade: 'Mobilidade'
+};
+const PATTERN_ICONS = {
+  agachamento: `<circle cx="50" cy="18" r="9"/><path d="M50 27 L50 55 M50 40 L30 52 M50 40 L70 52 M50 55 L34 90 M50 55 L66 90 M34 90 L26 90 M66 90 L74 90"/>`,
+  dobradica: `<circle cx="34" cy="20" r="9"/><path d="M34 29 L58 62 M42 42 L20 60 M50 50 L70 40 M58 62 L54 92 M58 62 L74 88 M54 92 L46 92 M74 88 L66 88"/>`,
+  empurrar_h: `<circle cx="50" cy="18" r="9"/><path d="M50 27 L50 62 M50 34 L26 34 M50 34 L74 34 M50 62 L38 92 M50 62 L62 92 M38 92 L30 92 M62 92 L70 92"/>`,
+  empurrar_v: `<circle cx="50" cy="18" r="9"/><path d="M50 27 L50 62 M50 32 L30 8 M50 32 L70 8 M50 62 L38 92 M50 62 L62 92 M38 92 L30 92 M62 92 L70 92"/>`,
+  puxar_h: `<circle cx="34" cy="20" r="9"/><path d="M34 29 L54 58 M40 40 L18 42 M46 46 L62 30 M54 58 L50 90 M54 58 L68 86 M50 90 L42 90 M68 86 L60 86"/>`,
+  puxar_v: `<circle cx="50" cy="24" r="9"/><path d="M50 33 L50 62 M50 36 L28 12 M50 36 L72 12 M50 62 L38 92 M50 62 L62 92 M38 92 L30 92 M62 92 L70 92"/>`,
+  core: `<circle cx="18" cy="60" r="8"/><path d="M26 60 L82 44 M40 62 L38 90 M60 52 L64 84 M20 68 L20 82"/>`,
+  cardio: `<circle cx="42" cy="16" r="9"/><path d="M42 25 L48 50 M48 50 L28 40 M48 50 L72 34 M48 50 L30 84 M48 50 L70 70 M28 88 L34 82 M66 76 L74 70"/>`,
+  mobilidade: `<circle cx="50" cy="16" r="9"/><path d="M50 25 L50 60 M50 34 L22 20 M50 34 L78 20 M50 60 L34 92 M50 60 L66 92 M34 92 L26 92 M66 92 L74 92"/>`,
+  isolamento: `<circle cx="50" cy="16" r="9"/><path d="M50 25 L50 58 M50 32 L30 30 M30 30 L36 8 M50 58 L40 90 M50 58 L60 90 M40 90 L32 90 M60 90 L68 90"/>`
+};
+function patternIcon(padrao){
+  const p = padrao && PATTERN_ICONS[padrao] ? padrao : 'agachamento';
+  return `<svg viewBox="0 0 100 100" width="42" height="42" fill="none" stroke="var(--ochre)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">${PATTERN_ICONS[p]}</svg>`;
+}
+function techLink(nome){
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(nome + ' técnica execução exercício')}`;
+}
+function renderLibrary(){
+  const list = document.getElementById('biblioteca-list');
+  if(DATA.exercises.length===0){
+    document.getElementById('lib-count').textContent = '';
+    list.innerHTML = `<div class="empty"><strong>Biblioteca vazia</strong>Carrega a biblioteca base ou adiciona exercícios para os usares nos treinos.</div>`;
+    return;
+  }
+  const gSel = document.getElementById('lib-group');
+  const gCur = gSel.value;
+  const allGroups = [...new Set(DATA.exercises.map(e=>e.grupo))].sort();
+  gSel.innerHTML = `<option value="">Todos os grupos</option>` + allGroups.map(g=>`<option ${g===gCur?'selected':''}>${esc(g)}</option>`).join('');
+  const q = normText(document.getElementById('lib-search').value);
+  const filtered = DATA.exercises.filter(e=>(!gCur || e.grupo===gCur) && (!q || normText(e.nome+' '+(e.equip||'')).includes(q)));
+  document.getElementById('lib-count').textContent = `${filtered.length} de ${DATA.exercises.length} exercícios`;
+  if(filtered.length===0){ list.innerHTML = `<div class="empty"><strong>Nenhum resultado</strong>Experimenta outra pesquisa ou outro grupo.</div>`; return; }
+  const groups = {};
+  filtered.forEach(e=>{ (groups[e.grupo] = groups[e.grupo]||[]).push(e); });
+  Object.values(groups).forEach(arr=>arr.sort((x,y)=>x.nome.localeCompare(y.nome,'pt')));
+  list.innerHTML = Object.keys(groups).sort().map(g=>{
+    return `<div style="margin-bottom:20px;">
+      <div style="font-family:var(--font-display); font-size:15px; color:var(--chalk-dim); margin-bottom:8px; letter-spacing:.3px;">${g}</div>
+      <div class="list">` + groups[g].map(e=>`
+        <div class="list-row">
+          <div style="width:42px; height:42px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--surface-raised); border-radius:var(--radius-s); border:1px solid var(--line);">
+            ${e.imagem ? `<img src="${esc(e.imagem)}" alt="${esc(e.nome)}" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-s);">` : patternIcon(e.padrao)}
+          </div>
+          <div class="list-row-main">
+            <div class="list-row-title">${esc(e.nome)}</div>
+            <div class="list-row-meta">${e.equip ? esc(e.equip) : 'Sem equipamento especificado'}${e.padrao ? ' · '+PATTERN_LABELS[e.padrao] : ''}${e.notas ? ' · '+esc(e.notas) : ''}</div>
+          </div>
+          <div class="list-row-actions">
+            ${e.videoData ? `<button class="btn btn-ghost btn-sm" onclick="openVideoPlayer('${e.id}')">▶ Ver vídeo</button>` : `<a class="btn btn-ghost btn-sm" href="${e.videoLink ? esc(e.videoLink) : techLink(e.nome)}" target="_blank" rel="noopener">Ver técnica ↗</a>`}
+            <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteExercise('${e.id}')">Remover</button>
+          </div>
+        </div>`).join('') + `</div>
+    </div>`;
+  }).join('');
+}
+
+// ---------- TREINOS ----------
+let editingWorkoutId = null;
+function openWorkoutModal(workoutId){
+  editingWorkoutId = workoutId || null;
+  const w = workoutId ? DATA.workouts.find(x=>x.id===workoutId) : null;
+  document.getElementById('treino-modal-title').textContent = w ? 'Editar treino' : 'Novo treino';
+  document.getElementById('treino-nome').value = w ? w.nome : '';
+  document.getElementById('treino-exlines').innerHTML = '';
+  if(DATA.exercises.length===0){
+    alert('Adiciona pelo menos um exercício à biblioteca antes de criar um treino.');
+    return;
+  }
+  if(w && w.exercicios.length){
+    w.exercicios.forEach(line=>addExline(line));
+  } else {
+    addExline();
+  }
+  openModal('modal-treino');
+}
+function addExline(existing){
+  const wrap = document.getElementById('treino-exlines');
+  const row = document.createElement('div');
+  row.className = 'exline';
+  const byG = {};
+  DATA.exercises.forEach(e=>{ (byG[e.grupo]=byG[e.grupo]||[]).push(e); });
+  const opts = Object.keys(byG).sort().map(g=>`<optgroup label="${esc(g)}">` + byG[g].sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(e=>`<option value="${e.id}" ${existing && existing.exId===e.id ? 'selected':''}>${esc(e.nome)}</option>`).join('') + `</optgroup>`).join('');
+  row.innerHTML = `
+    <select class="exl-ex">${opts}</select>
+    <input class="exl-series" type="number" min="1" placeholder="Séries" value="${existing?existing.series:3}">
+    <input class="exl-reps" type="text" placeholder="Reps" value="${existing?existing.reps:'10'}">
+    <input class="exl-carga" type="text" placeholder="Carga" value="${existing?existing.carga:''}">
+    <input class="exl-descanso" type="text" placeholder="Descanso" value="${existing?existing.descanso:'60s'}">
+    <button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">✕</button>
+  `;
+  wrap.appendChild(row);
+}
+function saveWorkout(){
+  const nome = document.getElementById('treino-nome').value.trim();
+  if(!nome) return;
+  const lines = Array.from(document.querySelectorAll('#treino-exlines .exline')).map(row=>({
+    exId: row.querySelector('.exl-ex').value,
+    series: row.querySelector('.exl-series').value,
+    reps: row.querySelector('.exl-reps').value,
+    carga: row.querySelector('.exl-carga').value,
+    descanso: row.querySelector('.exl-descanso').value
+  }));
+  if(editingWorkoutId){
+    const w = DATA.workouts.find(x=>x.id===editingWorkoutId);
+    w.nome = nome; w.exercicios = lines;
+  } else {
+    DATA.workouts.push({ id: uid(), nome, exercicios: lines });
+  }
+  editingWorkoutId = null;
+  closeModal('modal-treino');
+  saveData();
+}
+function deleteWorkout(id){
+  if(!confirm('Remover este treino? Sessões de ciclos que o usam ficarão sem treino atribuído.')) return;
+  DATA.workouts = DATA.workouts.filter(w=>w.id!==id);
+  saveData();
+}
+function exerciseName(id){
+  const e = DATA.exercises.find(x=>x.id===id);
+  return e ? e.nome : '(exercício removido)';
+}
+function renderWorkouts(){
+  const list = document.getElementById('treinos-list');
+  if(DATA.workouts.length===0){
+    list.innerHTML = `<div class="empty"><strong>Ainda não há treinos</strong>Cria um treino combinando exercícios da biblioteca.</div>`;
+    return;
+  }
+  list.innerHTML = `<div class="list">` + DATA.workouts.map(w=>`
+    <div class="list-row" style="align-items:flex-start;">
+      <div class="list-row-main">
+        <div class="list-row-title">${esc(w.nome)}</div>
+        <div class="list-row-meta">${w.exercicios.map(l=>`${esc(exerciseName(l.exId))} — ${l.series}x${l.reps}${l.carga?' @ '+esc(l.carga):''}`).join(' · ')}</div>
+      </div>
+      <div class="list-row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openWorkoutModal('${w.id}')">Editar</button>
+        <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteWorkout('${w.id}')">Remover</button>
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+// ---------- IA ----------
+// Endereço do serviço intermédio (Cloudflare Worker). Define aqui antes de publicar,
+// para que os clientes não tenham de o configurar.
+const AI_ENDPOINT_DEFAULT = '';
+function aiEndpoint(){ return localStorage.getItem('ciclo_ai_endpoint') || AI_ENDPOINT_DEFAULT; }
+let aiResult = null;
+function aiExercisePool(equipChoice){
+  const allowed = {
+    'Ginásio completo': null,
+    'Halteres e bancos': ['', 'Peso corporal','Halteres','Barra','Kettlebell','Caixa','Step','Disco','Medicine ball'],
+    'Casa, sem material': ['', 'Peso corporal','Toalha'],
+    'Casa, com elásticos': ['', 'Peso corporal','Elástico','Mini band','Toalha']
+  }[equipChoice];
+  return DATA.exercises.filter(e=>e.grupo!=='Mobilidade' && (!allowed || allowed.includes(e.equip||'')));
+}
+
+function openAIModal(){
+  if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de gerar um ciclo.'); return; }
+  document.getElementById('ai-cliente').innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  document.getElementById('ai-endpoint').value = aiEndpoint();
+  document.getElementById('ai-status').textContent = '';
+  document.getElementById('ai-preview').innerHTML = '';
+  document.getElementById('ai-import-btn').style.display = 'none';
+  aiResult = null;
+  openModal('modal-ai');
+}
+
+async function generateAI(){
+  const status = document.getElementById('ai-status');
+  const endpoint = document.getElementById('ai-endpoint').value.trim();
+  if(!endpoint){ status.textContent = 'Indica o endereço do serviço de IA nas definições abaixo.'; return; }
+  localStorage.setItem('ciclo_ai_endpoint', endpoint);
+
+  const params = {
+    objetivo: document.getElementById('ai-objetivo').value,
+    nivel: document.getElementById('ai-nivel').value,
+    diasSemana: Math.min(6, Math.max(1, parseInt(document.getElementById('ai-dias').value) || 3)),
+    semanas: Math.min(12, Math.max(2, parseInt(document.getElementById('ai-semanas').value) || 4)),
+    equipamento: document.getElementById('ai-equip').value,
+    limitacoes: document.getElementById('ai-limitacoes').value.trim().slice(0, 300),
+    exercicios: aiExercisePool(document.getElementById('ai-equip').value).map(e=>e.nome).slice(0, 250)
+  };
+
+  const btn = document.getElementById('ai-generate-btn');
+  btn.disabled = true;
+  status.textContent = 'A gerar o ciclo… pode demorar até 30 segundos.';
+  document.getElementById('ai-preview').innerHTML = '';
+  document.getElementById('ai-import-btn').style.display = 'none';
+  try{
+    const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(params) });
+    if(!res.ok){
+      const txt = await res.text();
+      throw new Error(res.status===429 ? 'Atingiste o limite de gerações por hoje. Tenta amanhã.' : txt.slice(0,200));
+    }
+    const data = await res.json();
+    if(!Array.isArray(data.treinos) || !Array.isArray(data.semanas) || data.treinos.length===0){
+      throw new Error('A resposta da IA veio incompleta. Tenta gerar de novo.');
+    }
+    aiResult = data;
+    status.textContent = '';
+    renderAIPreview(data);
+    document.getElementById('ai-import-btn').style.display = 'inline-block';
+  }catch(err){
+    status.textContent = 'Erro: ' + err.message;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function renderAIPreview(r){
+  const avisos = Array.isArray(r.avisos) && r.avisos.length
+    ? `<div style="border-left:3px solid var(--ochre); padding:8px 12px; margin-bottom:12px; font-size:13px;">${r.avisos.map(a=>esc(String(a))).join('<br>')}</div>` : '';
+  const treinos = r.treinos.map(t=>`
+    <div style="margin-bottom:10px;">
+      <div style="font-weight:600;">${esc(t.nome)}</div>
+      <div class="list-row-meta">${(t.exercicios||[]).map(x=>`${esc(x.exercicio)} ${esc(String(x.series))}x${esc(String(x.reps))}`).join(' · ')}</div>
+    </div>`).join('');
+  const semanas = r.semanas.map(s=>`<div class="list-row-meta">S${esc(String(s.numero))}: ${esc(s.progressao||'')} (${(s.sessoes||[]).length} sessões)</div>`).join('');
+  document.getElementById('ai-preview').innerHTML = `
+    <div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; margin-bottom:6px; max-height:300px; overflow-y:auto;">
+      <div style="font-family:var(--font-display); font-size:17px; margin-bottom:10px;">${esc(r.nome||'Ciclo gerado')}</div>
+      ${avisos}${treinos}
+      <div style="margin-top:12px; border-top:1px solid var(--line); padding-top:10px;">${semanas}</div>
+    </div>`;
+}
+
+function normText(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+function findOrCreateExercise(name){
+  const n = normText(name);
+  if(!n) return null;
+  let e = DATA.exercises.find(x=>normText(x.nome)===n)
+       || DATA.exercises.find(x=>{ const m = normText(x.nome); return m.includes(n) || n.includes(m); });
+  if(e) return e.id;
+  const created = { id: uid(), nome: name, grupo: 'Corpo inteiro', equip: '', notas: 'Adicionado pela IA', padrao: 'isolamento', imagem: '', videoLink: '', videoData: '' };
+  DATA.exercises.push(created);
+  return created.id;
+}
+
+const AI_SLOTS = {1:[2], 2:[0,3], 3:[0,2,4], 4:[0,1,3,4], 5:[0,1,2,3,4], 6:[0,1,2,3,4,5], 7:[0,1,2,3,4,5,6]};
+function importAI(){
+  if(!aiResult) return;
+  const r = aiResult;
+  const clientId = document.getElementById('ai-cliente').value;
+  const cycleName = r.nome || 'Ciclo gerado por IA';
+
+  const workoutIds = {};
+  r.treinos.forEach(t=>{
+    const id = uid();
+    workoutIds[t.nome] = id;
+    DATA.workouts.push({
+      id,
+      nome: `${cycleName} — ${t.nome}`,
+      exercicios: (t.exercicios||[]).map(x=>({
+        exId: findOrCreateExercise(x.exercicio),
+        series: String(x.series||3),
+        reps: String(x.reps||'10'),
+        carga: String(x.carga||''),
+        descanso: String(x.descanso||'60s')
+      })).filter(l=>l.exId)
+    });
+  });
+
+  const semanas = r.semanas.map((s, i)=>{
+    const dias = DIAS.map(()=>({ workoutId: '' }));
+    const sessoes = s.sessoes || [];
+    const slots = AI_SLOTS[sessoes.length] || AI_SLOTS[3];
+    sessoes.forEach((nome, k)=>{
+      if(slots[k] !== undefined && workoutIds[nome]) dias[slots[k]].workoutId = workoutIds[nome];
+    });
+    return { numero: s.numero || (i+1), progressao: String(s.progressao||''), dias };
+  });
+
+  DATA.cycles.push({
+    id: uid(), nome: cycleName, clientId,
+    inicio: new Date().toISOString().slice(0,10),
+    numSemanas: semanas.length, semanas
+  });
+  aiResult = null;
+  closeModal('modal-ai');
+  saveData();
+  document.querySelector('.rail-btn[data-view="ciclos"]').click();
+}
+
+// ---------- CICLOS ----------
+function openCycleModal(){
+  if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de criar um ciclo.'); return; }
+  const sel = document.getElementById('ciclo-cliente');
+  sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  document.getElementById('ciclo-nome').value = '';
+  document.getElementById('ciclo-inicio').value = new Date().toISOString().slice(0,10);
+  document.getElementById('ciclo-semanas').value = 4;
+  openModal('modal-ciclo');
+}
+function saveCycle(){
+  const nome = document.getElementById('ciclo-nome').value.trim() || 'Novo ciclo';
+  const clientId = document.getElementById('ciclo-cliente').value;
+  const inicio = document.getElementById('ciclo-inicio').value;
+  const numSemanas = Math.max(1, parseInt(document.getElementById('ciclo-semanas').value) || 4);
+  const semanas = [];
+  for(let i=1;i<=numSemanas;i++){
+    semanas.push({
+      numero: i,
+      progressao: i===1 ? '' : '+2.5%',
+      dias: DIAS.map(()=>({ workoutId: '' }))
+    });
+  }
+  DATA.cycles.push({ id: uid(), nome, clientId, inicio, numSemanas, semanas });
+  closeModal('modal-ciclo');
+  saveData();
+  document.querySelector('.rail-btn[data-view="ciclos"]').click();
+}
+function deleteCycle(id){
+  if(!confirm('Remover este ciclo de treino?')) return;
+  DATA.cycles = DATA.cycles.filter(c=>c.id!==id);
+  saveData();
+}
+function clientName(id){
+  const c = DATA.clients.find(x=>x.id===id);
+  return c ? c.nome : '(cliente removido)';
+}
+function toggleWeek(cycleId, weekIdx){
+  const el = document.getElementById(`week-${cycleId}-${weekIdx}`);
+  el.classList.toggle('open');
+}
+function updateDayAssign(cycleId, weekIdx, dayIdx, workoutId){
+  const cycle = DATA.cycles.find(c=>c.id===cycleId);
+  cycle.semanas[weekIdx].dias[dayIdx].workoutId = workoutId;
+  saveData();
+}
+function updateProgress(cycleId, weekIdx, value){
+  const cycle = DATA.cycles.find(c=>c.id===cycleId);
+  cycle.semanas[weekIdx].progressao = value;
+  saveData();
+}
+function populateClientFilter(){
+  const sel = document.getElementById('cycle-client-filter');
+  const current = sel.value;
+  sel.innerHTML = `<option value="">Todos os clientes</option>` + DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  sel.value = current;
+}
+function renderCycles(){
+  document.getElementById('btn-ai').style.display = aiEndpoint() ? '' : 'none';
+  populateClientFilter();
+  const filterId = document.getElementById('cycle-client-filter').value;
+  const list = document.getElementById('ciclos-list');
+  let cycles = DATA.cycles;
+  if(filterId) cycles = cycles.filter(c=>c.clientId===filterId);
+
+  if(cycles.length===0){
+    list.innerHTML = `<div class="empty"><strong>${DATA.cycles.length===0 ? 'Ainda não há ciclos' : 'Nenhum ciclo para este cliente'}</strong>Cria um ciclo para começar a planear as semanas de treino.</div>`;
+    return;
+  }
+
+  list.innerHTML = cycles.map(cycle=>{
+    const weeksHtml = cycle.semanas.map((sem, wIdx)=>{
+      const daysHtml = DIAS.map((diaNome, dIdx)=>{
+        const opts = `<option value="">— descanso —</option>` + DATA.workouts.map(w=>`<option value="${w.id}" ${sem.dias[dIdx].workoutId===w.id?'selected':''}>${esc(w.nome)}</option>`).join('');
+        return `<div class="day-slot">
+          <div class="day-name">${diaNome}</div>
+          <div class="day-assign">
+            <select onchange="updateDayAssign('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">${opts}</select>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="week-block" id="week-${cycle.id}-${wIdx}">
+        <div class="week-head" onclick="toggleWeek('${cycle.id}', ${wIdx})">
+          <div class="week-head-left">
+            <span class="week-num">S${sem.numero}</span>
+            <span class="tag">${cycle.semanas[wIdx].dias.filter(d=>d.workoutId).length} sessões</span>
+          </div>
+          <input class="week-progress-input" onclick="event.stopPropagation()" value="${esc(sem.progressao)}" placeholder="progressão" onchange="updateProgress('${cycle.id}', ${wIdx}, this.value)">
+        </div>
+        <div class="week-body">${daysHtml}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:36px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <div>
+          <div style="font-weight:600; font-size:17px;">${esc(cycle.nome)}</div>
+          <div class="view-sub">${esc(clientName(cycle.clientId))}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteCycle('${cycle.id}')">Remover ciclo</button>
+      </div>
+      <div class="cycle-meta">
+        <div class="cycle-stat"><div class="num">${cycle.numSemanas}</div><div class="lbl">semanas</div></div>
+        <div class="cycle-stat"><div class="num">${cycle.semanas.reduce((s,w)=>s+w.dias.filter(d=>d.workoutId).length,0)}</div><div class="lbl">sessões totais</div></div>
+      </div>
+      ${weeksHtml}
+    </div>`;
+  }).join('');
+}
+
+function formatDate(iso){
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function esc(str){
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function renderAll(){
+  renderClients();
+  renderLibrary();
+  renderWorkouts();
+  renderCycles();
+}
+renderAll();
+</script>
+</body>
+</html>
