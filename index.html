@@ -290,6 +290,7 @@
     .cycle-meta{ gap: 16px; }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -301,6 +302,7 @@
       <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
       <button class="rail-btn" data-view="ciclos">Ciclos</button>
+      <button class="rail-btn" data-view="backup">Cópia de segurança</button>
     </div>
     <div class="rail-foot">Dados guardados neste dispositivo</div>
   </div>
@@ -314,7 +316,12 @@
           <h1 class="view-title">Clientes</h1>
           <div class="view-sub">A lista de clientes usada para atribuir ciclos.</div>
         </div>
-        <button class="btn btn-primary" onclick="openClientModal()">+ Novo cliente</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="downloadClientTemplate()">Modelo Excel</button>
+          <button class="btn" onclick="document.getElementById('clients-xlsx').click()">Importar Excel</button>
+          <input id="clients-xlsx" type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="readClientsFile(this)">
+          <button class="btn btn-primary" onclick="openClientModal()">+ Novo cliente</button>
+        </div>
       </div>
       <div id="clientes-list"></div>
     </div>
@@ -371,6 +378,37 @@
       </div>
 
       <div id="ciclos-list"></div>
+    </div>
+
+    <!-- BACKUP -->
+    <div class="view" id="view-backup">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Cópia de segurança</h1>
+          <div class="view-sub">Os dados ficam guardados só neste browser. Guarda uma cópia para não os perderes.</div>
+        </div>
+      </div>
+      <div class="list">
+        <div class="list-row" style="align-items:flex-start;">
+          <div class="list-row-main">
+            <div class="list-row-title">Exportar</div>
+            <div class="list-row-meta" id="backup-summary"></div>
+            <div class="list-row-meta" id="backup-last"></div>
+          </div>
+          <button class="btn btn-primary" onclick="exportBackup()">Guardar cópia</button>
+        </div>
+        <div class="list-row" style="align-items:flex-start;">
+          <div class="list-row-main">
+            <div class="list-row-title">Importar</div>
+            <div class="list-row-meta">Repõe uma cópia guardada. Substitui todos os dados atuais deste dispositivo. Serve também para passar os dados do telemóvel para o computador.</div>
+            <div class="list-row-meta" id="backup-import-status" style="margin-top:6px;"></div>
+          </div>
+          <div>
+            <input id="backup-file" type="file" accept=".json,application/json" style="display:none;" onchange="importBackup(this)">
+            <button class="btn" onclick="document.getElementById('backup-file').click()">Escolher ficheiro</button>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -454,6 +492,18 @@
     <video id="video-play-el" controls style="width:100%; border-radius:var(--radius-s); background:#000;"></video>
     <div class="modal-actions">
       <button class="btn" onclick="closeVideoPlayer()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: importar clientes -->
+<div class="modal-backdrop" id="modal-import-clients">
+  <div class="modal">
+    <h3>Importar clientes do Excel</h3>
+    <div id="import-clients-body"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-import-clients')">Cancelar</button>
+      <button class="btn btn-primary" id="import-clients-btn" onclick="confirmImportClients()">Importar</button>
     </div>
   </div>
 </div>
@@ -1673,6 +1723,137 @@ function renderWorkouts(){
     </div>`).join('') + `</div>`;
 }
 
+// ---------- IMPORTAR CLIENTES (EXCEL) ----------
+let pendingClients = [];
+function downloadClientTemplate(){
+  if(typeof XLSX==='undefined'){ alert('Não consegui carregar o leitor de Excel. Verifica a ligação à internet e tenta de novo.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([['Nome','Telemóvel','Email','Objetivo','Notas']]);
+  ws['!cols'] = [{wch:28},{wch:14},{wch:28},{wch:22},{wch:40}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
+  XLSX.writeFile(wb, 'modelo-clientes.xlsx');
+}
+function readClientsFile(input){
+  const file = input.files[0];
+  input.value = '';
+  if(!file) return;
+  if(typeof XLSX==='undefined'){ alert('Não consegui carregar o leitor de Excel. Verifica a ligação à internet e tenta de novo.'); return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', cellDates:true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false, dateNF:'dd/mm/yyyy' });
+      prepareClientImport(rows, file.name);
+    }catch(e){
+      showImportMessage('Não consegui ler este ficheiro. Confirma que é um Excel (.xlsx) ou CSV.', false);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function showImportMessage(html, canImport){
+  document.getElementById('import-clients-body').innerHTML = html;
+  document.getElementById('import-clients-btn').style.display = canImport ? '' : 'none';
+  openModal('modal-import-clients');
+}
+function prepareClientImport(rows, fileName){
+  const clean = rows.map(r=>r.map(c=>String(c==null?'':c).trim()));
+  const isName = c=>/^(nome|name|cliente|nome completo)$/.test(normText(c));
+  let hIdx = clean.slice(0,10).findIndex(r=>r.some(isName));
+  let nameCol, usedFallback = false;
+  if(hIdx>=0){ nameCol = clean[hIdx].findIndex(isName); }
+  else { hIdx = 0; nameCol = 0; usedFallback = true; }
+  const header = clean[hIdx] || [];
+  const extraCols = [];
+  header.forEach((h,i)=>{
+    if(i===nameCol || !h || /^(n[ºo°]?|#|id|num(ero)?)$/.test(normText(h))) return;
+    extraCols.push(i);
+  });
+  const existing = new Set(DATA.clients.map(c=>normText(c.nome)));
+  const seen = new Set();
+  const fresh = []; let dupes = 0;
+  clean.slice(hIdx+1).forEach(r=>{
+    const nome = (r[nameCol]||'').replace(/\s+/g,' ');
+    if(!nome) return;
+    const key = normText(nome);
+    if(existing.has(key) || seen.has(key)){ dupes++; return; }
+    seen.add(key);
+    const parts = [];
+    extraCols.forEach(i=>{ if(r[i]) parts.push(`${header[i]}: ${r[i]}`); });
+    fresh.push({ id: uid(), nome, notas: parts.join(' · ').slice(0, 500) });
+  });
+  pendingClients = fresh;
+  if(fresh.length===0){
+    showImportMessage(`<p>Não há clientes novos para importar em <strong>${esc(fileName)}</strong>.</p>` + (dupes ? `<p class="view-sub">${dupes} já existem na app.</p>` : `<p class="view-sub">Confirma que há uma coluna chamada "Nome" com os nomes. Podes descarregar o modelo Excel na página de Clientes.</p>`), false);
+    return;
+  }
+  const preview = fresh.slice(0,6).map(c=>`<div class="list-row"><div class="list-row-main"><div class="list-row-title">${esc(c.nome)}</div><div class="list-row-meta">${esc(c.notas)||'—'}</div></div></div>`).join('');
+  const extras = extraCols.map(i=>esc(header[i]));
+  showImportMessage(`
+    <p><strong>${fresh.length}</strong> clientes novos em <strong>${esc(fileName)}</strong>.${dupes ? ` ${dupes} ignorados por já existirem.` : ''}</p>
+    ${usedFallback ? '<p class="view-sub" style="color:var(--ochre);">Não encontrei uma coluna "Nome", por isso usei a primeira coluna.</p>' : ''}
+    ${extras.length ? `<p class="view-sub">As colunas ${extras.join(', ')} vão para as notas de cada cliente.</p>` : ''}
+    <div class="list" style="margin-top:10px;">${preview}</div>
+    ${fresh.length>6 ? `<p class="view-sub" style="margin-top:8px;">…e mais ${fresh.length-6}.</p>` : ''}`, true);
+  document.getElementById('import-clients-btn').textContent = `Importar ${fresh.length} clientes`;
+}
+function confirmImportClients(){
+  DATA.clients.push(...pendingClients);
+  const n = pendingClients.length;
+  pendingClients = [];
+  closeModal('modal-import-clients');
+  saveData();
+}
+
+// ---------- BACKUP ----------
+function backupSummaryText(){
+  return `${DATA.clients.length} clientes · ${DATA.exercises.length} exercícios · ${DATA.workouts.length} treinos · ${DATA.cycles.length} ciclos`;
+}
+function renderBackup(){
+  document.getElementById('backup-summary').textContent = backupSummaryText();
+  let last = '';
+  try{ last = localStorage.getItem('ciclo_last_backup') || ''; }catch(e){}
+  document.getElementById('backup-last').textContent = last ? 'Última cópia guardada: ' + new Date(last).toLocaleString('pt-PT') : 'Ainda não guardaste nenhuma cópia neste dispositivo.';
+}
+function exportBackup(){
+  const now = new Date();
+  const payload = { app: 'ciclo-pt', version: 1, exportedAt: now.toISOString(), data: DATA };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ciclo-backup-${now.toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  try{ localStorage.setItem('ciclo_last_backup', now.toISOString()); }catch(e){}
+  renderBackup();
+}
+function importBackup(input){
+  const status = document.getElementById('backup-import-status');
+  const file = input.files[0];
+  input.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      const d = parsed && parsed.app==='ciclo-pt' ? parsed.data : null;
+      if(!d || !['clients','exercises','workouts','cycles'].every(k=>Array.isArray(d[k]))) throw new Error('formato');
+      const resumo = `${d.clients.length} clientes · ${d.exercises.length} exercícios · ${d.workouts.length} treinos · ${d.cycles.length} ciclos`;
+      if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
+        status.textContent = 'Importação cancelada.'; return;
+      }
+      DATA = { clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles };
+      saveData();
+      status.textContent = 'Cópia importada: ' + resumo + '.';
+    }catch(e){
+      status.textContent = 'Este ficheiro não é uma cópia de segurança válida desta app.';
+    }
+  };
+  reader.onerror = ()=>{ status.textContent = 'Não consegui ler o ficheiro.'; };
+  reader.readAsText(file);
+}
+
 // ---------- IA ----------
 // Endereço do serviço intermédio (Cloudflare Worker). Define aqui antes de publicar,
 // para que os clientes não tenham de o configurar.
@@ -1937,6 +2118,7 @@ function esc(str){
 }
 
 function renderAll(){
+  renderBackup();
   renderClients();
   renderLibrary();
   renderWorkouts();
