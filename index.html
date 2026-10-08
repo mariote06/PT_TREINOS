@@ -366,6 +366,7 @@
           <div class="view-sub">Periodização por cliente — semanas, sessões e progressão.</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="openPlanModal()">⚡ Gerar plano</button>
           <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com IA</button>
           <button class="btn btn-primary" onclick="openCycleModal()">+ Novo ciclo</button>
         </div>
@@ -379,6 +380,9 @@
 
       <div id="ciclos-list"></div>
     </div>
+
+    <!-- FICHA DO CLIENTE -->
+    <div class="view" id="view-ficha"><div id="ficha-body"></div></div>
 
     <!-- BACKUP -->
     <div class="view" id="view-backup">
@@ -414,13 +418,59 @@
   </div>
 </div>
 
+<!-- MODAL: plano automático -->
+<div class="modal-backdrop" id="modal-plano">
+  <div class="modal" style="max-width:660px;">
+    <h3>Gerar plano automático</h3>
+    <div class="field">
+      <label>Cliente</label>
+      <select id="plan-cliente" onchange="prefillPlan()"></select>
+    </div>
+    <div class="row-3">
+      <div class="field">
+        <label>Objetivo</label>
+        <select id="plan-objetivo">
+          <option>Hipertrofia</option><option>Força</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Nível</label>
+        <select id="plan-nivel"><option>Iniciante</option><option>Intermédio</option><option>Avançado</option></select>
+      </div>
+      <div class="field">
+        <label>Equipamento</label>
+        <select id="plan-equip"><option>Ginásio completo</option><option>Halteres e bancos</option><option>Casa, sem material</option><option>Casa, com elásticos</option></select>
+      </div>
+    </div>
+    <div class="row-3">
+      <div class="field"><label>Treinos por semana</label><input id="plan-dias" type="number" min="1" max="6" value="3"></div>
+      <div class="field">
+        <label>Duração de cada treino</label>
+        <select id="plan-duracao"><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="75">75 min</option></select>
+      </div>
+      <div class="field"><label>Semanas do ciclo</label><input id="plan-semanas" type="number" min="2" max="12" value="4"></div>
+    </div>
+    <div class="field">
+      <label>Limitações ou lesões (opcional)</label>
+      <textarea id="plan-limitacoes" rows="2" placeholder="Ex: dor no joelho esquerdo, problemas lombares, ombro..."></textarea>
+    </div>
+    <div id="plan-status" style="font-size:13px; color:var(--danger); min-height:18px;"></div>
+    <div id="plan-preview"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-plano')">Fechar</button>
+      <button class="btn" onclick="generatePlan()">Gerar plano</button>
+      <button class="btn btn-primary" id="plan-import-btn" style="display:none;" onclick="importPlan()">Importar para a app</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: gerar ciclo com IA -->
 <div class="modal-backdrop" id="modal-ai">
   <div class="modal" style="max-width:640px;">
     <h3>Gerar ciclo com IA</h3>
     <div class="field">
       <label>Cliente</label>
-      <select id="ai-cliente"></select>
+      <select id="ai-cliente" onchange="prefillAI()"></select>
     </div>
     <div class="row-2">
       <div class="field">
@@ -705,11 +755,12 @@ function renderClients(){
   list.innerHTML = `<div class="list">` + [...DATA.clients].sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(c=>{
     const numCycles = DATA.cycles.filter(cy=>cy.clientId===c.id).length;
     return `<div class="list-row">
-      <div class="list-row-main">
+      <div class="list-row-main" style="cursor:pointer; flex:1;" onclick="openFicha('${c.id}')">
         <div class="list-row-title">${esc(c.nome)}</div>
         <div class="list-row-meta">${[esc(clientMeta(c)), `${numCycles} ciclo${numCycles===1?'':'s'}`, c.notas ? esc(c.notas) : ''].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="list-row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openFicha('${c.id}')">Abrir ficha</button>
         <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteClient('${c.id}')">Remover</button>
       </div>
     </div>`;
@@ -854,15 +905,14 @@ const BASE_EXERCISES = [
   {"nome":"Abdominal crunch invertido TRX","grupo":"Core","equip":"TRX","padrao":"core"},
   {"nome":"Abdominal curto no colchão","grupo":"Core","equip":"","padrao":"core"},
   {"nome":"Abdominal Inferior Alternado","grupo":"Core","equip":"","padrao":"core"},
-  {"nome":"Abdominal Obliquo _ Banco Lombar (Halteres)","grupo":"Core","equip":"Halteres","padrao":"core"},
   {"nome":"Abdominal obliquo lateral","grupo":"Core","equip":"","padrao":"core"},
+  {"nome":"Abdominal Obliquo – Banco Lombar (Halteres)","grupo":"Core","equip":"Halteres","padrao":"core"},
   {"nome":"Abdominal pés a barra","grupo":"Core","equip":"Barra","padrao":"core"},
   {"nome":"Abdominal V","grupo":"Core","equip":"","padrao":"core"},
   {"nome":"Barquinhos","grupo":"Core","equip":"Peso corporal","padrao":"core"},
   {"nome":"Bend Over (Polia)","grupo":"Core","equip":"Polia","padrao":"core"},
   {"nome":"Bird Dog","grupo":"Core","equip":"","padrao":"core"},
   {"nome":"Bird Dog Plank","grupo":"Core","equip":"","padrao":"core"},
-  {"nome":"Birdog","grupo":"Core","equip":"Peso corporal","padrao":"core"},
   {"nome":"Body extension","grupo":"Core","equip":"","padrao":"core"},
   {"nome":"Bola de Mão para Mão (Prancha) (Medicine ball)","grupo":"Core","equip":"Medicine ball","padrao":"core"},
   {"nome":"Bycicle Crunch","grupo":"Core","equip":"","padrao":"core"},
@@ -1041,7 +1091,7 @@ const BASE_EXERCISES = [
   {"nome":"Russian Twist (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"core"},
   {"nome":"Russian Twist em Pé (Corda naval)","grupo":"Corpo inteiro","equip":"Corda naval","padrao":"core"},
   {"nome":"Scotts Press (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
-  {"nome":"Shouder to Overhead (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
+  {"nome":"Shoulder to Overhead (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"empurrar_v"},
   {"nome":"Shoulder To Overhead (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"empurrar_v"},
   {"nome":"Single Arm Farmer Carry (Halteres)","grupo":"Corpo inteiro","equip":"Halteres","padrao":"core"},
   {"nome":"Single Arm Farmer Carry (Kettlebell)","grupo":"Corpo inteiro","equip":"Kettlebell","padrao":"core"},
@@ -1088,7 +1138,7 @@ const BASE_EXERCISES = [
   {"nome":"Arch Lift (GHD)","grupo":"Costas","equip":"GHD","padrao":"dobradica"},
   {"nome":"Back extension (Fitball)","grupo":"Costas","equip":"Fitball","padrao":"dobradica"},
   {"nome":"Deadlift (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"dobradica"},
-  {"nome":"Elavação na Barra Fixa Mão em Pronação","grupo":"Costas","equip":"","padrao":"puxar_v"},
+  {"nome":"Elevação na Barra Fixa Mão em Pronação","grupo":"Costas","equip":"","padrao":"puxar_v"},
   {"nome":"Elevação na Barra Fixa Mão em Supinação","grupo":"Costas","equip":"","padrao":"puxar_v"},
   {"nome":"Extenção Tronco","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
   {"nome":"Extenção Tronco (Banco)","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
@@ -1192,10 +1242,10 @@ const BASE_EXERCISES = [
   {"nome":"Glúteo (Máquina)","grupo":"Glúteos","equip":"Máquina","padrao":"isolamento"},
   {"nome":"Hip Thrust (Máquina)","grupo":"Glúteos","equip":"Máquina","padrao":"dobradica"},
   {"nome":"Kick Back (Polia)","grupo":"Glúteos","equip":"Polia","padrao":"dobradica"},
-  {"nome":"Kick- Back na Multi Power (Multipower)","grupo":"Glúteos","equip":"Multipower","padrao":"isolamento"},
+  {"nome":"Kick Back na Multi Power (Multipower)","grupo":"Glúteos","equip":"Multipower","padrao":"dobradica"},
+  {"nome":"Monster Walk","grupo":"Glúteos","equip":"","padrao":"isolamento"},
   {"nome":"Monster Walk (Elástico)","grupo":"Glúteos","equip":"Elástico","padrao":"isolamento"},
   {"nome":"Monster walk Lateral","grupo":"Glúteos","equip":"","padrao":"isolamento"},
-  {"nome":"Monster Wlak","grupo":"Glúteos","equip":"","padrao":"isolamento"},
   {"nome":"Alongamento Abdominal","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento Abductores","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento Aductores","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
@@ -1204,6 +1254,7 @@ const BASE_EXERCISES = [
   {"nome":"Alongamento de Antebraço e Punho","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento de Lombares","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento deltoide posterior","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
+  {"nome":"Alongamento Do Ombro Unilateral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento Dorsal","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento Dorsal em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamento Flexores Antebraço","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
@@ -1238,7 +1289,6 @@ const BASE_EXERCISES = [
   {"nome":"Alongamento tricipete","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamentos romboides em pé","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Alongamentos True Strecht","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
-  {"nome":"Alongamneto Do Ombro Unilateral","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"CatCow","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Child Position","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
   {"nome":"Mobilidade Anca 4 apoios HT","grupo":"Mobilidade","equip":"","padrao":"mobilidade"},
@@ -1316,7 +1366,6 @@ const BASE_EXERCISES = [
   {"nome":"Crucifixo Recto","grupo":"Peito","equip":"","padrao":"isolamento"},
   {"nome":"Dips (Paralelas)","grupo":"Peito","equip":"Paralelas","padrao":"empurrar_h"},
   {"nome":"Elevated Pike PushUps (Paralelas)","grupo":"Peito","equip":"Paralelas","padrao":"empurrar_h"},
-  {"nome":"Fexões na smith machine (Multipower)","grupo":"Peito","equip":"Multipower","padrao":"empurrar_h"},
   {"nome":"Flexão de braços com pés no banco","grupo":"Peito","equip":"","padrao":"empurrar_h"},
   {"nome":"Flexão de braços junto ao corpo","grupo":"Peito","equip":"","padrao":"empurrar_h"},
   {"nome":"Flexão de braços mãos afastadas","grupo":"Peito","equip":"","padrao":"empurrar_h"},
@@ -1330,7 +1379,7 @@ const BASE_EXERCISES = [
   {"nome":"Peck Deck (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"isolamento"},
   {"nome":"Pectoral Machine","grupo":"Peito","equip":"","padrao":"empurrar_h"},
   {"nome":"Peitoral (TRX)","grupo":"Peito","equip":"TRX","padrao":"empurrar_h"},
-  {"nome":"Peitotal _ Aberturas (no banco) (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
+  {"nome":"Peitotal – Aberturas (no banco) (Polia)","grupo":"Peito","equip":"Polia","padrao":"isolamento"},
   {"nome":"Pike Push Up Pés na Cadeira","grupo":"Peito","equip":"","padrao":"empurrar_h"},
   {"nome":"Press Inclinado (Polia)","grupo":"Peito","equip":"Polia","padrao":"empurrar_h"},
   {"nome":"Pullover (Barra)","grupo":"Peito","equip":"Barra","padrao":"isolamento"},
@@ -1351,7 +1400,7 @@ const BASE_EXERCISES = [
   {"nome":"Supino Declinado","grupo":"Peito","equip":"","padrao":"empurrar_h"},
   {"nome":"Supino Declinado (Barra)","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
   {"nome":"Supino Declinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"empurrar_h"},
-  {"nome":"Supino declindo com barra","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
+  {"nome":"Supino declinado com barra","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
   {"nome":"Supino Inclinado (Barra)","grupo":"Peito","equip":"Barra","padrao":"empurrar_h"},
   {"nome":"Supino Inclinado (Halteres)","grupo":"Peito","equip":"Halteres","padrao":"empurrar_h"},
   {"nome":"Supino Inclinado (Máquina)","grupo":"Peito","equip":"Máquina","padrao":"empurrar_h"},
@@ -1369,7 +1418,7 @@ const BASE_EXERCISES = [
   {"nome":"Agachamento com barra","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
   {"nome":"Agachamento com barra à frente","grupo":"Pernas","equip":"Barra","padrao":"agachamento"},
   {"nome":"Agachamento com discos","grupo":"Pernas","equip":"Disco","padrao":"agachamento"},
-  {"nome":"Agachamento com elevação dos calcanhare com peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
+  {"nome":"Agachamento com elevação dos calcanhares com peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
   {"nome":"Agachamento com Elevação dos Calcanhares Isometria","grupo":"Pernas","equip":"","padrao":"agachamento"},
   {"nome":"Agachamento com insistencia","grupo":"Pernas","equip":"","padrao":"agachamento"},
   {"nome":"Agachamento com Peso","grupo":"Pernas","equip":"","padrao":"agachamento"},
@@ -1402,7 +1451,6 @@ const BASE_EXERCISES = [
   {"nome":"Deadlift (Unilateral) (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"dobradica"},
   {"nome":"Deadlift Unilateral (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"dobradica"},
   {"nome":"Elevação do calcanhar unilateral","grupo":"Pernas","equip":"","padrao":"isolamento"},
-  {"nome":"Exercicio de Gemeos em Pé","grupo":"Pernas","equip":"","padrao":"isolamento"},
   {"nome":"Extenção Glúteo (Caneleira) (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"isolamento"},
   {"nome":"Extensão (TRX)","grupo":"Pernas","equip":"TRX","padrao":"isolamento"},
   {"nome":"Extensão/Flexão MI (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"empurrar_h"},
@@ -1421,6 +1469,7 @@ const BASE_EXERCISES = [
   {"nome":"Front Squat (Multipower)","grupo":"Pernas","equip":"Multipower","padrao":"agachamento"},
   {"nome":"FrontSquat (TRX)","grupo":"Pernas","equip":"TRX","padrao":"agachamento"},
   {"nome":"Gémeos (Máquina)","grupo":"Pernas","equip":"Máquina","padrao":"isolamento"},
+  {"nome":"Gémeos em pé","grupo":"Pernas","equip":"","padrao":"isolamento"},
   {"nome":"Glute Kick Back (Caneleiras)","grupo":"Pernas","equip":"Caneleiras","padrao":"dobradica"},
   {"nome":"Goblet Squat (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"agachamento"},
   {"nome":"Good Morning (Fitbag)","grupo":"Pernas","equip":"Fitbag","padrao":"dobradica"},
@@ -1723,6 +1772,119 @@ function renderWorkouts(){
     </div>`).join('') + `</div>`;
 }
 
+// ---------- FICHA DO CLIENTE ----------
+const OBJETIVOS = ['Hipertrofia','Força','Perda de gordura','Condição física geral','Tonificação'];
+const NIVEIS = ['Iniciante','Intermédio','Avançado'];
+let fichaId = null;
+function openFicha(id){
+  fichaId = id;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.rail-btn').forEach(b=>b.classList.toggle('active', b.dataset.view==='clientes'));
+  document.getElementById('view-ficha').classList.add('active');
+  renderFicha();
+  window.scrollTo(0,0);
+}
+function closeFicha(){
+  fichaId = null;
+  document.querySelector('.rail-btn[data-view="clientes"]').click();
+}
+function cadernetaStatus(c){
+  if(!c.cadFim) return '';
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = Math.round((new Date(c.cadFim+'T00:00:00') - today) / 86400000);
+  if(d < 0) return `terminou há ${-d} dia${-d===1?'':'s'}`;
+  if(d === 0) return 'termina hoje';
+  return `termina em ${d} dia${d===1?'':'s'}`;
+}
+function optionsHtml(list, current, emptyLabel){
+  return `<option value="">${emptyLabel}</option>` + list.map(x=>`<option ${x===current?'selected':''}>${esc(x)}</option>`).join('');
+}
+function renderFicha(){
+  if(!fichaId) return;
+  const c = DATA.clients.find(x=>x.id===fichaId);
+  if(!c){ closeFicha(); return; }
+  const cycles = DATA.cycles.filter(cy=>cy.clientId===c.id).sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
+  const stat = (num, lbl)=>`<div class="cycle-stat"><div class="num" style="font-size:22px;">${num}</div><div class="lbl">${lbl}</div></div>`;
+  const status = cadernetaStatus(c);
+  const cyclesHtml = cycles.length ? `<div class="list">` + cycles.map(cy=>`
+      <div class="list-row">
+        <div class="list-row-main">
+          <div class="list-row-title">${esc(cy.nome)}</div>
+          <div class="list-row-meta">${cy.inicio ? 'início '+formatDate(cy.inicio)+' · ' : ''}${cy.numSemanas} semanas · ${cy.semanas.reduce((s,w)=>s+w.dias.filter(d=>d.workoutId).length,0)} sessões</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="openClientCycles('${c.id}')">Ver ciclos</button>
+      </div>`).join('') + `</div>` : `<div class="empty"><strong>Ainda sem ciclos</strong>Cria o primeiro ciclo de treino para ${esc(c.nome.split(' ')[0])}.</div>`;
+  document.getElementById('ficha-body').innerHTML = `
+    <button class="btn btn-ghost" style="margin-bottom:12px; padding-left:0;" onclick="closeFicha()">← Clientes</button>
+    <div class="view-head">
+      <div>
+        <h1 class="view-title">${esc(c.nome)}</h1>
+        <div class="view-sub">${esc([c.tipo, c.servico, c.atividade].filter(Boolean).join(' · ')) || 'Sem serviço associado'}</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" onclick="openPlanModal('${c.id}')">⚡ Gerar plano</button>
+        <button class="btn btn-primary" onclick="openCycleModal('${c.id}')">+ Novo ciclo</button>
+      </div>
+    </div>
+    ${(c.cadInicio || c.cadFim) ? `<div class="cycle-meta">
+      ${c.cadInicio ? stat(formatDate(c.cadInicio),'início da caderneta') : ''}
+      ${c.cadFim ? stat(formatDate(c.cadFim),'fim da caderneta') : ''}
+      ${status ? stat(status,'estado') : ''}
+      ${c.sessoes ? stat(esc(c.sessoes),'sessões esperadas') : ''}
+    </div>` : ''}
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:8px 0 12px;">Perfil de treino</h2>
+    <div class="row-4">
+      <div class="field"><label>Objetivo</label><select id="f-objetivo">${optionsHtml(OBJETIVOS, c.objetivo, '—')}</select></div>
+      <div class="field"><label>Nível</label><select id="f-nivel">${optionsHtml(NIVEIS, c.nivel, '—')}</select></div>
+      <div class="field"><label>Treinos por semana</label><input id="f-dias" type="number" min="1" max="7" value="${esc(c.diasSemana||'')}"></div>
+      <div class="field"><label>Duração do treino</label><select id="f-duracao">${optionsHtml(['30','45','60','75'], String(c.duracaoSessao||''), '—')}</select></div>
+    </div>
+    <div class="field"><label>Limitações, lesões ou cuidados</label><textarea id="f-limitacoes" rows="3" placeholder="Ex: desconforto no ombro direito, evitar impacto...">${esc(c.limitacoes||'')}</textarea></div>
+    <div class="field"><label>Notas</label><textarea id="f-notas" rows="3">${esc(c.notas||'')}</textarea></div>
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Dados do cliente</h2>
+    <div class="row-2">
+      <div class="field"><label>Nome</label><input id="f-nome" type="text" value="${esc(c.nome)}"></div>
+      <div class="field"><label>Código</label><input id="f-codigo" type="text" value="${esc(c.codigo||'')}"></div>
+    </div>
+    <div class="row-3">
+      <div class="field"><label>Tipo</label><select id="f-tipo">${optionsHtml(['Interno','Externo'], c.tipo, '—')}</select></div>
+      <div class="field"><label>Serviço</label><input id="f-servico" type="text" value="${esc(c.servico||'')}" placeholder="Ex: PT 30"></div>
+      <div class="field"><label>Atividade</label><input id="f-atividade" type="text" value="${esc(c.atividade||'')}"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label>Início da caderneta</label><input id="f-cadinicio" type="date" value="${esc(c.cadInicio||'')}"></div>
+      <div class="field"><label>Fim da caderneta</label><input id="f-cadfim" type="date" value="${esc(c.cadFim||'')}"></div>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px; margin:6px 0 28px;">
+      <button class="btn btn-primary" onclick="saveFicha()">Guardar alterações</button>
+      <span id="ficha-msg" class="view-sub"></span>
+    </div>
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:8px 0 12px;">Ciclos de treino</h2>
+    ${cyclesHtml}`;
+}
+function saveFicha(){
+  const c = DATA.clients.find(x=>x.id===fichaId);
+  if(!c) return;
+  const nome = document.getElementById('f-nome').value.trim();
+  if(!nome){ document.getElementById('ficha-msg').textContent = 'O nome não pode ficar vazio.'; return; }
+  const v = id=>document.getElementById(id).value.trim();
+  Object.assign(c, {
+    nome, codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
+    cadInicio: v('f-cadinicio'), cadFim: v('f-cadfim'),
+    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), notas: v('f-notas')
+  });
+  saveData();
+  document.getElementById('ficha-msg').textContent = 'Alterações guardadas.';
+}
+function openClientCycles(id){
+  document.querySelector('.rail-btn[data-view="ciclos"]').click();
+  document.getElementById('cycle-client-filter').value = id;
+  renderCycles();
+}
+
 // ---------- IMPORTAR CLIENTES (EXCEL) ----------
 let pendingImport = { fresh: [], updates: [] };
 function parseDateISO(s){
@@ -1899,6 +2061,14 @@ function importBackup(input){
 const AI_ENDPOINT_DEFAULT = '';
 function aiEndpoint(){ return localStorage.getItem('ciclo_ai_endpoint') || AI_ENDPOINT_DEFAULT; }
 let aiResult = null;
+function prefillAI(){
+  const c = DATA.clients.find(x=>x.id===document.getElementById('ai-cliente').value);
+  if(!c) return;
+  if(c.objetivo) document.getElementById('ai-objetivo').value = c.objetivo;
+  if(c.nivel) document.getElementById('ai-nivel').value = c.nivel;
+  if(c.diasSemana) document.getElementById('ai-dias').value = c.diasSemana;
+  document.getElementById('ai-limitacoes').value = c.limitacoes || '';
+}
 function aiExercisePool(equipChoice){
   const allowed = {
     'Ginásio completo': null,
@@ -1912,6 +2082,7 @@ function aiExercisePool(equipChoice){
 function openAIModal(){
   if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de gerar um ciclo.'); return; }
   document.getElementById('ai-cliente').innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  prefillAI();
   document.getElementById('ai-endpoint').value = aiEndpoint();
   document.getElementById('ai-status').textContent = '';
   document.getElementById('ai-preview').innerHTML = '';
@@ -1994,8 +2165,11 @@ function findOrCreateExercise(name){
 const AI_SLOTS = {1:[2], 2:[0,3], 3:[0,2,4], 4:[0,1,3,4], 5:[0,1,2,3,4], 6:[0,1,2,3,4,5], 7:[0,1,2,3,4,5,6]};
 function importAI(){
   if(!aiResult) return;
-  const r = aiResult;
-  const clientId = document.getElementById('ai-cliente').value;
+  importResult(aiResult, document.getElementById('ai-cliente').value);
+  aiResult = null;
+  closeModal('modal-ai');
+}
+function importResult(r, clientId){
   const cycleName = r.nome || 'Ciclo gerado por IA';
 
   const workoutIds = {};
@@ -2030,17 +2204,249 @@ function importAI(){
     inicio: new Date().toISOString().slice(0,10),
     numSemanas: semanas.length, semanas
   });
-  aiResult = null;
-  closeModal('modal-ai');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
 }
 
+// ---------- PLANO AUTOMÁTICO (sem IA) ----------
+const PLAN_OBJ = {
+  'Força':                 { series:{Iniciante:[3,2],Intermédio:[4,3],Avançado:[5,3]}, reps:['4-6','8-10'], rest:[120,75], tempo:30, carga:'RPE 7-8', cardio:0 },
+  'Hipertrofia':           { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[4,3]}, reps:['8-10','10-12'], rest:[90,60], tempo:45, carga:'RPE 7-8', cardio:0 },
+  'Perda de gordura':      { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[4,3]}, reps:['10-12','12-15'], rest:[60,45], tempo:40, carga:'RPE 7', cardio:10 },
+  'Condição física geral': { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[3,3]}, reps:['8-12','12-15'], rest:[60,45], tempo:40, carga:'RPE 6-7', cardio:8 },
+  'Tonificação':           { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[3,3]}, reps:['12-15','15'], rest:[60,45], tempo:40, carga:'RPE 7', cardio:8 }
+};
+const PLAN_WEEK = {
+  'Força': ['Adaptação: cargas leves (RPE 6), técnica perfeita','Subir a carga 2,5–5% (RPE 7)','Subir a carga 2,5–5% (RPE 8, sem chegar à falha)','Deload: 2 séries por exercício, cargas da S1, RPE 6'],
+  'Hipertrofia': ['Começar no fundo da gama de reps, RPE 7','Mais 1 rep por série (ou +2,5% de carga)','Chegar ao topo da gama de reps, RPE 8–9 na última série','Deload: menos 1 série por exercício, RPE 6'],
+  'Perda de gordura': ['Ritmo constante, descansos curtos, RPE 7','Reduzir o descanso em 10 s','Reduzir o descanso mais 10 s ou +2,5% de carga','Deload: menos 1 série, cardio leve'],
+  'Condição física geral': ['RPE 6: aprender e fixar os movimentos','Mais 1 rep por série','+2,5% de carga mantendo as reps','Deload: menos 1 série, RPE 6'],
+  'Tonificação': ['RPE 7, controlo do movimento','Mais 1–2 reps por série','+2,5% de carga mantendo as reps','Deload: menos 1 série, RPE 6']
+};
+const PLAN_COMPLEX = /snatch|clean|jerk|cluster|pistol|muscle up|argolas|handstand|turkish|devil|thruster|man ?makers|box jump|double under|toes to|knees to|\bl.?sit|stone|monkey|dive bomber|scorpion/;
+const PLAN_BEGINNER_EXCL = /bulgar|barra fixa|pull ?up|elevacao na barra|elavacao|dips|mergulho|unilateral|deficit|release|pike|inch ?worm|crab|bear|canguru/;
+const PLAN_ODD = /unilateral|insist|isometri|\bht\b|\d|pega|\+|salto|jump|\balternad|deslizamento|banda|garrafao|saco|toalha|matrix/;
+const PLAN_LIMITS = [
+  { re:/ombro|manguito|clavicula/, nome:'ombro', ex:/remada alta|upright|dips|mergulho|atras|arnold|handstand|pike|desenvolvimento|shoulder press|press de ombro/, pat:['empurrar_v'] },
+  { re:/joelho|menisco|rotul|ligamento cruzado/, nome:'joelho', ex:/jump|salto|pistol|bulgar|lunge|afundo|step|box|extensao de pernas|cossack|burpee|skipping|escadas|corda|wall sit|squat|agachamento|calcanhar ao/, pat:[] },
+  { re:/lombar|coluna|hernia|ciatic|costas|dorsal baixa/, nome:'lombar', ex:/deadlift|dead lift|peso morto|bons dias|good morning|romeno|hiperext|extensao lombar|back squat|front squat|overhead|swing|lower back/, pat:[] },
+  { re:/punho|pulso|cotovelo|epicondil/, nome:'punho/cotovelo', ex:/pulso|flexoes|push up|prancha|plank|dips|farmer|barra fixa|rosca direta/, pat:[] },
+  { re:/impacto|salto/, nome:'impacto', ex:/jump|salto|skipping|corda|burpee|climber|star jump|tuck|lateral jumps/, pat:[] }
+];
+const PLAN_SLOTS = {
+  SQ:   { p:['agachamento'], g:['Pernas'], kw:/squat|agachamento|leg press|prensa/, not:/sumo|front|overhead|jump|salto|wall|pistol|cossack|thruster|step|box|insist|isometr|calcanh|\+/, main:true },
+  UNI:  { p:['agachamento'], g:['Pernas'], kw:/lunge|afundo|bulgar|step up|subidas/, not:/jump|salto|overhead|front rack|rotac|rotation|corda|pistol|insist|dinam|lateral|\+|haste/ },
+  HIP:  { p:['dobradica'], g:['Pernas','Costas','Glúteos'], kw:/romeno|deadlift|dead lift|peso morto|hip thrust|bacia|ponte|bons dias|good morning/, not:/unilateral|swing|elevacao do joelho|\+|pe no banco/, main:true },
+  GLU:  { p:['dobradica','isolamento'], g:['Glúteos'], kw:/hip thrust|bacia|ponte|kick|abdu|gluteo|monster/, not:/\+|braco|unilateral/ },
+  HAM:  { p:['isolamento'], g:['Pernas'], kw:/curl|isquio/, not:/\+/ },
+  QUAD: { p:['isolamento'], g:['Pernas'], kw:/extension|extensao/, not:/\+/ },
+  CALF: { p:['isolamento'], g:['Pernas'], kw:/gemeo|flexao plantar|calcanhar/, not:/\+|agach/ },
+  PUSH_H:{ p:['empurrar_h'], g:['Peito'], kw:/supino|chest press|push up|flexo|bench|peitoral/, not:/declinado|unilateral|release|pike|handstand|insist|\+|smith/, main:true },
+  PUSH_V:{ p:['empurrar_v'], g:['Ombros'], kw:/press|desenvolvimento|shoulder/, not:/push press|handstand|atras|arnold|landmine|\+|alternado/, main:true },
+  LAT:  { p:['puxar_v'], g:['Costas'], kw:/pulldown|puxada|pull ?up|barra fixa|lat|elevacao na barra|elavacao/, not:/muscle|argolas|ring|unilateral|nuca|supina|martelo/, main:true },
+  ROW:  { p:['puxar_h'], g:['Costas'], kw:/remada|row|pulley/, not:/alta|prancha|renegade|gorilla|insist|\+|bulgara|em pe|suiça|suica|trx/, main:true },
+  FLY:  { p:['isolamento'], g:['Peito'], kw:/crucifixo|peck|abertura|cross/, not:/invertid|\+/ },
+  LATR: { p:['isolamento'], g:['Ombros'], kw:/elevacao lateral|elevacoes laterais/, not:/\+/ },
+  REAR: { p:['isolamento','puxar_h'], g:['Ombros','Costas'], kw:/voo|invertid|peck back|face pull/, not:/laterais|ascend|\+/ },
+  BI:   { p:['isolamento'], g:['Bíceps'], kw:/curl|rosca|martelo/, not:/\+|insist/ },
+  TRI:  { p:['isolamento','empurrar_h'], g:['Tríceps'], kw:/tricep|tricip|extens|testa|corda|coice|kick/, not:/\+|insist|alonga/ },
+  CORE: { p:['core'], g:['Core'], kw:/prancha|plank|crunch|abdominal|hollow|bird|russian|elevacao de pernas/, not:/climber|jump|salto|\+|v-?ups?|vela|toes|knees|rig|barra fixa|trx|spiderman|insist|ab-?roll|polia|corda|obliquo|banco lombar/ },
+  CARDIO:{ p:['cardio'], g:['Cardio'], kw:/bicicleta|eliptica|passadeira|remo|skierg|air bike|escadas|jumping jacks|skipping|star jump/, not:/\+|salto|burpee|bear|canguru/ }
+};
+const PLAN_TPL = {
+  FB_A:  { nome:'Corpo inteiro A', slots:['SQ','PUSH_H','ROW','HIP','CORE','PUSH_V','BI','TRI'], fill:['CALF','LATR','HAM'] },
+  FB_B:  { nome:'Corpo inteiro B', slots:['HIP','PUSH_V','LAT','UNI','CORE','PUSH_H','GLU','BI'], fill:['TRI','CALF','REAR'] },
+  FB_C:  { nome:'Corpo inteiro C', slots:['UNI','ROW','PUSH_H','SQ','CORE','LAT','TRI','CALF'], fill:['BI','LATR','HAM'] },
+  UP_A:  { nome:'Superior A', slots:['PUSH_H','ROW','PUSH_V','LAT','CORE','BI','TRI','REAR'], fill:['LATR','FLY','ROW'] },
+  UP_B:  { nome:'Superior B', slots:['LAT','PUSH_H','ROW','PUSH_V','CORE','FLY','LATR','TRI','BI'], fill:['REAR','TRI','BI'] },
+  LOW_A: { nome:'Inferior A', slots:['SQ','HIP','UNI','HAM','CORE','CALF','GLU'], fill:['QUAD','UNI','HIP'] },
+  LOW_B: { nome:'Inferior B', slots:['HIP','SQ','GLU','QUAD','CORE','CALF','HAM','UNI'], fill:['HAM','UNI','GLU'] },
+  PUSH_A:{ nome:'Empurrar A', slots:['PUSH_H','PUSH_V','PUSH_H','LATR','TRI','FLY','CORE'], fill:['PUSH_V','TRI','LATR'] },
+  PUSH_B:{ nome:'Empurrar B', slots:['PUSH_V','PUSH_H','FLY','LATR','TRI','TRI','CORE'], fill:['PUSH_H','LATR','TRI'] },
+  PULL_A:{ nome:'Puxar A', slots:['LAT','ROW','ROW','REAR','BI','BI','CORE'], fill:['REAR','ROW','LAT'] },
+  PULL_B:{ nome:'Puxar B', slots:['ROW','LAT','REAR','BI','ROW','BI','CORE'], fill:['REAR','LAT','BI'] }
+};
+const PLAN_SPLIT = {
+  1:['FB_A'], 2:['FB_A','FB_B'], 3:['FB_A','FB_B','FB_C'], 4:['UP_A','LOW_A','UP_B','LOW_B'],
+  5:['PUSH_A','PULL_A','LOW_A','UP_B','LOW_B'], 6:['PUSH_A','PULL_A','LOW_A','PUSH_B','PULL_B','LOW_B']
+};
+function planDefaults(c){
+  const d = { objetivo:'Condição física geral', nivel:'Iniciante', dias:3, duracao:45, semanas:4 };
+  if(!c) return d;
+  if(c.objetivo) d.objetivo = c.objetivo;
+  if(c.nivel) d.nivel = c.nivel;
+  const m = String(c.atividade||'').match(/(\d)\s*x/i);
+  d.dias = parseInt(c.diasSemana) || (m ? parseInt(m[1]) : 3);
+  const t = String(c.servico||'').match(/(\d{2})/) || String(c.atividade||'').match(/(\d{2})\s*min/);
+  d.duracao = parseInt(c.duracaoSessao) || (t ? parseInt(t[1]) : 45);
+  d.dias = Math.min(6, Math.max(1, d.dias));
+  return d;
+}
+function planWeekText(i, n, obj){
+  const texts = PLAN_WEEK[obj];
+  const pos = n>=4 ? ((i-1)%4)+1 : i;
+  if(n>=4 && pos===1 && i>1) return 'Nova onda: parte das cargas da S1 e sobe 2,5–5%';
+  return texts[Math.min(pos,4)-1];
+}
+function planPickExercise(slot, ctx, usedPlan, usedSession){
+  const score = e=>{
+    const n = normText(e.nome);
+    return ctx.order.indexOf(e.equip)>=0 ? ctx.order.indexOf(e.equip) : (e.equip==='' ? 5 : 20);
+  };
+  const penalty = e=>PLAN_ODD.test(normText(e.nome)) ? 20 : 0;
+  const base = (useKw)=>ctx.pool.filter(e=>{
+    const n = normText(e.nome);
+    return slot.p.includes(e.padrao) && slot.g.includes(e.grupo) && !usedSession.has(e.id)
+      && (!useKw || ((!slot.kw || slot.kw.test(n)) && (!slot.not || !slot.not.test(n))));
+  });
+  let c = base(true);
+  const fresh = c.filter(e=>!usedPlan.has(e.id));
+  if(fresh.length) c = fresh;
+  if(!c.length) return null;
+  c.sort((a,b)=>(score(a)+penalty(a))-(score(b)+penalty(b)) || a.nome.length-b.nome.length || a.nome.localeCompare(b.nome,'pt'));
+  return c[0];
+}
+function buildAutoPlan(p){
+  const cfg = PLAN_OBJ[p.objetivo];
+  const avisos = ['Plano gerado automaticamente por regras gerais de treino. Ajusta-o ao cliente antes de aplicar.'];
+  // limitações
+  const limText = normText(p.limitacoes||'');
+  const limits = limText ? PLAN_LIMITS.filter(l=>l.re.test(limText)) : [];
+  if(limText){
+    avisos.push('Este cliente tem limitações registadas: valida o plano com o próprio antes de o seguir.');
+    if(limits.length) avisos.push('Evitei exercícios problemáticos para: ' + limits.map(l=>l.nome).join(', ') + '.');
+    else avisos.push('Não reconheci automaticamente a limitação escrita. Revê os exercícios à mão.');
+  }
+  const HOME_OK = /squat|lunge|afundo|ponte|bacia|push|flexo|prancha|plank|crunch|abdominal|hollow|bird|climber|burpee|skipping|jumping|abdu|abductor|adductor|monster|calcanhar|gemeo|flexao plantar|wall sit|step|dead bug|superman/;
+  const home = p.equipamento.startsWith('Casa');
+  const pool = aiExercisePool(p.equipamento).filter(e=>{
+    const n = normText(e.nome);
+    if(home && e.equip==='' && !HOME_OK.test(n)) return false;
+    if(PLAN_COMPLEX.test(n)) return false;
+    if(p.nivel==='Iniciante' && PLAN_BEGINNER_EXCL.test(n)) return false;
+    return !limits.some(l=>l.ex.test(n) || l.pat.includes(e.padrao));
+  });
+  if(pool.length < 15) throw new Error('Há poucos exercícios na biblioteca para este equipamento. Carrega a biblioteca base primeiro.');
+  const order = p.nivel==='Iniciante' ? ['Máquina','Halteres','Peso corporal','Polia','Multipower','Elástico','Kettlebell','Barra']
+    : p.objetivo==='Força' ? ['Barra','Halteres','Multipower','Máquina','Polia','Kettlebell','Peso corporal']
+    : ['Halteres','Barra','Polia','Máquina','Multipower','Peso corporal','Kettlebell','Elástico'];
+  const ctx = { pool, order };
+  const [sMain, sAcc] = cfg.series[p.nivel];
+  const carga = p.nivel==='Iniciante' ? 'RPE 6-7' : cfg.carga;
+  const cardioMin = p.duracao >= 45 ? cfg.cardio : 0;
+  const budget = p.duracao - 5 - cardioMin;
+  if(p.nivel==='Iniciante' && p.dias>=5) avisos.push('Para um iniciante, 5 a 6 treinos por semana é muito. Considera 3 a 4.');
+  const usedPlan = new Set();
+  const treinos = [], est = {};
+  PLAN_SPLIT[p.dias].forEach(key=>{
+    const tpl = PLAN_TPL[key];
+    let slots = [...tpl.slots, ...tpl.fill];
+    if((p.objetivo==='Tonificação' || p.objetivo==='Perda de gordura') && slots.includes('HIP') && !slots.includes('GLU')) slots.splice(slots.indexOf('HIP')+1, 0, 'GLU');
+    const usedSession = new Set();
+    const lines = []; let total = 0;
+    for(const sl of slots){
+      const slot = PLAN_SLOTS[sl];
+      const ex = planPickExercise(slot, ctx, usedPlan, usedSession);
+      if(!ex) continue;
+      const s = slot.main ? sMain : sAcc;
+      const rest = slot.main ? cfg.rest[0] : cfg.rest[1];
+      const t = s * (cfg.tempo + rest) / 60 + 1;
+      if(lines.length >= 3 && total + t > budget + 1.5) break;
+      total += t; usedSession.add(ex.id); usedPlan.add(ex.id);
+      lines.push({ exercicio: ex.nome, series: s, reps: slot.main ? cfg.reps[0] : cfg.reps[1], carga, descanso: rest+'s' });
+    }
+    if(cardioMin){
+      const cx = planPickExercise(PLAN_SLOTS.CARDIO, ctx, new Set(), new Set());
+      if(cx) lines.push({ exercicio: cx.nome, series: 1, reps: cardioMin+' min', carga: 'RPE 6', descanso: '—' });
+    }
+    if(lines.length < 3) avisos.push(`"${tpl.nome}" ficou com poucos exercícios para este equipamento.`);
+    treinos.push({ nome: tpl.nome, exercicios: lines });
+    est[tpl.nome] = Math.round(5 + total + (cardioMin && lines.length ? cardioMin : 0));
+  });
+  const nomes = treinos.map(t=>t.nome);
+  const semanas = [];
+  for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo), sessoes: nomes });
+  if(p.semanas>=4) avisos.push('A semana 4 (e a 8, a 12) é de deload: reduz o volume para recuperar.');
+  return { nome: `${p.objetivo} · ${p.dias}x/semana · ${p.duracao} min`, avisos, treinos, semanas, estimativas: est };
+}
+
+let planResult = null;
+function openPlanModal(clientId){
+  if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de gerar um plano.'); return; }
+  if(DATA.exercises.length===0){ alert('A biblioteca de exercícios está vazia. Carrega a biblioteca base primeiro.'); return; }
+  const sel = document.getElementById('plan-cliente');
+  sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  if(clientId) sel.value = clientId;
+  prefillPlan();
+  document.getElementById('plan-status').textContent = '';
+  document.getElementById('plan-preview').innerHTML = '';
+  document.getElementById('plan-import-btn').style.display = 'none';
+  planResult = null;
+  openModal('modal-plano');
+}
+function prefillPlan(){
+  const c = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente').value);
+  const d = planDefaults(c);
+  document.getElementById('plan-objetivo').value = d.objetivo;
+  document.getElementById('plan-nivel').value = d.nivel;
+  document.getElementById('plan-dias').value = d.dias;
+  document.getElementById('plan-duracao').value = String(d.duracao);
+  if(![...document.getElementById('plan-duracao').options].some(o=>o.value===String(d.duracao))) document.getElementById('plan-duracao').value = '45';
+  document.getElementById('plan-semanas').value = d.semanas;
+  document.getElementById('plan-limitacoes').value = (c && c.limitacoes) || '';
+}
+function generatePlan(){
+  const status = document.getElementById('plan-status');
+  const p = {
+    objetivo: document.getElementById('plan-objetivo').value,
+    nivel: document.getElementById('plan-nivel').value,
+    dias: Math.min(6, Math.max(1, parseInt(document.getElementById('plan-dias').value) || 3)),
+    duracao: parseInt(document.getElementById('plan-duracao').value) || 45,
+    semanas: Math.min(12, Math.max(2, parseInt(document.getElementById('plan-semanas').value) || 4)),
+    equipamento: document.getElementById('plan-equip').value,
+    limitacoes: document.getElementById('plan-limitacoes').value.trim()
+  };
+  try{
+    planResult = buildAutoPlan(p);
+    status.textContent = '';
+    renderPlanPreview(planResult);
+    document.getElementById('plan-import-btn').style.display = 'inline-block';
+  }catch(err){
+    planResult = null;
+    document.getElementById('plan-preview').innerHTML = '';
+    document.getElementById('plan-import-btn').style.display = 'none';
+    status.textContent = err.message;
+  }
+}
+function renderPlanPreview(r){
+  const avisos = r.avisos.map(a=>`<div style="border-left:3px solid var(--ochre); padding:6px 12px; margin-bottom:8px; font-size:13px;">${esc(a)}</div>`).join('');
+  const treinos = r.treinos.map(t=>`
+    <div style="margin-bottom:12px;">
+      <div style="font-weight:600;">${esc(t.nome)} <span class="tag">≈ ${r.estimativas[t.nome]} min</span></div>
+      <div class="list-row-meta">${t.exercicios.map(x=>`${esc(x.exercicio)} ${esc(String(x.series))}x${esc(String(x.reps))}`).join(' · ')}</div>
+    </div>`).join('');
+  const semanas = r.semanas.map(s=>`<div class="list-row-meta"><strong>S${s.numero}</strong> ${esc(s.progressao)}</div>`).join('');
+  document.getElementById('plan-preview').innerHTML = `
+    <div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; margin-bottom:6px; max-height:340px; overflow-y:auto;">
+      <div style="font-family:var(--font-display); font-size:17px; margin-bottom:10px;">${esc(r.nome)}</div>
+      ${avisos}${treinos}
+      <div style="margin-top:12px; border-top:1px solid var(--line); padding-top:10px;">${semanas}</div>
+    </div>
+    <div class="view-sub">A estimativa inclui 5 min de aquecimento. Depois de importar, podes editar cada treino na aba Treinos.</div>`;
+}
+function importPlan(){
+  if(!planResult) return;
+  importResult(planResult, document.getElementById('plan-cliente').value);
+  planResult = null;
+  closeModal('modal-plano');
+}
+
 // ---------- CICLOS ----------
-function openCycleModal(){
+function openCycleModal(clientId){
   if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de criar um ciclo.'); return; }
   const sel = document.getElementById('ciclo-cliente');
   sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  if(clientId) sel.value = clientId;
   document.getElementById('ciclo-nome').value = '';
   document.getElementById('ciclo-inicio').value = new Date().toISOString().slice(0,10);
   document.getElementById('ciclo-semanas').value = 4;
@@ -2162,6 +2568,7 @@ function esc(str){
 }
 
 function renderAll(){
+  renderFicha();
   renderBackup();
   renderClients();
   renderLibrary();
