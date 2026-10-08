@@ -628,7 +628,7 @@
     <h3>Novo ciclo</h3>
     <div class="field">
       <label>Cliente</label>
-      <select id="ciclo-cliente"></select>
+      <select id="ciclo-cliente" onchange="prefillCycleStart()"></select>
     </div>
     <div class="field">
       <label>Nome do ciclo</label>
@@ -702,12 +702,12 @@ function renderClients(){
     list.innerHTML = `<div class="empty"><strong>Ainda não há clientes</strong>Adiciona o primeiro cliente para começar a atribuir ciclos.</div>`;
     return;
   }
-  list.innerHTML = `<div class="list">` + DATA.clients.map(c=>{
+  list.innerHTML = `<div class="list">` + [...DATA.clients].sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(c=>{
     const numCycles = DATA.cycles.filter(cy=>cy.clientId===c.id).length;
     return `<div class="list-row">
       <div class="list-row-main">
         <div class="list-row-title">${esc(c.nome)}</div>
-        <div class="list-row-meta">${numCycles} ciclo${numCycles===1?'':'s'}${c.notas ? ' · '+esc(c.notas) : ''}</div>
+        <div class="list-row-meta">${[esc(clientMeta(c)), `${numCycles} ciclo${numCycles===1?'':'s'}`, c.notas ? esc(c.notas) : ''].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="list-row-actions">
         <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteClient('${c.id}')">Remover</button>
@@ -1724,11 +1724,17 @@ function renderWorkouts(){
 }
 
 // ---------- IMPORTAR CLIENTES (EXCEL) ----------
-let pendingClients = [];
+let pendingImport = { fresh: [], updates: [] };
+function parseDateISO(s){
+  s = String(s||'').trim(); let m;
+  if((m = s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return `${m[1]}-${m[2]}-${m[3]}`;
+  if((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  return '';
+}
 function downloadClientTemplate(){
   if(typeof XLSX==='undefined'){ alert('Não consegui carregar o leitor de Excel. Verifica a ligação à internet e tenta de novo.'); return; }
-  const ws = XLSX.utils.aoa_to_sheet([['Nome','Telemóvel','Email','Objetivo','Notas']]);
-  ws['!cols'] = [{wch:28},{wch:14},{wch:28},{wch:22},{wch:40}];
+  const ws = XLSX.utils.aoa_to_sheet([['Código','Nome','Tipo','Serviço','Atividade','Início da Caderneta','Fim Real','Notas']]);
+  ws['!cols'] = [{wch:10},{wch:34},{wch:10},{wch:14},{wch:30},{wch:18},{wch:12},{wch:34}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
   XLSX.writeFile(wb, 'modelo-clientes.xlsx');
@@ -1742,9 +1748,9 @@ function readClientsFile(input){
   reader.onload = ()=>{
     try{
       const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', cellDates:true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false, dateNF:'dd/mm/yyyy' });
-      prepareClientImport(rows, file.name);
+      const sheetName = wb.SheetNames.find(n=>normText(n)==='clientes') || wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, defval:'', raw:false, dateNF:'yyyy-mm-dd' });
+      prepareClientImport(rows, file.name, sheetName);
     }catch(e){
       showImportMessage('Não consegui ler este ficheiro. Confirma que é um Excel (.xlsx) ou CSV.', false);
     }
@@ -1756,7 +1762,14 @@ function showImportMessage(html, canImport){
   document.getElementById('import-clients-btn').style.display = canImport ? '' : 'none';
   openModal('modal-import-clients');
 }
-function prepareClientImport(rows, fileName){
+function clientMeta(c){
+  const parts = [];
+  if(c.tipo) parts.push(c.tipo);
+  if(c.servico) parts.push(c.servico);
+  if(c.cadFim) parts.push('caderneta até ' + formatDate(c.cadFim));
+  return parts.join(' · ');
+}
+function prepareClientImport(rows, fileName, sheetName){
   const clean = rows.map(r=>r.map(c=>String(c==null?'':c).trim()));
   const isName = c=>/^(nome|name|cliente|nome completo)$/.test(normText(c));
   let hIdx = clean.slice(0,10).findIndex(r=>r.some(isName));
@@ -1764,43 +1777,69 @@ function prepareClientImport(rows, fileName){
   if(hIdx>=0){ nameCol = clean[hIdx].findIndex(isName); }
   else { hIdx = 0; nameCol = 0; usedFallback = true; }
   const header = clean[hIdx] || [];
+  const col = re => header.findIndex(h=>re.test(normText(h)));
+  const C = {
+    codigo: col(/^codigo$/), tipo: col(/^tipo$/), servico: col(/^servico$/), atividade: col(/^atividade$/),
+    inicio: col(/^inicio da caderneta/), fim: col(/^fim real/), sessoes: col(/^sessoes esperadas/), notas: col(/^(notas?|observa)/)
+  };
+  const reportMode = C.codigo>=0 && C.servico>=0;
   const extraCols = [];
-  header.forEach((h,i)=>{
-    if(i===nameCol || !h || /^(n[ºo°]?|#|id|num(ero)?)$/.test(normText(h))) return;
-    extraCols.push(i);
-  });
-  const existing = new Set(DATA.clients.map(c=>normText(c.nome)));
+  if(!reportMode){
+    header.forEach((h,i)=>{ if(i!==nameCol && h && !/^(n[ºo°]?|#|id|num(ero)?)$/.test(normText(h))) extraCols.push(i); });
+  }
+  const get = (r,i)=> i>=0 ? (r[i]||'') : '';
   const seen = new Set();
-  const fresh = []; let dupes = 0;
+  const fresh = [], updates = [];
+  let same = 0, repeated = 0;
   clean.slice(hIdx+1).forEach(r=>{
     const nome = (r[nameCol]||'').replace(/\s+/g,' ');
     if(!nome) return;
-    const key = normText(nome);
-    if(existing.has(key) || seen.has(key)){ dupes++; return; }
+    const rec = { nome };
+    if(reportMode){
+      rec.codigo = get(r,C.codigo); rec.tipo = get(r,C.tipo); rec.servico = get(r,C.servico); rec.atividade = get(r,C.atividade);
+      rec.cadInicio = parseDateISO(get(r,C.inicio)); rec.cadFim = parseDateISO(get(r,C.fim));
+      rec.sessoes = get(r,C.sessoes);
+      if(C.notas>=0 && r[C.notas]) rec.notas = r[C.notas];
+    } else {
+      const parts = extraCols.filter(i=>r[i]).map(i=>`${header[i]}: ${r[i]}`);
+      if(parts.length) rec.notas = parts.join(' · ').slice(0,500);
+    }
+    const key = rec.codigo ? 'c'+rec.codigo : 'n'+normText(nome);
+    if(seen.has(key)){ repeated++; return; }
     seen.add(key);
-    const parts = [];
-    extraCols.forEach(i=>{ if(r[i]) parts.push(`${header[i]}: ${r[i]}`); });
-    fresh.push({ id: uid(), nome, notas: parts.join(' · ').slice(0, 500) });
+    const match = DATA.clients.find(c=>(rec.codigo && c.codigo===rec.codigo) || normText(c.nome)===normText(nome));
+    if(!match){ fresh.push({ id: uid(), notas: '', ...rec }); return; }
+    if(!reportMode){ repeated++; return; }
+    const patch = {};
+    Object.keys(rec).forEach(k=>{ if(k!=='nome' && rec[k] && rec[k]!==match[k]) patch[k] = rec[k]; });
+    if(Object.keys(patch).length) updates.push({ target: match, patch }); else same++;
   });
-  pendingClients = fresh;
-  if(fresh.length===0){
-    showImportMessage(`<p>Não há clientes novos para importar em <strong>${esc(fileName)}</strong>.</p>` + (dupes ? `<p class="view-sub">${dupes} já existem na app.</p>` : `<p class="view-sub">Confirma que há uma coluna chamada "Nome" com os nomes. Podes descarregar o modelo Excel na página de Clientes.</p>`), false);
+  pendingImport = { fresh, updates };
+  if(fresh.length===0 && updates.length===0){
+    showImportMessage(`<p>Não há nada para importar de <strong>${esc(fileName)}</strong>.</p>` +
+      ((same+repeated) ? `<p class="view-sub">${same+repeated} clientes já estão na app${same?' sem alterações':''}.</p>` : `<p class="view-sub">Confirma que há uma coluna chamada "Nome" com os nomes. Podes descarregar o modelo Excel na página de Clientes.</p>`), false);
     return;
   }
-  const preview = fresh.slice(0,6).map(c=>`<div class="list-row"><div class="list-row-main"><div class="list-row-title">${esc(c.nome)}</div><div class="list-row-meta">${esc(c.notas)||'—'}</div></div></div>`).join('');
-  const extras = extraCols.map(i=>esc(header[i]));
+  const rowHtml = (nome, meta)=>`<div class="list-row"><div class="list-row-main"><div class="list-row-title">${esc(nome)}</div><div class="list-row-meta">${esc(meta)||'—'}</div></div></div>`;
+  const preview = fresh.slice(0,8).map(c=>rowHtml(c.nome, reportMode ? clientMeta(c) : c.notas)).join('');
+  const summary = [];
+  if(fresh.length) summary.push(`<strong>${fresh.length}</strong> clientes novos`);
+  if(updates.length) summary.push(`<strong>${updates.length}</strong> clientes a atualizar`);
   showImportMessage(`
-    <p><strong>${fresh.length}</strong> clientes novos em <strong>${esc(fileName)}</strong>.${dupes ? ` ${dupes} ignorados por já existirem.` : ''}</p>
+    <p>${summary.join(' e ')} em <strong>${esc(fileName)}</strong> (folha "${esc(sheetName)}").${(same+repeated) ? ` ${same+repeated} sem alterações.` : ''}</p>
     ${usedFallback ? '<p class="view-sub" style="color:var(--ochre);">Não encontrei uma coluna "Nome", por isso usei a primeira coluna.</p>' : ''}
-    ${extras.length ? `<p class="view-sub">As colunas ${extras.join(', ')} vão para as notas de cada cliente.</p>` : ''}
-    <div class="list" style="margin-top:10px;">${preview}</div>
-    ${fresh.length>6 ? `<p class="view-sub" style="margin-top:8px;">…e mais ${fresh.length-6}.</p>` : ''}`, true);
-  document.getElementById('import-clients-btn').textContent = `Importar ${fresh.length} clientes`;
+    ${reportMode ? '<p class="view-sub">Importo código, tipo, serviço, atividade e datas da caderneta. Pagamentos e sessões ficam de fora, porque pertencem à app de gestão.</p>' : (extraCols.length ? `<p class="view-sub">As colunas ${extraCols.map(i=>esc(header[i])).join(', ')} vão para as notas de cada cliente.</p>` : '')}
+    ${preview ? `<div class="list" style="margin-top:10px;">${preview}</div>` : ''}
+    ${fresh.length>8 ? `<p class="view-sub" style="margin-top:8px;">…e mais ${fresh.length-8} novos.</p>` : ''}`, true);
+  const label = [];
+  if(fresh.length) label.push(`${fresh.length} novos`);
+  if(updates.length) label.push(`${updates.length} a atualizar`);
+  document.getElementById('import-clients-btn').textContent = 'Importar: ' + label.join(' + ');
 }
 function confirmImportClients(){
-  DATA.clients.push(...pendingClients);
-  const n = pendingClients.length;
-  pendingClients = [];
+  DATA.clients.push(...pendingImport.fresh);
+  pendingImport.updates.forEach(u=>Object.assign(u.target, u.patch));
+  pendingImport = { fresh: [], updates: [] };
   closeModal('modal-import-clients');
   saveData();
 }
@@ -2005,7 +2044,12 @@ function openCycleModal(){
   document.getElementById('ciclo-nome').value = '';
   document.getElementById('ciclo-inicio').value = new Date().toISOString().slice(0,10);
   document.getElementById('ciclo-semanas').value = 4;
+  prefillCycleStart();
   openModal('modal-ciclo');
+}
+function prefillCycleStart(){
+  const c = DATA.clients.find(x=>x.id===document.getElementById('ciclo-cliente').value);
+  if(c && c.cadInicio) document.getElementById('ciclo-inicio').value = c.cadInicio;
 }
 function saveCycle(){
   const nome = document.getElementById('ciclo-nome').value.trim() || 'Novo ciclo';
