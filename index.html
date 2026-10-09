@@ -2,7 +2,10 @@
 <html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#171614">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%231C1B19%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2770%27 font-weight=%27700%27 text-anchor=%27middle%27 fill=%27%23C69214%27 font-family=%27Arial%27%3EC.%3C/text%3E%3C/svg%3E">
 <title>Ciclos — Prescrição de Treino</title>
 <style>
   :root{
@@ -276,7 +279,60 @@
   ::-webkit-scrollbar-track{ background: var(--bg); }
   ::-webkit-scrollbar-thumb{ background: var(--line); border-radius: 10px; }
 
+
+  /* ---------- Responsivo: PC e Android ---------- */
+  html{ -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  button, select, input, textarea{ touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .rail-btn .short{ display:none; }
+  .list-row-main{ flex:1; min-width:0; overflow-wrap:anywhere; }
+  .list-row-actions{ flex-wrap:wrap; justify-content:flex-end; }
+  .select-line{ flex-wrap:wrap; }
+  .week-progress-input{ flex:1; width:auto; max-width:460px; margin-left:16px; }
+  .btn:focus-visible, .rail-btn:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--ochre); outline-offset:2px; }
+  @media (min-width: 781px){
+    .main{ padding: 40px 48px; max-width: 1200px; }
+    .modal{ max-width: 620px; }
+  }
   @media (max-width: 780px){
+    body{ font-size:16px; }
+    .app{ display:block; min-height:100vh; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+    .rail{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; z-index:60; flex-direction:row; padding:0 0 env(safe-area-inset-bottom); overflow:visible; border-right:0; border-top:1px solid var(--line); background:#171614; }
+    .rail-nav{ flex-direction:row; width:100%; margin:0; }
+    .rail-btn{ flex:1 1 0; min-width:0; text-align:center; padding:8px 2px; min-height:58px; font-size:12px; line-height:1.2; border-left:0; border-top:3px solid transparent; border-bottom:0; white-space:normal; display:flex; align-items:center; justify-content:center; }
+    .rail-btn.active{ border-left:0; border-bottom:0; border-top-color:var(--ochre); }
+    .rail-btn .long{ display:none; } .rail-btn .short{ display:inline; }
+    .main{ padding:18px 14px 24px; max-width:none; }
+    .view-title{ font-size:26px; }
+    .view-head{ align-items:stretch; margin-bottom:18px; }
+    .view-head > div:last-child{ width:100%; }
+    .view-head .btn{ flex:1 1 auto; }
+    .btn{ min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+    .btn-sm{ min-height:40px; padding:8px 12px; font-size:13px; }
+    .field input, .field select, .field textarea, .select-line select, #lib-search, .exline input, .exline select{ font-size:16px !important; min-height:44px; }
+    .select-line select, #lib-search{ flex:1 1 100% !important; min-width:0 !important; width:100%; }
+    .list-row{ flex-wrap:wrap; padding:12px 14px; }
+    .list-row-actions{ width:100%; justify-content:flex-start; }
+    .modal-backdrop{ padding:0; align-items:flex-end; }
+    .modal{ max-width:none; width:100%; max-height:92vh; max-height:92dvh; border-radius:16px 16px 0 0; padding:20px 16px 0; }
+    .modal-actions{ position:sticky; bottom:0; margin:16px -16px 0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--surface); border-top:1px solid var(--line); }
+    .modal-actions .btn{ flex:1; }
+    .week-head{ flex-wrap:wrap; gap:8px; }
+    .week-progress-input{ width:100%; max-width:none; margin-left:0; flex:1 1 100%; }
+    .day-slot{ flex-direction:column; align-items:stretch; gap:4px; }
+    .day-name{ width:auto; }
+    .cycle-stat .num{ font-size:24px; }
+    .rail-brand, .rail-foot{ display:none; }
+    .row-2, .row-3{ grid-template-columns: 1fr; }
+    .row-4{ grid-template-columns: 1fr 1fr; }
+    .exline{ grid-template-columns: repeat(6, minmax(0,1fr)); gap:8px; padding:12px 0; }
+    .exline > :nth-child(1){ grid-column:1 / -1; grid-row:1; }
+    .exline > :nth-child(2){ grid-column:1 / 3; grid-row:2; }
+    .exline > :nth-child(3){ grid-column:3 / 5; grid-row:2; }
+    .exline > :nth-child(5){ grid-column:5 / 7; grid-row:2; }
+    .exline > :nth-child(4){ grid-column:1 / 6; grid-row:3; }
+    .exline > :nth-child(6){ grid-column:6 / 7; grid-row:3; }
+  }
+  @media (max-width: 0px){
     .app{ flex-direction: column; }
     .rail{ width: 100%; flex-direction: row; overflow-x: auto; padding: 12px; }
     .rail-brand{ display:none; }
@@ -302,7 +358,7 @@
       <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
       <button class="rail-btn" data-view="ciclos">Ciclos</button>
-      <button class="rail-btn" data-view="backup">Cópia de segurança</button>
+      <button class="rail-btn" data-view="backup"><span class="long">Cópia de segurança</span><span class="short">Backup</span></button>
     </div>
     <div class="rail-foot">Dados guardados neste dispositivo</div>
   </div>
@@ -339,10 +395,10 @@
         </div>
       </div>
       <div class="select-line">
-        <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="renderLibrary()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
-        <select id="lib-mod" onchange="renderLibrary()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>Reabilitação</option></select>
-        <select id="lib-pat" onchange="renderLibrary()"><option value="">Todas as patologias</option></select>
-        <select id="lib-group" onchange="renderLibrary()"><option value="">Todos os grupos</option></select>
+        <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
+        <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>Reabilitação</option></select>
+        <select id="lib-pat" onchange="libReset()"><option value="">Todas as patologias</option></select>
+        <select id="lib-group" onchange="libReset()"><option value="">Todos os grupos</option></select>
       </div>
       <div id="lib-count" class="view-sub" style="margin-bottom:12px;"></div>
       <div id="biblioteca-list"></div>
@@ -1699,6 +1755,9 @@ function patternIcon(padrao){
 function techLink(nome){
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(nome + ' técnica execução exercício')}`;
 }
+let libLimit = 120, libTimer = null;
+function libReset(){ libLimit = 120; renderLibrary(); }
+function libSearchDebounced(){ clearTimeout(libTimer); libTimer = setTimeout(libReset, 150); }
 function renderLibrary(){
   const list = document.getElementById('biblioteca-list');
   if(DATA.exercises.length===0){
@@ -1716,8 +1775,11 @@ function renderLibrary(){
   pSel.innerHTML = '<option value="">Todas as patologias</option>' + patOptions(pCur);
   const mCur = document.getElementById('lib-mod').value;
   const filtered = DATA.exercises.filter(e=>(!gCur || e.grupo===gCur) && (!mCur || exModalidade(e)===mCur) && (!pCur || (e.patologias||[]).includes(pCur)) && (!q || normText(e.nome+' '+(e.equip||'')+' '+(e.variantes||[]).join(' ')).includes(q)));
-  document.getElementById('lib-count').textContent = `${filtered.length} de ${DATA.exercises.length} exercícios`;
+  document.getElementById('lib-count').textContent = `${filtered.length} de ${DATA.exercises.length} exercícios` + (filtered.length>libLimit ? ` · a mostrar ${libLimit}` : '');
   if(filtered.length===0){ list.innerHTML = `<div class="empty"><strong>Nenhum resultado</strong>Experimenta outra pesquisa ou outro grupo.</div>`; return; }
+  const total = filtered.length;
+  filtered.sort((a,b)=>a.grupo.localeCompare(b.grupo,'pt') || a.nome.localeCompare(b.nome,'pt'));
+  filtered.length = Math.min(filtered.length, libLimit);
   const groups = {};
   filtered.forEach(e=>{ (groups[e.grupo] = groups[e.grupo]||[]).push(e); });
   Object.values(groups).forEach(arr=>arr.sort((x,y)=>x.nome.localeCompare(y.nome,'pt')));
@@ -1741,7 +1803,7 @@ function renderLibrary(){
           </div>
         </div>`).join('') + `</div>
     </div>`;
-  }).join('');
+  }).join('') + (total>libLimit ? `<div style="text-align:center; margin:8px 0 24px;"><button class="btn" onclick="libLimit+=200; renderLibrary()">Mostrar mais (${total-libLimit})</button></div>` : '');
 }
 
 // ---------- TREINOS ----------
@@ -2776,7 +2838,7 @@ function buildCyclePrintHtml(cycleId){
       return `<tr><td><b>${i+1}. ${esc(e.nome)}</b>${e.notas ? `<div class="note">${esc(e.notas)}</div>` : ''}${(e.variantes||[]).length ? `<div class="var">Variantes: ${esc(e.variantes.slice(0,4).join(' · '))}</div>` : ''}</td><td>${esc(l.series)}</td><td>${esc(l.reps)}</td><td>${esc(l.carga||'')}</td><td>${esc(l.descanso||'')}</td></tr>`; }).join('') +
     '</tbody></table></section>').join('');
 
-  return `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>${esc(cy.nome)}${cname ? ' – '+esc(cname) : ''}</title>
+  return `<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(cy.nome)}${cname ? ' – '+esc(cname) : ''}</title>
 <style>
 @page { size: A4; margin: 14mm 14mm 16mm; }
 *{ box-sizing:border-box; }
@@ -2805,6 +2867,7 @@ thead th{ background:#f3ecd9; font-size:10px; text-transform:uppercase; letter-s
 .var{ color:#8a6a0c; font-size:9.5px; margin-top:1px; }
 ul{ margin:4px 0; padding-left:18px; } li{ margin-bottom:2px; }
 footer{ margin-top:18px; font-size:9.5px; color:#888; border-top:1px solid #ddd; padding-top:6px; }
+@media screen and (max-width:700px){ body{ padding:10px; font-size:12px; } .bar{ flex-direction:column; align-items:stretch; } .bar button{ padding:12px; } .wk{ overflow-x:auto; } .wk table{ min-width:520px; } .ov{ font-size:9px; } }
 @media print{ body{ padding:0; } .bar{ display:none; } }
 </style></head><body>
 <div class="bar"><span>Pré-visualização do PDF. Em "Destino", escolhe <b>Guardar como PDF</b>.</span><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
@@ -2844,6 +2907,13 @@ function renderAll(){
   renderCycles();
 }
 renderAll();
+// Instalável no Android (Chrome: ⋮ > Adicionar ao ecrã inicial)
+try{
+  const icon = "data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='#1C1B19'/><text x='256' y='360' font-size='340' font-weight='700' text-anchor='middle' fill='#C69214' font-family='Arial'>C.</text></svg>");
+  const man = { name:'CICLO. Prescrição de Treino', short_name:'CICLO.', start_url: location.href.split('#')[0], display:'standalone', background_color:'#1C1B19', theme_color:'#171614', lang:'pt-PT', icons:[{ src:icon, sizes:'any', type:'image/svg+xml', purpose:'any' }] };
+  const l = document.createElement('link'); l.rel='manifest'; l.href = URL.createObjectURL(new Blob([JSON.stringify(man)], {type:'application/manifest+json'}));
+  document.head.appendChild(l);
+}catch(e){}
 </script>
 </body>
 </html>
