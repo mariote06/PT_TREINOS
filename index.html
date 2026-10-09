@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#171614">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%231C1B19%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2770%27 font-weight=%27700%27 text-anchor=%27middle%27 fill=%27%23C69214%27 font-family=%27Arial%27%3EC.%3C/text%3E%3C/svg%3E">
 <title>Ciclos — Prescrição de Treino</title>
@@ -2907,13 +2909,10 @@ function renderAll(){
   renderCycles();
 }
 renderAll();
-// Instalável no Android (Chrome: ⋮ > Adicionar ao ecrã inicial)
-try{
-  const icon = "data:image/svg+xml," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='#1C1B19'/><text x='256' y='360' font-size='340' font-weight='700' text-anchor='middle' fill='#C69214' font-family='Arial'>C.</text></svg>");
-  const man = { name:'CICLO. Prescrição de Treino', short_name:'CICLO.', start_url: location.href.split('#')[0], display:'standalone', background_color:'#1C1B19', theme_color:'#171614', lang:'pt-PT', icons:[{ src:icon, sizes:'any', type:'image/svg+xml', purpose:'any' }] };
-  const l = document.createElement('link'); l.rel='manifest'; l.href = URL.createObjectURL(new Blob([JSON.stringify(man)], {type:'application/manifest+json'}));
-  document.head.appendChild(l);
-}catch(e){}
+// Instalação como app e uso offline (ficheiros manifest.json e sw.js na mesma pasta)
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
