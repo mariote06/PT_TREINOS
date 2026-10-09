@@ -2730,7 +2730,10 @@ function renderCycles(){
           <div style="font-weight:600; font-size:17px;">${esc(cycle.nome)}</div>
           <div class="view-sub">${esc(clientName(cycle.clientId))}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
         </div>
-        <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteCycle('${cycle.id}')">Remover ciclo</button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm" onclick="exportCyclePDF('${cycle.id}')">📄 Exportar PDF</button>
+          <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteCycle('${cycle.id}')">Remover ciclo</button>
+        </div>
       </div>
       <div class="cycle-meta">
         <div class="cycle-stat"><div class="num">${cycle.numSemanas}</div><div class="lbl">semanas</div></div>
@@ -2739,6 +2742,87 @@ function renderCycles(){
       ${weeksHtml}
     </div>`;
   }).join('');
+}
+
+
+// ---------- EXPORTAR CICLO PARA PDF ----------
+function buildCyclePrintHtml(cycleId){
+  const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return '';
+  const client = DATA.clients.find(c=>c.id===cy.clientId);
+  const cname = client ? client.nome : '';
+  const strip = n => String(n||'').replace(cy.nome + ' — ', '');
+  const exById = id => DATA.exercises.find(e=>e.id===id);
+  // treinos usados, por ordem de aparecimento
+  const ids = []; cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(d.workoutId && !ids.includes(d.workoutId)) ids.push(d.workoutId); }));
+  const workouts = ids.map(id=>DATA.workouts.find(w=>w.id===id)).filter(Boolean);
+  const wName = id => { const w = DATA.workouts.find(x=>x.id===id); return w ? strip(w.nome) : ''; };
+  const meta = [];
+  if(client){
+    if(client.objetivo) meta.push(['Objetivo', client.objetivo]);
+    if(client.nivel) meta.push(['Nível', client.nivel]);
+    if(client.patologia && PATOLOGIAS[client.patologia]) meta.push(['Condição', PATOLOGIAS[client.patologia].nome]);
+  }
+  meta.push(['Duração', cy.numSemanas + ' semanas']);
+  if(cy.inicio) meta.push(['Início', formatDate(cy.inicio)]);
+  const sessTotal = cy.semanas.reduce((n,w)=>n+w.dias.filter(d=>d.workoutId).length,0);
+  meta.push(['Sessões', String(sessTotal)]);
+
+  const overview = `<table class="ov"><thead><tr><th></th>${DIAS.map(d=>`<th>${esc(d.slice(0,3))}</th>`).join('')}</tr></thead><tbody>` +
+    cy.semanas.map(w=>`<tr><th>S${w.numero}</th>${w.dias.map(d=>`<td>${d.workoutId ? esc(wName(d.workoutId)) : '<span class="rest">—</span>'}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+  const prog = cy.semanas.filter(w=>w.progressao).map(w=>`<li><b>S${w.numero}</b> ${esc(w.progressao)}</li>`).join('');
+  const blocks = workouts.map(w=>`<section class="wk"><h3>${esc(strip(w.nome))}</h3>
+    <table><thead><tr><th>Exercício</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th></tr></thead><tbody>` +
+    w.exercicios.map((l,i)=>{ const e = exById(l.exId); if(!e) return '';
+      return `<tr><td><b>${i+1}. ${esc(e.nome)}</b>${e.notas ? `<div class="note">${esc(e.notas)}</div>` : ''}${(e.variantes||[]).length ? `<div class="var">Variantes: ${esc(e.variantes.slice(0,4).join(' · '))}</div>` : ''}</td><td>${esc(l.series)}</td><td>${esc(l.reps)}</td><td>${esc(l.carga||'')}</td><td>${esc(l.descanso||'')}</td></tr>`; }).join('') +
+    '</tbody></table></section>').join('');
+
+  return `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>${esc(cy.nome)}${cname ? ' – '+esc(cname) : ''}</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 16mm; }
+*{ box-sizing:border-box; }
+body{ font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:#1f1d1a; font-size:11.5px; line-height:1.4; margin:0; padding:18px; }
+.bar{ position:sticky; top:0; background:#fff7e0; border:1px solid #e0c27a; padding:10px 14px; margin-bottom:14px; border-radius:6px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+.bar button{ background:#C69214; color:#fff; border:0; padding:8px 14px; border-radius:6px; font-weight:600; cursor:pointer; }
+header{ border-bottom:3px solid #C69214; padding-bottom:10px; margin-bottom:12px; }
+.brand{ font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#8a6a0c; font-weight:700; }
+h1{ font-size:22px; margin:4px 0 2px; }
+.who{ font-size:14px; color:#555; }
+.meta{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:8px; }
+.meta div span{ display:block; font-size:9px; text-transform:uppercase; letter-spacing:.8px; color:#888; }
+.meta div b{ font-size:12px; }
+h2{ font-size:13px; text-transform:uppercase; letter-spacing:1px; color:#8a6a0c; margin:16px 0 6px; }
+h3{ font-size:14px; margin:0 0 6px; }
+table{ width:100%; border-collapse:collapse; }
+th,td{ border:1px solid #d9d4c8; padding:5px 7px; text-align:left; vertical-align:top; }
+thead th{ background:#f3ecd9; font-size:10px; text-transform:uppercase; letter-spacing:.6px; }
+.ov th,.ov td{ text-align:center; font-size:10.5px; }
+.ov tbody th{ background:#f3ecd9; width:34px; }
+.rest{ color:#bbb; }
+.wk{ margin-bottom:16px; break-inside:avoid; page-break-inside:avoid; }
+.wk td:not(:first-child), .wk th:not(:first-child){ text-align:center; white-space:nowrap; width:62px; }
+.wk td:nth-child(4), .wk th:nth-child(4){ width:120px; white-space:normal; }
+.note{ font-weight:400; color:#555; font-size:10px; margin-top:2px; }
+.var{ color:#8a6a0c; font-size:9.5px; margin-top:1px; }
+ul{ margin:4px 0; padding-left:18px; } li{ margin-bottom:2px; }
+footer{ margin-top:18px; font-size:9.5px; color:#888; border-top:1px solid #ddd; padding-top:6px; }
+@media print{ body{ padding:0; } .bar{ display:none; } }
+</style></head><body>
+<div class="bar"><span>Pré-visualização do PDF. Em "Destino", escolhe <b>Guardar como PDF</b>.</span><button onclick="window.print()">Imprimir / Guardar PDF</button></div>
+<header><div class="brand">Plano de treino</div><h1>${esc(cy.nome)}</h1>${cname ? `<div class="who">${esc(cname)}</div>` : ''}
+<div class="meta">${meta.map(([k,v])=>`<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div></header>
+<h2>Visão geral das semanas</h2>${overview}
+${prog ? `<h2>Progressão semanal</h2><ul>${prog}</ul>` : ''}
+<h2>Treinos</h2>${blocks || '<p>Este ciclo ainda não tem treinos atribuídos.</p>'}
+<footer>Plano de treino elaborado pelo seu personal trainer. Pára o exercício e fala com o teu treinador em caso de dor, tonturas ou mal-estar. Gerado em ${formatDate(new Date().toISOString().slice(0,10))}.</footer>
+</body></html>`;
+}
+function exportCyclePDF(cycleId){
+  const html = buildCyclePrintHtml(cycleId);
+  if(!html) return;
+  const w = window.open('', '_blank');
+  if(!w){ alert('O browser bloqueou a nova janela. Permite pop-ups para este site e tenta de novo.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 400);
 }
 
 function formatDate(iso){
