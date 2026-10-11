@@ -2097,6 +2097,15 @@ function restructureFicha(){
   saveData();
   const m = document.getElementById('ficha-msg'); if(m) m.textContent = n ? `${n} dado(s) das notas passaram para a ficha.` : 'Não encontrei dados «Etiqueta: valor» nas notas.';
 }
+function calcIdade(n){
+  n = String(n||'').trim(); let m, d;
+  if((m = n.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) d = new Date(+m[3], +m[2]-1, +m[1]);
+  else if((m = n.match(/^(\d{4})-(\d{2})-(\d{2})/))) d = new Date(+m[1], +m[2]-1, +m[3]);
+  else return /^\d{1,3}$/.test(n) ? +n : null;
+  const t = new Date(); let a = t.getFullYear()-d.getFullYear();
+  if(t.getMonth()<d.getMonth() || (t.getMonth()===d.getMonth() && t.getDate()<d.getDate())) a--;
+  return (a>=0 && a<120) ? a : null;
+}
 function calcIMC(c){
   const num = x=>parseFloat(String(x||'').replace(',','.').replace(/[^0-9.]/g,''));
   let h = num(c.altura), w = num(c.peso); if(!h || !w) return '';
@@ -2133,6 +2142,7 @@ function renderFicha(){
       <div>
         <h1 class="view-title">${esc(c.nome)}</h1>
         <div class="view-sub">${esc([c.tipo, c.servico, c.atividade].filter(Boolean).join(' · ')) || 'Sem serviço associado'}</div>
+        <div class="view-sub">${esc([calcIdade(c.nascimento)!=null ? calcIdade(c.nascimento)+' anos' : '', c.profissao, ((c.extras||[]).find(e=>e.k==='Localidade')||{}).v].filter(Boolean).join(' · '))}</div>
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn" onclick="openPlanModal('${c.id}')">⚡ Gerar plano</button>
@@ -2243,11 +2253,21 @@ function readClientsFile(input){
   const file = input.files[0];
   input.value = '';
   if(!file) return;
-  if(typeof XLSX==='undefined'){ alert('Não consegui carregar o leitor de Excel. Verifica a ligação à internet e tenta de novo.'); return; }
   const reader = new FileReader();
   reader.onload = ()=>{
     try{
-      const wb = XLSX.read(new Uint8Array(reader.result), { type:'array', cellDates:true });
+      const u8 = new Uint8Array(reader.result);
+      const isBin = (u8[0]===0xD0 && u8[1]===0xCF) || (u8[0]===0x50 && u8[1]===0x4B);
+      if(!isBin){   // exportação em texto (.xls/.csv com tabulações), comum nos programas de gestão
+        let txt; try{ txt = new TextDecoder('utf-8',{fatal:true}).decode(u8); }catch(e){ txt = new TextDecoder('windows-1252').decode(u8); }
+        const first = txt.split(/\r?\n/)[0] || '';
+        if(first.includes('\t')){
+          const rows = txt.split(/\r?\n/).filter(l=>l.trim()).map(l=>l.split('\t'));
+          prepareClientImport(rows, file.name, 'texto'); return;
+        }
+      }
+      if(typeof XLSX==='undefined'){ showImportMessage('Não consegui carregar o leitor de Excel. Verifica a ligação à internet e tenta de novo.', false); return; }
+      const wb = XLSX.read(u8, { type:'array', cellDates:true });
       const sheetName = wb.SheetNames.find(n=>normText(n)==='clientes') || wb.SheetNames[0];
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header:1, defval:'', raw:false, dateNF:'yyyy-mm-dd' });
       prepareClientImport(rows, file.name, sheetName);
@@ -2282,9 +2302,11 @@ function prepareClientImport(rows, fileName, sheetName){
     codigo: col(/^codigo$/), tipo: col(/^tipo$/), servico: col(/^servico$/), atividade: col(/^atividade$/),
     inicio: col(/^inicio da caderneta/), fim: col(/^fim real/), sessoes: col(/^sessoes esperadas/), notas: col(/^(notas?|observa)/)
   };
-  const reportMode = C.codigo>=0 && C.servico>=0;
+  const G = { nasc: col(/^nascimento$/), sexo: col(/^sexo$/), prof: col(/^profissao$/), tel: col(/^contacto$/), email: col(/^e-?mail$/), local: col(/^localidade$/), status: col(/^status$/), insc: col(/^inscricao$/), valid: col(/^validade$/), ini: col(/^inicio$/), ult: col(/^ultima visita$/), ativ: col(/^atividade$/) };
+  const gymMode = C.codigo>=0 && G.nasc>=0 && G.tel>=0;
+  const reportMode = !gymMode && C.codigo>=0 && C.servico>=0;
   const extraCols = [];
-  if(!reportMode){
+  if(!reportMode && !gymMode){
     header.forEach((h,i)=>{ if(i!==nameCol && h && !/^(n[ºo°]?|#|id|num(ero)?)$/.test(normText(h))) extraCols.push(i); });
   }
   const get = (r,i)=> i>=0 ? (r[i]||'') : '';
@@ -2295,7 +2317,12 @@ function prepareClientImport(rows, fileName, sheetName){
     const nome = (r[nameCol]||'').replace(/\s+/g,' ');
     if(!nome) return;
     const rec = { nome };
-    if(reportMode){
+    if(gymMode){
+      const val = i=>{ const x = get(r,i).trim(); return /^-+$/.test(x) ? '' : x; };
+      rec.codigo = val(C.codigo); rec.sexo = val(G.sexo); rec.nascimento = val(G.nasc); rec.profissao = val(G.prof);
+      rec.telefone = val(G.tel); rec.email = val(G.email); rec.servico = val(G.ativ); rec.cadFim = parseDateISO(get(r,G.valid));
+      rec.extras = [['Localidade',G.local],['Estado',G.status],['Inscrição no ginásio',G.insc],['Início do contrato',G.ini],['Última visita',G.ult]].map(([k,i])=>({k, v: val(i)})).filter(e=>e.v);
+    } else if(reportMode){
       rec.codigo = get(r,C.codigo); rec.tipo = get(r,C.tipo); rec.servico = get(r,C.servico); rec.atividade = get(r,C.atividade);
       rec.cadInicio = parseDateISO(get(r,C.inicio)); rec.cadFim = parseDateISO(get(r,C.fim));
       rec.sessoes = get(r,C.sessoes);
@@ -2309,9 +2336,16 @@ function prepareClientImport(rows, fileName, sheetName){
     seen.add(key);
     const match = DATA.clients.find(c=>(rec.codigo && c.codigo===rec.codigo) || normText(c.nome)===normText(nome));
     if(!match){ fresh.push({ id: uid(), notas: '', ...rec }); return; }
-    if(!reportMode){ repeated++; return; }
+    if(!reportMode && !gymMode){ repeated++; return; }
     const patch = {};
-    Object.keys(rec).forEach(k=>{ if(k!=='nome' && rec[k] && rec[k]!==match[k]) patch[k] = rec[k]; });
+    Object.keys(rec).forEach(k=>{
+      if(k==='nome' || k==='extras' || !rec[k] || rec[k]===match[k]) return;
+      patch[k] = rec[k];
+    });
+    if(gymMode && rec.extras && rec.extras.length){
+      const merged = (match.extras||[]).filter(e=>!rec.extras.some(n=>n.k===e.k)).concat(rec.extras);
+      if(JSON.stringify(merged)!==JSON.stringify(match.extras||[])) patch.extras = merged;
+    }
     if(Object.keys(patch).length) updates.push({ target: match, patch }); else same++;
   });
   pendingImport = { fresh, updates };
@@ -2321,14 +2355,14 @@ function prepareClientImport(rows, fileName, sheetName){
     return;
   }
   const rowHtml = (nome, meta)=>`<div class="list-row"><div class="list-row-main"><div class="list-row-title">${esc(nome)}</div><div class="list-row-meta">${esc(meta)||'—'}</div></div></div>`;
-  const preview = fresh.slice(0,8).map(c=>rowHtml(c.nome, reportMode ? clientMeta(c) : c.notas)).join('');
+  const preview = fresh.slice(0,8).map(c=>rowHtml(c.nome, (reportMode||gymMode) ? clientMeta(c) : c.notas)).join('');
   const summary = [];
   if(fresh.length) summary.push(`<strong>${fresh.length}</strong> clientes novos`);
   if(updates.length) summary.push(`<strong>${updates.length}</strong> clientes a atualizar`);
   showImportMessage(`
     <p>${summary.join(' e ')} em <strong>${esc(fileName)}</strong> (folha "${esc(sheetName)}").${(same+repeated) ? ` ${same+repeated} sem alterações.` : ''}</p>
     ${usedFallback ? '<p class="view-sub" style="color:var(--ochre);">Não encontrei uma coluna "Nome", por isso usei a primeira coluna.</p>' : ''}
-    ${reportMode ? '<p class="view-sub">Importo código, tipo, serviço, atividade e datas da caderneta. Pagamentos e sessões ficam de fora, porque pertencem à app de gestão.</p>' : (extraCols.length ? `<p class="view-sub">As colunas ${extraCols.map(i=>esc(header[i])).join(', ')} vão para as notas de cada cliente.</p>` : '')}
+    ${gymMode ? '<p class="view-sub">Ficheiro de gestão do ginásio reconhecido. Importo código, sexo, nascimento, profissão, contactos, localidade, estado, serviço e validade. Não importo NIF, cartão de cidadão, morada nem valores de pagamento.</p>' : reportMode ? '<p class="view-sub">Importo código, tipo, serviço, atividade e datas da caderneta. Pagamentos e sessões ficam de fora, porque pertencem à app de gestão.</p>' : (extraCols.length ? `<p class="view-sub">As colunas ${extraCols.map(i=>esc(header[i])).join(', ')} vão para as notas de cada cliente.</p>` : '')}
     ${preview ? `<div class="list" style="margin-top:10px;">${preview}</div>` : ''}
     ${fresh.length>8 ? `<p class="view-sub" style="margin-top:8px;">…e mais ${fresh.length-8} novos.</p>` : ''}`, true);
   const label = [];
