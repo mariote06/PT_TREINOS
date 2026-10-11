@@ -235,6 +235,8 @@
   .exline input, .exline select{ padding: 7px 8px; font-size: 13px; }
   .exline .exname{ font-weight: 600; font-size: 14px; }
 
+  .metbox{ border-left:3px solid var(--ochre); padding:6px 12px; margin-bottom:8px; font-size:13px; line-height:1.45; }
+  .metbox i{ opacity:.7; }
   .exline .exl-met, .exline .exmet-hint{ grid-column:1 / -1; }
   .exline .exmet-hint{ font-size:12px; opacity:.8; padding:2px 2px 0; }
   .exline .exwarn{ grid-column:1 / -1; background:rgba(168,80,61,0.15); border:1px solid var(--danger); color:#f0b4a6; border-radius:var(--radius-s); padding:8px 10px; font-size:13px; line-height:1.4; }
@@ -537,7 +539,12 @@
         <div class="field"><label>CrossFit / funcional</label><select id="plan-n-cf"><option value="">Auto</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
       </div>
       <div class="row">
-        <div class="field"><label>Metodologia nos exercícios de força (opcional)</label><select id="plan-met"><option value="">Nenhuma</option></select></div>
+        <div class="field"><label>Metodologia - força</label><select id="plan-met"><option value="">Nenhuma</option></select></div>
+        <div class="field"><label>Metodologia - cardio</label><select id="plan-met-cardio"><option value="">Nenhuma</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Metodologia - CrossFit</label><select id="plan-met-cf"><option value="">Nenhuma</option></select></div>
+        <div class="field"><label>Metodologia - reabilitação</label><select id="plan-met-reab"><option value="">Nenhuma</option></select></div>
       </div>
       <div style="font-size:12px;opacity:.75;">Reabilitação exige patologia escolhida. CrossFit só entra em Intermédio/Avançado sem patologia.</div>
     </details>
@@ -1865,6 +1872,39 @@ const METODOLOGIAS = {
   'Complex':{nome:'Complex',desc:'Vários movimentos seguidos com o mesmo equipamento sem pousar a carga.',series:'4',reps:'5 reps de cada movimento',descanso:'2 min'},
   'Intervalado (HIIT)':{nome:'Intervalado (HIIT)',desc:'Intervalos de esforço alto alternados com recuperação (ex: 40 s / 20 s ou 30 s / 30 s).',series:'6',reps:'40 s ON / 20 s OFF',descanso:'20s'}
 };
+
+const METOBJ = {
+  'AMRAP':'Resistência muscular e cardiovascular, capacidade de trabalho e gestão do ritmo.',
+  'Circuito':'Condição física geral, gasto calórico e resistência muscular com pouco tempo.',
+  'Drop Set':'Hipertrofia: aumentar o stress metabólico e o volume de trabalho perto da falha.',
+  'EMOM':'Controlo de ritmo, resistência e capacidade de trabalho com recuperação programada.',
+  'For Time (AFAP)':'Capacidade de trabalho, eficiência técnica sob fadiga e competitividade.',
+  'Rest Pause':'Hipertrofia e força-resistência, com mais repetições efetivas perto da falha.',
+  'Super Série':'Poupar tempo e aumentar a densidade do treino; antagonistas permitem manter a carga.',
+  'Série em Pirâmide':'Força e hipertrofia: aquece progressivamente e treina várias zonas de repetições.',
+  'Tabata':'Potência aeróbia e anaeróbia, gasto calórico e melhoria do VO2máx em pouco tempo.',
+  'Tri Set':'Hipertrofia e fadiga local elevada no mesmo grupo muscular, com tempo reduzido.',
+  'Giant Set':'Hipertrofia, resistência muscular e gasto calórico elevado.',
+  'Bi-Set':'Aumentar volume e densidade para o mesmo músculo, com pouco descanso.',
+  'Pré-exaustão':'Hipertrofia: garantir que o músculo-alvo chega à fadiga antes dos músculos auxiliares.',
+  'Pós-exaustão':'Hipertrofia: levar o músculo-alvo à fadiga total depois do composto.',
+  'Cluster Set':'Força e potência: manter carga alta e velocidade com micro-pausas dentro da série.',
+  'Myo-reps':'Hipertrofia eficiente: muitas repetições efetivas em pouco tempo.',
+  'Negativas (excêntrico)':'Força e hipertrofia (a fase excêntrica gera muito estímulo) e controlo motor.',
+  'Tempo (cadência)':'Técnica, controlo, tempo sob tensão e hipertrofia.',
+  'Isometria / Pausa':'Força em ângulos específicos, controlo, estabilidade e eliminar o balanço.',
+  'Parciais (21s)':'Hipertrofia e resistência muscular local com grande tempo sob tensão.',
+  'Escada (Ladder)':'Volume progressivo com boa qualidade, resistência e capacidade de trabalho.',
+  'Chipper':'Resistência muscular e mental, capacidade de trabalho e gestão de fadiga.',
+  'Complex':'Coordenação, condicionamento metabólico e eficiência de movimento com a mesma carga.',
+  'Intervalado (HIIT)':'Condição cardiovascular, gasto calórico e capacidade anaeróbia.'
+};
+function metInfoHtml(keys, style){
+  const ks = [...new Set(keys)].filter(k=>METODOLOGIAS[k]);
+  if(!ks.length) return '';
+  return ks.map(k=>{ const m=METODOLOGIAS[k];
+    return `<div class="${style}"><b>${esc(k)}</b><div><i>O que é:</i> ${esc(m.desc)}</div><div><i>Objetivo:</i> ${esc(METOBJ[k]||'')}</div><div><i>Sugestão:</i> ${esc(m.series)} série(s) · ${esc(m.reps)} · descanso ${esc(m.descanso)}</div></div>`; }).join('');
+}
 function metOptions(sel){ return '<option value="">Sem metodologia</option>' + Object.keys(METODOLOGIAS).map(k=>`<option value="${esc(k)}" ${sel===k?'selected':''}>Metodologia - ${esc(k)}</option>`).join(''); }
 function metChange(row){
   const k = row.querySelector('.exl-met').value, h = row.querySelector('.exmet-hint');
@@ -1873,7 +1913,7 @@ function metChange(row){
   row.querySelector('.exl-series').value = m.series;
   row.querySelector('.exl-reps').value = m.reps;
   row.querySelector('.exl-descanso').value = m.descanso;
-  h.textContent = m.desc + (m.bloco ? ` (junta ${m.bloco}${m.bloco===4?'+':''} exercícios seguidos com a mesma metodologia)` : '');
+  h.textContent = m.desc + ' Objetivo: ' + (METOBJ[k]||'') + (m.bloco ? ` (junta ${m.bloco}${m.bloco===4?'+':''} exercícios seguidos com a mesma metodologia)` : '');
   h.style.display='block';
 }
 function openWorkoutModal(workoutId){
@@ -1914,7 +1954,7 @@ function addExline(existing){
     <div class="exwarn" style="display:none;"></div>
   `;
   wrap.appendChild(row);
-  if(existing && existing.met){ const h=row.querySelector('.exmet-hint'); const m=METODOLOGIAS[existing.met]; if(m){ h.textContent=m.desc; h.style.display='block'; } }
+  if(existing && existing.met){ const h=row.querySelector('.exmet-hint'); const m=METODOLOGIAS[existing.met]; if(m){ h.textContent=m.desc+' Objetivo: '+(METOBJ[existing.met]||''); h.style.display='block'; } }
 }
 function checkExline(row, userChange){
   const warn = row.querySelector('.exwarn'); if(!warn) return false;
@@ -2611,7 +2651,7 @@ function planPickExercise(slot, ctx, usedPlan, usedSession){
 function buildAutoPlan(p){
   let cfg = PLAN_OBJ[p.objetivo];
   p = { ...p, _diasPedidos: p.dias };
-  const comp = Object.assign({met:null,forca:null,cardio:null,cardioMin:null,reab:null,cf:null}, p.comp||{});
+  const comp = Object.assign({met:null,metCardio:null,metCf:null,metReab:null,forca:null,cardio:null,cardioMin:null,reab:null,cf:null}, p.comp||{});
   const manualForca = comp.forca!=null;
   const avisos = ['Plano gerado automaticamente por regras gerais de treino. Ajusta-o ao cliente antes de aplicar.'];
   // limitações
@@ -2702,7 +2742,7 @@ function buildAutoPlan(p){
         else if(/alongamento|respiracao|relaxamento|rolamento|pendular|postura|alinhamento|gato|joelhos ao peito|mobilidade|alfabeto/.test(n)) reps='30 s';
         else if(/isometric|hold|equilibrio|tandem|short foot/.test(n)) reps='20-30 s';
         usedRehab.add(e.id); usedSession.add(e.id);
-        lines.push({ exercicio: e.nome, series, reps, carga:'Sem dor (≤ 3/10)', descanso:'30s' });
+        lines.push({ exercicio: e.nome, series, reps, carga:'Sem dor (≤ 3/10)', descanso:'30s', tipo:'reab' });
         total += series*1 + 1;
       });
     }
@@ -2717,22 +2757,24 @@ function buildAutoPlan(p){
       if(!manualForca && lines.length >= 3 && total + t > budget + 1.5) break;
       total += t; usedSession.add(ex.id); usedPlan.add(ex.id);
       const cfReps = isCF ? (PLAN_CF_HOLD.test(normText(ex.nome)) ? '20-40s' : slot.reps) : null;
-      lines.push({ exercicio: ex.nome, series: s, reps: isCF ? cfReps : (slot.main ? cfg.reps[0] : cfg.reps[1]), carga: isCF ? 'RPE 7 (técnica primeiro)' : carga, descanso: rest+'s' });
+      lines.push({ exercicio: ex.nome, series: s, reps: isCF ? cfReps : (slot.main ? cfg.reps[0] : cfg.reps[1]), carga: isCF ? 'RPE 7 (técnica primeiro)' : carga, descanso: rest+'s', tipo: isCF ? 'cf' : 'forca' });
     }
     let nCx = 0; const usedCardio = new Set();
     for(let i=0;i<nCardio;i++){
       const cx = planPickExercise(PLAN_SLOTS.CARDIO, ctx, new Set(), usedCardio);
-      if(cx){ usedCardio.add(cx.id); nCx++; lines.push({ exercicio: cx.nome, series: 1, reps: minEach+' min', carga: 'RPE 6', descanso: '—' }); }
+      if(cx){ usedCardio.add(cx.id); nCx++; lines.push({ exercicio: cx.nome, series: 1, reps: minEach+' min', carga: 'RPE 6', descanso: '—', tipo:'cardio' }); }
     }
-    if(comp.met && METODOLOGIAS[comp.met]){
-      const m = METODOLOGIAS[comp.met];
-      const idx = []; lines.forEach((l,i)=>{ if(l.carga!=='Sem dor (≤ 3/10)' && !/ min$/.test(l.reps) && !/RPE 7 \(técnica/.test(l.carga)) idx.push(i); });
-      const main = idx.length > 2 ? idx.slice(Math.min(2, idx.length)) : idx;   // preserva os 2 primeiros exercícios de força
-      let target = main.slice(0, m.bloco ? Math.max(m.bloco, main.length - main.length % m.bloco) : Math.min(main.length, 4));
-      if(m.bloco && target.length < m.bloco) target = [];
-      target.forEach(i=>{ Object.assign(lines[i], { series: m.series, reps: m.reps, descanso: m.descanso, met: comp.met }); });
-      if(target.length && tpl===PLAN_TPL[PLAN_SPLIT[p.dias][0]]) avisos.push('Metodologia «'+comp.met+'»: '+m.desc+' Aplicada aos exercícios de força depois dos 2 primeiros de cada treino.');
-    }
+    [['forca',comp.met],['cardio',comp.metCardio],['cf',comp.metCf],['reab',comp.metReab]].forEach(([tp,mk])=>{
+      const m = mk && METODOLOGIAS[mk]; if(!m) return;
+      let idx = []; lines.forEach((l,i)=>{ if(l.tipo===tp) idx.push(i); });
+      if(tp==='forca' && idx.length>2) idx = idx.slice(2);   // preserva os 2 primeiros exercícios de força
+      let target = m.bloco ? idx.slice(0, idx.length - idx.length % m.bloco) : idx.slice(0, tp==='forca' ? 4 : idx.length);
+      target.forEach(i=>{ Object.assign(lines[i], { series: m.series, reps: m.reps, descanso: m.descanso, met: mk }); });
+      const nomeTp = {forca:'força',cardio:'cardio',cf:'CrossFit',reab:'reabilitação'}[tp];
+      const k = 'met-'+tp;
+      if(target.length && !avisos.some(a=>a.startsWith('Metodologia «'+mk+'» ('+nomeTp))) avisos.push('Metodologia «'+mk+'» ('+nomeTp+'): '+m.desc);
+      else if(!target.length && !avisos.some(a=>a.includes('«'+mk+'» não foi aplicada ('+nomeTp))) avisos.push('Metodologia «'+mk+'» não foi aplicada ('+nomeTp+'): faltam exercícios deste tipo para formar o bloco.');
+    });
     if(lines.length < 3) avisos.push(`"${tpl.nome}" ficou com poucos exercícios para este equipamento.`);
     treinos.push({ nome: tpl.nome, exercicios: lines });
     est[tpl.nome] = Math.round(5 + total + nCx*minEach);
@@ -2770,7 +2812,7 @@ function prefillPlan(){
   document.getElementById('plan-semanas').value = d.semanas;
   document.getElementById('plan-patologia').innerHTML = '<option value="">Nenhuma</option>' + patOptions((c && c.patologia) || '');
   document.getElementById('plan-limitacoes').value = (c && c.limitacoes) || '';
-  document.getElementById('plan-met').innerHTML = '<option value="">Nenhuma</option>' + Object.keys(METODOLOGIAS).map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  ['plan-met','plan-met-cardio','plan-met-cf','plan-met-reab'].forEach(id=>{ document.getElementById(id).innerHTML = '<option value="">Nenhuma</option>' + Object.keys(METODOLOGIAS).map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join(''); });
   ['plan-n-forca','plan-n-cardio','plan-cardio-min','plan-n-reab','plan-n-cf'].forEach(id=>{ document.getElementById(id).value=''; });
 }
 function generatePlan(){
@@ -2786,7 +2828,7 @@ function generatePlan(){
     patologia: document.getElementById('plan-patologia').value
   };
   const gv = id=>{ const v = document.getElementById(id).value; return v==='' ? null : parseInt(v); };
-  p.comp = { forca: gv('plan-n-forca'), cardio: gv('plan-n-cardio'), cardioMin: gv('plan-cardio-min'), reab: gv('plan-n-reab'), cf: gv('plan-n-cf'), met: document.getElementById('plan-met').value || null };
+  p.comp = { forca: gv('plan-n-forca'), cardio: gv('plan-n-cardio'), cardioMin: gv('plan-cardio-min'), reab: gv('plan-n-reab'), cf: gv('plan-n-cf'), met: document.getElementById('plan-met').value || null, metCardio: document.getElementById('plan-met-cardio').value || null, metCf: document.getElementById('plan-met-cf').value || null, metReab: document.getElementById('plan-met-reab').value || null };
   if(p.comp.reab>0 && !p.patologia){ status.textContent = 'Escolhe uma patologia para incluir exercícios de reabilitação.'; return; }
   try{
     planResult = buildAutoPlan(p);
@@ -2801,7 +2843,8 @@ function generatePlan(){
   }
 }
 function renderPlanPreview(r){
-  const avisos = r.avisos.map(a=>`<div style="border-left:3px solid var(--ochre); padding:6px 12px; margin-bottom:8px; font-size:13px;">${esc(a)}</div>`).join('');
+  const metBox = metInfoHtml(r.treinos.flatMap(t=>t.exercicios.map(x=>x.met).filter(Boolean)), 'metbox');
+  const avisos = r.avisos.filter(a=>!/^Metodologia «.*\): /.test(a) || /não foi aplicada/.test(a)).map(a=>`<div style="border-left:3px solid var(--ochre); padding:6px 12px; margin-bottom:8px; font-size:13px;">${esc(a)}</div>`).join('');
   const treinos = r.treinos.map(t=>`
     <div style="margin-bottom:12px;">
       <div style="font-weight:600;">${esc(t.nome)} <span class="tag">≈ ${r.estimativas[t.nome]} min</span></div>
@@ -2811,7 +2854,7 @@ function renderPlanPreview(r){
   document.getElementById('plan-preview').innerHTML = `
     <div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; margin-bottom:6px; max-height:340px; overflow-y:auto;">
       <div style="font-family:var(--font-display); font-size:17px; margin-bottom:10px;">${esc(r.nome)}</div>
-      ${avisos}${treinos}
+      ${avisos}${metBox ? '<div style="font-family:var(--font-display);font-size:15px;margin:10px 0 6px;">Metodologias neste plano</div>'+metBox : ''}${treinos}
       <div style="margin-top:12px; border-top:1px solid var(--line); padding-top:10px;">${semanas}</div>
     </div>
     <div class="view-sub">A estimativa inclui 5 min de aquecimento. Depois de importar, podes editar cada treino na aba Treinos.</div>`;
@@ -2977,6 +3020,7 @@ function buildCyclePrintHtml(cycleId){
   const overview = `<table class="ov"><thead><tr><th></th>${DIAS.map(d=>`<th>${esc(d.slice(0,3))}</th>`).join('')}</tr></thead><tbody>` +
     cy.semanas.map(w=>`<tr><th>S${w.numero}</th>${w.dias.map(d=>`<td>${d.workoutId ? esc(wName(d.workoutId)) : '<span class="rest">—</span>'}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
   const prog = cy.semanas.filter(w=>w.progressao).map(w=>`<li><b>S${w.numero}</b> ${esc(w.progressao)}</li>`).join('');
+  const metGl = metInfoHtml(workouts.flatMap(w=>w.exercicios.map(l=>l.met).filter(Boolean)), 'gl');
   const blocks = workouts.map(w=>`<section class="wk"><h3>${esc(strip(w.nome))}</h3>
     <table><thead><tr><th>Exercício</th><th>Séries</th><th>Reps</th><th>Carga</th><th>Descanso</th></tr></thead><tbody>` +
     w.exercicios.map((l,i)=>{ const e = exById(l.exId); if(!e) return '';
@@ -3008,6 +3052,8 @@ thead th{ background:#f3ecd9; font-size:10px; text-transform:uppercase; letter-s
 .wk{ margin-bottom:16px; break-inside:avoid; page-break-inside:avoid; }
 .wk td:not(:first-child), .wk th:not(:first-child){ text-align:center; white-space:nowrap; width:62px; }
 .wk td:nth-child(4), .wk th:nth-child(4){ width:120px; white-space:normal; }
+.gl{ border-left:3px solid #C69214; padding:4px 10px; margin:0 0 8px; font-size:10.5px; break-inside:avoid; }
+.gl i{ color:#777; }
 .met{ display:inline-block; margin-left:6px; background:#C69214; color:#fff; border-radius:4px; padding:0 5px; font-size:9px; font-weight:700; vertical-align:middle; }
 .note{ font-weight:400; color:#555; font-size:10px; margin-top:2px; }
 .var{ color:#8a6a0c; font-size:9.5px; margin-top:1px; }
@@ -3022,6 +3068,7 @@ footer{ margin-top:18px; font-size:9.5px; color:#888; border-top:1px solid #ddd;
 <h2>Visão geral das semanas</h2>${overview}
 ${prog ? `<h2>Progressão semanal</h2><ul>${prog}</ul>` : ''}
 <h2>Treinos</h2>${blocks || '<p>Este ciclo ainda não tem treinos atribuídos.</p>'}
+${metGl ? `<h2>Metodologias utilizadas</h2>${metGl}` : ''}
 <footer>Plano de treino elaborado pelo seu personal trainer. Pára o exercício e fala com o teu treinador em caso de dor, tonturas ou mal-estar. Gerado em ${formatDate(new Date().toISOString().slice(0,10))}.</footer>
 </body></html>`;
 }
