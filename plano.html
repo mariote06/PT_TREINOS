@@ -68,6 +68,15 @@
   const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
   const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function fromB64u(s){ s = s.replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; const bin = atob(s); const u = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+  async function inflate(u8){ const ds = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw')); return new Uint8Array(await new Response(ds).arrayBuffer()); }
+  async function decrypt(str, pin){
+    const u8 = fromB64u(str.slice(2));
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt:u8.slice(0,16), iterations:150000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['decrypt']);
+    const plain = new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv:u8.slice(16,28) }, key, u8.slice(28)));
+    const body = plain[0]===1 ? await inflate(plain.slice(1)) : plain.slice(1);
+    return JSON.parse(new TextDecoder().decode(body));
+  }
   async function unpack(str){
     const kind = str.slice(0,2), u8 = fromB64u(str.slice(2));
     if(kind==='z.'){
@@ -79,6 +88,24 @@
   function fail(msg){ app.innerHTML = '<div class="empty"><h2>Plano não encontrado</h2><p>'+esc(msg)+'</p></div>'; }
   const raw = (location.hash.match(/^#p=(.+)$/)||[])[1];
   if(!raw){ fail('O link está incompleto. Pede ao teu treinador para te enviar o link de novo.'); return; }
+  if(raw.slice(0,2)==='e.'){
+    let hh = 0; for(let i=0;i<raw.length;i++){ hh = (hh*31 + raw.charCodeAt(i))|0; }
+    const PK = 'pin-' + (hh>>>0).toString(36);
+    const ask = (msg)=>{
+      app.innerHTML = '<div class="empty" style="padding-top:80px"><div class="kicker">Plano de treino</div><h1>Introduz o PIN</h1><p>O teu treinador enviou-te um PIN para abrires este plano.</p>'
+        + '<form id="pf"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="PIN" style="font-size:24px;text-align:center;letter-spacing:.3em;width:200px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text)"><br><br>'
+        + '<button class="tab on" type="submit" style="padding:12px 28px;font-size:16px">Abrir plano</button></form><p id="pm" style="color:#d9776a;min-height:22px">'+esc(msg||'')+'</p></div>';
+      const inp = document.getElementById('pin'); inp.focus();
+      document.getElementById('pf').onsubmit = async (ev)=>{
+        ev.preventDefault(); const pin = inp.value.trim(); if(!pin) return;
+        try{ const P = await decrypt(raw, pin); try{ localStorage.setItem(PK, pin); }catch(e){} start(P); }
+        catch(e){ document.getElementById('pm').textContent = 'A verificar…'; setTimeout(()=>ask('PIN incorreto. Tenta outra vez.'), 900); }
+      };
+    };
+    let saved = ''; try{ saved = localStorage.getItem(PK)||''; }catch(e){}
+    if(saved) decrypt(raw, saved).then(start).catch(()=>ask()); else ask();
+    return;
+  }
   unpack(raw).then(start).catch(()=>fail('Não consegui abrir este link. Pede ao teu treinador para o enviar de novo.'));
 
   function start(P){

@@ -655,6 +655,10 @@
   <div class="modal">
     <h3>Enviar plano ao cliente</h3>
     <div class="view-sub" style="margin-bottom:10px;">O cliente abre este link no telemóvel e vê o plano (semanas, treinos, exercícios, aulas) e pode ir marcando o que já fez. Não precisa de instalar nada.</div>
+    <div class="field"><label>PIN de acesso (opcional, 4 a 8 números)</label>
+      <div style="display:flex; gap:8px;"><input id="share-pin" type="text" inputmode="numeric" maxlength="8" placeholder="Sem PIN" oninput="this.value=this.value.replace(/\\D/g,''); refreshShareLink()" style="flex:1;"><button class="btn btn-sm" onclick="genSharePin()">Gerar PIN</button></div>
+      <div class="view-sub" style="margin-top:4px;">Com PIN, o plano fica cifrado no link e só abre quem souber o PIN. Envia o PIN numa mensagem separada.</div>
+    </div>
     <div class="field"><label>Link</label><textarea id="share-url" rows="4" readonly onclick="this.select()"></textarea></div>
     <div id="share-info" class="view-sub" style="margin-bottom:8px;"></div>
     <div class="modal-actions" style="flex-wrap:wrap;">
@@ -3152,13 +3156,25 @@ function toggleWeek(cycleId, weekIdx){
 }
 // ---------- ENVIAR PLANO AO CLIENTE (link com os dados no próprio endereço, sem servidor) ----------
 function b64url(u8){ let s=''; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
-async function packPayload(obj){
+async function packBytes(obj){
   const bytes = new TextEncoder().encode(JSON.stringify(obj));
   if(typeof CompressionStream!=='undefined'){
     const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-    return 'z.' + b64url(new Uint8Array(await new Response(cs).arrayBuffer()));
+    return { z: true, bytes: new Uint8Array(await new Response(cs).arrayBuffer()) };
   }
-  return 'b.' + b64url(bytes);
+  return { z: false, bytes };
+}
+async function packPayload(obj, pin){
+  const p = await packBytes(obj);
+  if(!pin) return (p.z ? 'z.' : 'b.') + b64url(p.bytes);
+  if(!(window.crypto && crypto.subtle)) throw new Error('Este navegador não suporta PIN.');
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey({ name:'PBKDF2', salt, iterations:150000, hash:'SHA-256' }, km, { name:'AES-GCM', length:256 }, false, ['encrypt']);
+  const plain = new Uint8Array(p.bytes.length+1); plain[0] = p.z ? 1 : 0; plain.set(p.bytes, 1);
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, plain));
+  const out = new Uint8Array(28+ct.length); out.set(salt,0); out.set(iv,16); out.set(ct,28);
+  return 'e.' + b64url(out);
 }
 function buildSharePayload(cy){
   const client = DATA.clients.find(c=>c.id===cy.clientId);
@@ -3190,21 +3206,40 @@ function buildSharePayload(cy){
   }) }));
   return { v:1, n: client ? client.nome.trim().split(/\s+/)[0] : '', c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
 }
-let shareUrl = '', shareName = '';
+let shareUrl = '', shareName = '', sharePayloadObj = null, shareTimer = null;
 async function shareCycle(cycleId){
   const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
   const payload = buildSharePayload(cy);
   if(!payload.w.length && !payload.a.length){ alert('Este ciclo ainda não tem treinos nem aulas atribuídos.'); return; }
-  const pack = await packPayload(payload);
-  shareUrl = new URL('plano.html', location.href).href + '#p=' + pack;
-  shareName = payload.n;
-  document.getElementById('share-url').value = shareUrl;
-  document.getElementById('share-info').textContent = `Link com ${shareUrl.length} caracteres.` + (shareUrl.length>8000 ? ' É grande: algumas apps de mensagens podem cortá-lo. Se acontecer, usa o PDF.' : '') + ' Quem tiver o link vê o plano: envia só ao cliente.';
+  sharePayloadObj = payload; shareName = payload.n;
+  document.getElementById('share-pin').value = '';
+  await refreshShareLink(true);
   openModal('modal-share');
+}
+function genSharePin(){
+  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+  document.getElementById('share-pin').value = String(n).padStart(6,'0');
+  refreshShareLink(true);
+}
+function refreshShareLink(now){
+  clearTimeout(shareTimer);
+  return new Promise(res=>{ shareTimer = setTimeout(async ()=>{
+    const pin = document.getElementById('share-pin').value;
+    const info = document.getElementById('share-info');
+    if(pin && pin.length<4){ info.textContent = 'O PIN precisa de pelo menos 4 números.'; res(); return; }
+    try{
+      info.textContent = pin ? 'A cifrar…' : '';
+      const pack = await packPayload(sharePayloadObj, pin);
+      shareUrl = new URL('plano.html', location.href).href + '#p=' + pack;
+      document.getElementById('share-url').value = shareUrl;
+      info.textContent = `Link com ${shareUrl.length} caracteres.` + (pin ? ' Cifrado: o cliente tem de introduzir o PIN ' + pin + '.' : ' Sem PIN: quem tiver o link vê o plano.') + (shareUrl.length>8000 ? ' É grande: algumas apps de mensagens podem cortá-lo. Se acontecer, usa o PDF.' : '');
+    }catch(e){ info.textContent = e.message; }
+    res();
+  }, now ? 0 : 400); });
 }
 function copyShareLink(){
   const ta = document.getElementById('share-url'); ta.select();
-  const done = ()=>{ document.getElementById('share-info').textContent = 'Link copiado. Cola-o numa mensagem ao cliente.'; };
+  const done = ()=>{ document.getElementById('share-info').textContent = 'Link copiado. Cola-o numa mensagem ao cliente.' + (document.getElementById('share-pin').value ? ' Envia o PIN à parte.' : ''); };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareUrl).then(done).catch(()=>{ try{ document.execCommand('copy'); done(); }catch(e){} });
   else { try{ document.execCommand('copy'); done(); }catch(e){} }
 }
