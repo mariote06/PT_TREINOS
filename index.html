@@ -383,6 +383,7 @@
           <div class="view-sub">A lista de clientes usada para atribuir ciclos.</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="createTestClient()">Cliente de teste</button>
           <button class="btn" onclick="restructureAllNotes()">Reestruturar notas</button>
           <button class="btn" onclick="downloadClientTemplate()">Modelo Excel</button>
           <button class="btn" onclick="document.getElementById('clients-xlsx').click()">Importar Excel</button>
@@ -650,6 +651,21 @@
 </div>
 
 <!-- MODAL: importar clientes -->
+<div class="modal-backdrop" id="modal-share">
+  <div class="modal">
+    <h3>Enviar plano ao cliente</h3>
+    <div class="view-sub" style="margin-bottom:10px;">O cliente abre este link no telemóvel e vê o plano (semanas, treinos, exercícios, aulas) e pode ir marcando o que já fez. Não precisa de instalar nada.</div>
+    <div class="field"><label>Link</label><textarea id="share-url" rows="4" readonly onclick="this.select()"></textarea></div>
+    <div id="share-info" class="view-sub" style="margin-bottom:8px;"></div>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="btn" onclick="closeModal('modal-share')">Fechar</button>
+      <button class="btn" onclick="window.open(document.getElementById('share-url').value,'_blank')">Pré-visualizar</button>
+      <button class="btn" onclick="copyShareLink()">Copiar link</button>
+      <button class="btn btn-primary" id="share-send-btn" onclick="sendShareLink()">Enviar (WhatsApp, SMS…)</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-aulas">
   <div class="modal">
     <h3>Aulas de grupo</h3>
@@ -2153,6 +2169,22 @@ function restructureNotes(c){
   c.notas = keep.join(' · ');
   return n;
 }
+function createTestClient(){
+  const nome = 'Mário Teixeira (teste)';
+  if(DATA.clients.some(c=>c.nome===nome)){ alert('O cliente de teste já existe: «'+nome+'».'); return; }
+  if(DATA.exercises.length===0) loadFullLibrary();
+  if(DATA.exercises.length===0) return;
+  const c = { id: uid(), nome, notas: 'Cliente de teste para experimentar a app. Podes apagá-lo quando quiseres.', sexo: 'M', objetivo: 'Condição física geral', nivel: 'Intermédio', diasSemana: '3', duracaoSessao: '60', tipo: 'Interno', servico: 'PT teste', extras: [] };
+  DATA.clients.push(c);
+  if(confirm('Cliente «'+nome+'» criado.\n\nQueres também um ciclo de exemplo (3 treinos por semana, 4 semanas, com uma aula de grupo) para experimentares o botão «Enviar ao cliente»?')){
+    try{
+      importResult(buildAutoPlan({ objetivo:'Condição física geral', nivel:'Intermédio', dias:3, duracao:60, semanas:4, equipamento:'Ginásio completo', limitacoes:'', patologia:'', comp:{ cardio:1, cardioMin:10 } }), c.id);
+      const cy = DATA.cycles[DATA.cycles.length-1];
+      if(cy && DATA.aulas && DATA.aulas.length){ cy.semanas[0].dias[1].aulaId = DATA.aulas[1] ? DATA.aulas[1].id : DATA.aulas[0].id; cy.semanas[0].dias[1].aulaHora = '18:30'; }
+      saveData();
+    }catch(e){ alert('Criei o cliente, mas não consegui gerar o ciclo de exemplo: '+e.message); }
+  } else saveData();
+}
 function restructureAllNotes(){
   const todos = DATA.clients.filter(c=>c.notas && /[^:·]{2,40}:\s*\S/.test(c.notas));
   if(!todos.length){ alert('Não há notas com dados (formato «Etiqueta: valor») para reestruturar.'); return; }
@@ -3118,6 +3150,69 @@ function toggleWeek(cycleId, weekIdx){
   const el = document.getElementById(`week-${cycleId}-${weekIdx}`);
   el.classList.toggle('open');
 }
+// ---------- ENVIAR PLANO AO CLIENTE (link com os dados no próprio endereço, sem servidor) ----------
+function b64url(u8){ let s=''; u8.forEach(b=>s+=String.fromCharCode(b)); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+async function packPayload(obj){
+  const bytes = new TextEncoder().encode(JSON.stringify(obj));
+  if(typeof CompressionStream!=='undefined'){
+    const cs = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return 'z.' + b64url(new Uint8Array(await new Response(cs).arrayBuffer()));
+  }
+  return 'b.' + b64url(bytes);
+}
+function buildSharePayload(cy){
+  const client = DATA.clients.find(c=>c.id===cy.clientId);
+  const strip = n => String(n||'').replace(cy.nome + ' — ', '');
+  const wIdx = {}, aIdx = {}, W = [], A = [], M = {};
+  const dias = cy.semanas.map(w=>({ n: w.numero, p: w.progressao||'', d: w.dias.map(d=>{
+    let wi = -1, ai = -1;
+    if(d.workoutId){
+      if(!(d.workoutId in wIdx)){
+        const w0 = DATA.workouts.find(x=>x.id===d.workoutId);
+        if(w0){
+          wIdx[d.workoutId] = W.length;
+          W.push({ n: strip(w0.nome), e: (w0.exercicios||[]).map(l=>{
+            const e = DATA.exercises.find(x=>x.id===l.exId); if(!e) return null;
+            if(l.met && METODOLOGIAS[l.met]) M[l.met] = { d: METODOLOGIAS[l.met].desc, o: METOBJ[l.met]||'' };
+            const o = { x: e.nome, s: l.series, r: l.reps };
+            if(l.carga) o.c = l.carga; if(l.descanso) o.d = l.descanso; if(l.variante) o.v = l.variante; if(l.met) o.m = l.met; if(e.notas) o.t = e.notas;
+            return o;
+          }).filter(Boolean) });
+        }
+      }
+      wi = (d.workoutId in wIdx) ? wIdx[d.workoutId] : -1;
+    }
+    if(d.aulaId){
+      const a = aulaById(d.aulaId);
+      if(a){ if(!(a.id in aIdx)){ aIdx[a.id] = A.length; A.push({ n: a.nome, du: a.duracao, i: a.intensidade, ds: a.descricao||'' }); } ai = aIdx[a.id]; }
+    }
+    return [wi, ai, d.aulaHora||''];
+  }) }));
+  return { v:1, n: client ? client.nome.trim().split(/\s+/)[0] : '', c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
+}
+let shareUrl = '', shareName = '';
+async function shareCycle(cycleId){
+  const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
+  const payload = buildSharePayload(cy);
+  if(!payload.w.length && !payload.a.length){ alert('Este ciclo ainda não tem treinos nem aulas atribuídos.'); return; }
+  const pack = await packPayload(payload);
+  shareUrl = new URL('plano.html', location.href).href + '#p=' + pack;
+  shareName = payload.n;
+  document.getElementById('share-url').value = shareUrl;
+  document.getElementById('share-info').textContent = `Link com ${shareUrl.length} caracteres.` + (shareUrl.length>8000 ? ' É grande: algumas apps de mensagens podem cortá-lo. Se acontecer, usa o PDF.' : '') + ' Quem tiver o link vê o plano: envia só ao cliente.';
+  openModal('modal-share');
+}
+function copyShareLink(){
+  const ta = document.getElementById('share-url'); ta.select();
+  const done = ()=>{ document.getElementById('share-info').textContent = 'Link copiado. Cola-o numa mensagem ao cliente.'; };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareUrl).then(done).catch(()=>{ try{ document.execCommand('copy'); done(); }catch(e){} });
+  else { try{ document.execCommand('copy'); done(); }catch(e){} }
+}
+function sendShareLink(){
+  const text = `Olá${shareName ? ' '+shareName : ''}! Aqui está o teu plano de treino:`;
+  if(navigator.share){ navigator.share({ title: 'O teu plano de treino', text, url: shareUrl }).catch(()=>{}); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + shareUrl), '_blank');
+}
 function aulaById(id){ return (DATA.aulas||[]).find(a=>a.id===id); }
 function openAulasModal(){ renderAulasList(); openModal('modal-aulas'); }
 function renderAulasList(){
@@ -3225,6 +3320,7 @@ function renderCycles(){
           <div class="view-sub">${esc(clientName(cycle.clientId))}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
         </div>
         <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm" onclick="shareCycle('${cycle.id}')">🔗 Enviar ao cliente</button>
           <button class="btn btn-sm" onclick="exportCyclePDF('${cycle.id}')">📄 Exportar PDF</button>
           <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteCycle('${cycle.id}')">Remover ciclo</button>
         </div>
