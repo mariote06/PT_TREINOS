@@ -181,7 +181,7 @@
   /* Forms */
   .field{ margin-bottom: 14px; }
   .field label{ display:block; font-size: 13px; color: var(--chalk-dim); margin-bottom: 5px; }
-  .field input, .field select, .field textarea{
+  .field input, .extra-row input, .field select, .field textarea{
     width: 100%;
     background: var(--surface-raised);
     border: 1px solid var(--line);
@@ -191,7 +191,7 @@
     font-family: var(--font-body);
     font-size: 14px;
   }
-  .field input:focus, .field select:focus, .field textarea:focus{
+  .field input:focus, .extra-row input:focus, .field select:focus, .field textarea:focus{
     outline: none;
     border-color: var(--ochre);
   }
@@ -237,6 +237,7 @@
 
   .metbox{ border-left:3px solid var(--ochre); padding:6px 12px; margin-bottom:8px; font-size:13px; line-height:1.45; }
   .metbox i{ opacity:.7; }
+  .extra-row{ display:grid; grid-template-columns:1fr 1.6fr auto; gap:8px; margin-bottom:8px; align-items:center; }
   .exline .exl-met, .exline .exmet-hint{ grid-column:1 / -1; }
   .exline .exmet-hint{ font-size:12px; opacity:.8; padding:2px 2px 0; }
   .exline .exwarn{ grid-column:1 / -1; background:rgba(168,80,61,0.15); border:1px solid var(--danger); color:#f0b4a6; border-radius:var(--radius-s); padding:8px 10px; font-size:13px; line-height:1.4; }
@@ -315,7 +316,7 @@
     .view-head .btn{ flex:1 1 auto; }
     .btn{ min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
     .btn-sm{ min-height:40px; padding:8px 12px; font-size:13px; }
-    .field input, .field select, .field textarea, .select-line select, #lib-search, .exline input, .exline select{ font-size:16px !important; min-height:44px; }
+    .field input, .extra-row input, .field select, .field textarea, .select-line select, #lib-search, .exline input, .exline select{ font-size:16px !important; min-height:44px; }
     .select-line select, #lib-search{ flex:1 1 100% !important; min-width:0 !important; width:100%; }
     .list-row{ flex-wrap:wrap; padding:12px 14px; }
     .list-row-actions{ width:100%; justify-content:flex-start; }
@@ -381,6 +382,7 @@
           <div class="view-sub">A lista de clientes usada para atribuir ciclos.</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn" onclick="restructureAllNotes()">Reestruturar notas</button>
           <button class="btn" onclick="downloadClientTemplate()">Modelo Excel</button>
           <button class="btn" onclick="document.getElementById('clients-xlsx').click()">Importar Excel</button>
           <input id="clients-xlsx" type="file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="readClientsFile(this)">
@@ -2053,6 +2055,61 @@ function cadernetaStatus(c){
 function optionsHtml(list, current, emptyLabel){
   return `<option value="">${emptyLabel}</option>` + list.map(x=>`<option ${x===current?'selected':''}>${esc(x)}</option>`).join('');
 }
+
+// Converte "Etiqueta: valor · Etiqueta: valor" (dados importados para as notas) em campos da ficha
+function restructureNotes(c){
+  const raw = String(c.notas||'').trim(); if(!raw) return 0;
+  const parts = raw.split(/\s*(?:·|\n|;|\|)\s*/).filter(Boolean);
+  const keep = []; let n = 0; c.extras = c.extras || [];
+  const setIf = (f,v)=>{ if(!c[f]){ c[f]=v; return true; } return false; };
+  parts.forEach(p=>{
+    const m = p.match(/^([^:]{2,40}):\s*(.+)$/);
+    if(!m){ keep.push(p); return; }
+    const k = m[1].trim(), v = m[2].trim(), t = normText(k); let ok = false;
+    if(/^(idade|data( de)? nasc|nascimento|nasc)/.test(t)) ok = setIf('nascimento', v);
+    else if(/^(sexo|genero)/.test(t)) ok = setIf('sexo', v);
+    else if(/^altura/.test(t)) ok = setIf('altura', v);
+    else if(/^peso/.test(t)) ok = setIf('peso', v);
+    else if(/^(telefone|telemovel|tlm|tlf|contacto|contato)/.test(t)) ok = setIf('telefone', v);
+    else if(/^(e-?mail|email)/.test(t)) ok = setIf('email', v);
+    else if(/^profiss/.test(t)) ok = setIf('profissao', v);
+    else if(/^objetiv/.test(t)){ const o = OBJETIVOS.find(x=>normText(x)===normText(v)); ok = o ? setIf('objetivo', o) : false; }
+    else if(/^(nivel|experiencia)/.test(t)){ const o = NIVEIS.find(x=>normText(x)===normText(v)); ok = o ? setIf('nivel', o) : false; }
+    else if(/^(lesoes|lesao|limitac|problemas|condic|patologia|restric)/.test(t)){ c.limitacoes = c.limitacoes ? c.limitacoes+' · '+v : v; ok = true; }
+    if(!ok){ if(!c.extras.some(e=>e.k===k && e.v===v)) c.extras.push({k, v}); }
+    n++;
+  });
+  c.notas = keep.join(' · ');
+  return n;
+}
+function restructureAllNotes(){
+  const todos = DATA.clients.filter(c=>c.notas && /[^:·]{2,40}:\s*\S/.test(c.notas));
+  if(!todos.length){ alert('Não há notas com dados (formato «Etiqueta: valor») para reestruturar.'); return; }
+  if(!confirm(`Reestruturar as notas de ${todos.length} cliente(s)?\n\nOs dados «Etiqueta: valor» passam para campos da ficha (idade, altura, peso, contactos, limitações…) ou para «Outros dados». O texto livre fica nas notas.`)) return;
+  let n = 0; todos.forEach(c=>{ n += restructureNotes(c); });
+  saveData();
+  alert(`Feito: ${n} dado(s) movidos para as fichas.`);
+}
+function restructureFicha(){
+  saveFicha();
+  const c = DATA.clients.find(x=>x.id===fichaId); if(!c) return;
+  const n = restructureNotes(c);
+  saveData();
+  const m = document.getElementById('ficha-msg'); if(m) m.textContent = n ? `${n} dado(s) das notas passaram para a ficha.` : 'Não encontrei dados «Etiqueta: valor» nas notas.';
+}
+function calcIMC(c){
+  const num = x=>parseFloat(String(x||'').replace(',','.').replace(/[^0-9.]/g,''));
+  let h = num(c.altura), w = num(c.peso); if(!h || !w) return '';
+  if(h > 3) h = h/100;
+  const i = w/(h*h); if(!isFinite(i) || i<8 || i>80) return '';
+  const cls = i<18.5?'abaixo do peso':i<25?'peso normal':i<30?'excesso de peso':'obesidade';
+  return i.toFixed(1)+' ('+cls+')';
+}
+function addExtraRow(){
+  const w = document.getElementById('f-extras'); const d = document.createElement('div');
+  d.className='extra-row'; d.innerHTML = `<input class="ex-k" type="text" placeholder="Campo"><input class="ex-v" type="text" placeholder="Valor"><button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">✕</button>`;
+  w.appendChild(d);
+}
 function renderFicha(){
   if(!fichaId) return;
   const c = DATA.clients.find(x=>x.id===fichaId);
@@ -2060,6 +2117,8 @@ function renderFicha(){
   const cycles = DATA.cycles.filter(cy=>cy.clientId===c.id).sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
   const stat = (num, lbl)=>`<div class="cycle-stat"><div class="num" style="font-size:22px;">${num}</div><div class="lbl">${lbl}</div></div>`;
   const status = cadernetaStatus(c);
+  const imc = calcIMC(c);
+  const extrasHtml = (c.extras||[]).map(e=>`<div class="extra-row"><input class="ex-k" type="text" value="${esc(e.k)}"><input class="ex-v" type="text" value="${esc(e.v)}"><button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">✕</button></div>`).join('');
   const cyclesHtml = cycles.length ? `<div class="list">` + cycles.map(cy=>`
       <div class="list-row">
         <div class="list-row-main">
@@ -2087,7 +2146,26 @@ function renderFicha(){
       ${c.sessoes ? stat(esc(c.sessoes),'sessões esperadas') : ''}
     </div>` : ''}
 
-    <h2 style="font-family:var(--font-display); font-size:20px; margin:8px 0 12px;">Perfil de treino</h2>
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:8px 0 12px;">Dados pessoais</h2>
+    <div class="row-2">
+      <div class="field"><label>Nome</label><input id="f-nome" type="text" value="${esc(c.nome)}"></div>
+      <div class="field"><label>Idade / data de nascimento</label><input id="f-nasc" type="text" value="${esc(c.nascimento||'')}"></div>
+    </div>
+    <div class="row-3">
+      <div class="field"><label>Sexo</label><input id="f-sexo" type="text" value="${esc(c.sexo||'')}"></div>
+      <div class="field"><label>Telefone</label><input id="f-tel" type="tel" value="${esc(c.telefone||'')}"></div>
+      <div class="field"><label>Email</label><input id="f-email" type="email" value="${esc(c.email||'')}"></div>
+    </div>
+    <div class="field"><label>Profissão</label><input id="f-prof" type="text" value="${esc(c.profissao||'')}"></div>
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Avaliação inicial</h2>
+    <div class="row-3">
+      <div class="field"><label>Altura</label><input id="f-altura" type="text" value="${esc(c.altura||'')}" placeholder="Ex: 1,75 m"></div>
+      <div class="field"><label>Peso</label><input id="f-peso" type="text" value="${esc(c.peso||'')}" placeholder="Ex: 72 kg"></div>
+      <div class="field"><label>IMC (calculado)</label><input type="text" value="${esc(imc||'—')}" disabled></div>
+    </div>
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Perfil de treino</h2>
     <div class="row-4">
       <div class="field"><label>Objetivo</label><select id="f-objetivo">${optionsHtml(OBJETIVOS, c.objetivo, '—')}</select></div>
       <div class="field"><label>Nível</label><select id="f-nivel">${optionsHtml(NIVEIS, c.nivel, '—')}</select></div>
@@ -2096,19 +2174,22 @@ function renderFicha(){
     </div>
     <div class="field"><label>Patologia / condição (para os planos automáticos, segundo o ACSM)</label><select id="f-patologia"><option value="">Nenhuma</option>${patOptions(c.patologia)}</select></div>
     <div class="field"><label>Limitações, lesões ou cuidados</label><textarea id="f-limitacoes" rows="3" placeholder="Ex: desconforto no ombro direito, evitar impacto...">${esc(c.limitacoes||'')}</textarea></div>
-    <div class="field"><label>Notas</label><textarea id="f-notas" rows="3">${esc(c.notas||'')}</textarea></div>
 
-    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Dados do cliente</h2>
-    <div class="row-2">
-      <div class="field"><label>Nome</label><input id="f-nome" type="text" value="${esc(c.nome)}"></div>
-      <div class="field"><label>Código</label><input id="f-codigo" type="text" value="${esc(c.codigo||'')}"></div>
-    </div>
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Outros dados</h2>
+    <div id="f-extras">${extrasHtml}</div>
+    <button class="btn btn-sm" style="margin:4px 0 14px;" onclick="addExtraRow()">+ Adicionar campo</button>
+    <div class="field"><label>Notas (texto livre)</label><textarea id="f-notas" rows="3">${esc(c.notas||'')}</textarea></div>
+    <button class="btn btn-sm" style="margin-bottom:6px;" onclick="restructureFicha()">Reestruturar dados das notas</button>
+    <div class="view-sub" style="margin-bottom:6px;">Passa para campos da ficha os dados em formato «Etiqueta: valor» que vieram nas notas da importação.</div>
+
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Caderneta</h2>
     <div class="row-3">
+      <div class="field"><label>Código</label><input id="f-codigo" type="text" value="${esc(c.codigo||'')}"></div>
       <div class="field"><label>Tipo</label><select id="f-tipo">${optionsHtml(['Interno','Externo'], c.tipo, '—')}</select></div>
       <div class="field"><label>Serviço</label><input id="f-servico" type="text" value="${esc(c.servico||'')}" placeholder="Ex: PT 30"></div>
-      <div class="field"><label>Atividade</label><input id="f-atividade" type="text" value="${esc(c.atividade||'')}"></div>
     </div>
-    <div class="row-2">
+    <div class="row-3">
+      <div class="field"><label>Atividade</label><input id="f-atividade" type="text" value="${esc(c.atividade||'')}"></div>
       <div class="field"><label>Início da caderneta</label><input id="f-cadinicio" type="date" value="${esc(c.cadInicio||'')}"></div>
       <div class="field"><label>Fim da caderneta</label><input id="f-cadfim" type="date" value="${esc(c.cadFim||'')}"></div>
     </div>
@@ -2129,8 +2210,10 @@ function saveFicha(){
   Object.assign(c, {
     nome, codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
     cadInicio: v('f-cadinicio'), cadFim: v('f-cadfim'),
-    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: v('f-patologia'), notas: v('f-notas')
+    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: v('f-patologia'), notas: v('f-notas'),
+    nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
+  c.extras = Array.from(document.querySelectorAll('#f-extras .extra-row')).map(r=>({ k: r.querySelector('.ex-k').value.trim(), v: r.querySelector('.ex-v').value.trim() })).filter(e=>e.k||e.v);
   saveData();
   document.getElementById('ficha-msg').textContent = 'Alterações guardadas.';
 }
@@ -2219,7 +2302,7 @@ function prepareClientImport(rows, fileName, sheetName){
       if(C.notas>=0 && r[C.notas]) rec.notas = r[C.notas];
     } else {
       const parts = extraCols.filter(i=>r[i]).map(i=>`${header[i]}: ${r[i]}`);
-      if(parts.length) rec.notas = parts.join(' · ').slice(0,500);
+      if(parts.length) rec.notas = parts.join(' · ');
     }
     const key = rec.codigo ? 'c'+rec.codigo : 'n'+normText(nome);
     if(seen.has(key)){ repeated++; return; }
@@ -2254,6 +2337,7 @@ function prepareClientImport(rows, fileName, sheetName){
   document.getElementById('import-clients-btn').textContent = 'Importar: ' + label.join(' + ');
 }
 function confirmImportClients(){
+  pendingImport.fresh.forEach(c=>restructureNotes(c));
   DATA.clients.push(...pendingImport.fresh);
   pendingImport.updates.forEach(u=>Object.assign(u.target, u.patch));
   pendingImport = { fresh: [], updates: [] };
