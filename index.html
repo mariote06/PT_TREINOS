@@ -297,6 +297,26 @@
   .list-row-actions{ flex-wrap:wrap; justify-content:flex-end; }
   .select-line{ flex-wrap:wrap; }
   .week-progress-input{ flex:1; width:auto; max-width:460px; margin-left:16px; }
+
+  .proto{ background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--radius-s); margin-bottom:10px; }
+  .proto summary{ cursor:pointer; padding:12px 14px; list-style:none; display:flex; flex-direction:column; gap:2px; }
+  .proto summary::-webkit-details-marker{ display:none; }
+  .proto-t{ font-weight:600; font-size:15px; }
+  .proto-m{ font-size:12.5px; opacity:.7; }
+  .proto-body{ padding:0 14px 14px; font-size:14px; line-height:1.5; }
+  .proto-p{ margin:8px 0; }
+  .proto-red{ border-left:3px solid #c0533a; background:rgba(192,83,58,.1); padding:8px 12px; margin:10px 0; border-radius:4px; }
+  .proto-red ul, .proto-cols ul{ margin:4px 0 0; padding-left:18px; }
+  .proto-fase{ border:1px solid var(--line); border-radius:var(--radius-s); padding:12px; margin:12px 0; }
+  .proto-fh{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .proto-fh span{ opacity:.7; font-size:12.5px; }
+  .proto-cols{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; font-size:13px; }
+  .proto-cols em{ font-style:normal; font-weight:600; opacity:.8; }
+  .proto-t2{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
+  .proto-t2 td{ padding:5px 6px; border-top:1px solid var(--line); }
+  .proto-t2 td:nth-child(2), .proto-t2 td:nth-child(3){ white-space:nowrap; opacity:.8; }
+  .proto-aviso{ font-size:12.5px; opacity:.7; margin:12px 0; }
+  @media (max-width:780px){ .proto-cols{ grid-template-columns:1fr; } }
   .btn:focus-visible, .rail-btn:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--ochre); outline-offset:2px; }
   @media (min-width: 781px){
     .main{ padding: 40px 48px; max-width: 1200px; }
@@ -366,6 +386,7 @@
     <div class="rail-nav">
       <button class="rail-btn active" data-view="clientes">Clientes</button>
       <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
+      <button class="rail-btn" data-view="protocolos"><span class="long">Protocolos</span><span class="short">Protoc.</span></button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
       <button class="rail-btn" data-view="ciclos">Ciclos</button>
       <button class="rail-btn" data-view="backup"><span class="long">Cópia de segurança</span><span class="short">Backup</span></button>
@@ -414,6 +435,18 @@
       </div>
       <div id="lib-count" class="view-sub" style="margin-bottom:12px;"></div>
       <div id="biblioteca-list"></div>
+    </div>
+
+    <!-- PROTOCOLOS -->
+    <div class="view" id="view-protocolos">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Protocolos de treino</h1>
+          <div class="view-sub">Reabilitação e treino por fases para lesões e patologias comuns. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
+        </div>
+      </div>
+      <div class="select-line"><select id="proto-grupo" onchange="renderProtocolos()"></select></div>
+      <div id="protocolos-list"></div>
     </div>
 
     <!-- TREINOS -->
@@ -467,6 +500,31 @@
         </div>
       </div>
       <div class="list">
+        <div class="list-row" style="align-items:flex-start; flex-direction:column; gap:10px;">
+          <div class="list-row-main" style="width:100%;">
+            <div class="list-row-title">Sincronizar entre dispositivos (PC e telemóvel)</div>
+            <div class="list-row-meta">Guarda os teus dados num repositório <b>privado</b> do GitHub e mantém o computador e o telemóvel iguais. Repete os mesmos passos em cada aparelho.</div>
+            <div class="list-row-meta" id="sync-status" style="margin-top:6px;"></div>
+          </div>
+          <div id="sync-form" style="width:100%;">
+            <details style="margin-bottom:10px;"><summary style="cursor:pointer;">Como preparar (só uma vez)</summary>
+              <ol class="view-sub" style="padding-left:18px; line-height:1.6;">
+                <li>No GitHub, cria um repositório <b>privado</b> chamado <b>ciclo-dados</b> (marca «Add a README file»).</li>
+                <li>Em github.com/settings/personal-access-tokens/new cria um token: «Repository access» → <i>Only select repositories</i> → ciclo-dados; «Permissions» → <i>Repository permissions</i> → <b>Contents: Read and write</b>. Copia o token (começa por github_pat_).</li>
+                <li>Cola aqui o repositório e o token, e carrega em «Ligar e sincronizar». Faz o mesmo no outro aparelho.</li>
+              </ol>
+            </details>
+            <div class="row-2">
+              <div class="field"><label>Repositório (utilizador/nome)</label><input id="sync-repo" type="text" placeholder="mariote06/ciclo-dados" autocapitalize="off" autocomplete="off"></div>
+              <div class="field"><label>Token do GitHub</label><input id="sync-token" type="password" placeholder="github_pat_…" autocomplete="off"></div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="sync-connect-btn" onclick="connectSync()">Ligar e sincronizar</button>
+              <button class="btn" id="sync-now-btn" onclick="syncNow(true)" style="display:none;">Sincronizar agora</button>
+              <button class="btn btn-ghost btn-danger" id="sync-off-btn" onclick="disconnectSync()" style="display:none;">Desligar</button>
+            </div>
+          </div>
+        </div>
         <div class="list-row" style="align-items:flex-start;">
           <div class="list-row-main">
             <div class="list-row-title">Exportar</div>
@@ -831,6 +889,24 @@
 </div>
 
 <!-- MODAL: ciclo -->
+<div class="modal-backdrop" id="modal-proto">
+  <div class="modal">
+    <h3>Ciclo de protocolo</h3>
+    <div class="view-sub" id="proto-title" style="margin-bottom:12px;"></div>
+    <input type="hidden" id="proto-id">
+    <div class="field"><label>Cliente</label><select id="proto-cliente"></select></div>
+    <div class="row-2">
+      <div class="field"><label>Data de início</label><input id="proto-inicio" type="date"></div>
+      <div class="field"><label>Começar na fase</label><select id="proto-fase"></select></div>
+    </div>
+    <div class="view-sub">Cria um treino por fase e um ciclo com todas as semanas. Podes editar tudo depois.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-proto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="protoCreateCycle()">Criar ciclo</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-ciclo">
   <div class="modal">
     <h3>Novo ciclo</h3>
@@ -901,7 +977,7 @@ function loadData(){
   if(raw){ const d = JSON.parse(raw); if(!Array.isArray(d.aulas)) d.aulas = []; return migrateAulas(d); }
   return { clients: [], exercises: [], workouts: [], cycles: [], aulas: defaultAulas(), aulasV: 4 };
 }
-function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); renderAll(); }
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); if(typeof syncCfg==='function' && syncCfg()){ setSyncMeta({dirty:true}); scheduleSync(); } renderAll(); }
 let DATA = loadData();
 function uid(){ return 'id' + Math.random().toString(36).slice(2,10); }
 
@@ -2490,6 +2566,120 @@ function confirmImportClients(){
 function backupSummaryText(){
   return `${DATA.clients.length} clientes · ${DATA.exercises.length} exercícios · ${DATA.workouts.length} treinos · ${DATA.cycles.length} ciclos`;
 }
+
+// ---------- SINCRONIZAÇÃO ENTRE DISPOSITIVOS (ficheiro ciclo-data.json num repositório privado do GitHub) ----------
+const SYNC_KEY = 'ciclo_sync_cfg', SYNC_META = 'ciclo_sync_meta', SYNC_FILE = 'ciclo-data.json';
+function syncCfg(){ try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'null'); }catch(e){ return null; } }
+function syncMeta(){ try{ return JSON.parse(localStorage.getItem(SYNC_META)||'{}'); }catch(e){ return {}; } }
+function setSyncMeta(m){ try{ localStorage.setItem(SYNC_META, JSON.stringify({ ...syncMeta(), ...m })); }catch(e){} }
+let syncBusy = false, syncTimer = null;
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer = setTimeout(()=>syncNow(false), 3000); }
+function ghHeaders(cfg, accept){ return { 'Authorization': 'Bearer '+cfg.token, 'Accept': accept || 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; }
+function ghUrl(cfg){ return `https://api.github.com/repos/${cfg.repo}/contents/${SYNC_FILE}`; }
+function b64FromText(t){ const u = new TextEncoder().encode(t); let s=''; for(let i=0;i<u.length;i+=0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i+0x8000)); return btoa(s); }
+function textFromB64(b){ const bin = atob(b.replace(/\s/g,'')); const u = new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return new TextDecoder().decode(u); }
+async function ghError(r){
+  if(r.status===401) return new Error('O token não é válido ou expirou. Cria um token novo e liga outra vez.');
+  if(r.status===403) return new Error('O token não tem permissão. Confirma «Contents: Read and write» e o repositório certo.');
+  if(r.status===404) return new Error('Repositório não encontrado. Confirma o nome (utilizador/nome) e que o token tem acesso a ele.');
+  return new Error('Erro do GitHub ('+r.status+').');
+}
+async function ghGetRemote(cfg){
+  const r = await fetch(ghUrl(cfg), { headers: ghHeaders(cfg), cache: 'no-store' });
+  if(r.status===404){
+    // ficheiro ainda não existe: confirma que o repositório existe
+    const rr = await fetch(`https://api.github.com/repos/${cfg.repo}`, { headers: ghHeaders(cfg), cache: 'no-store' });
+    if(!rr.ok) throw await ghError(rr);
+    return null;
+  }
+  if(!r.ok) throw await ghError(r);
+  const j = await r.json();
+  let text;
+  if(j.content && j.encoding==='base64') text = textFromB64(j.content);
+  else { const r2 = await fetch(ghUrl(cfg), { headers: ghHeaders(cfg, 'application/vnd.github.raw+json'), cache: 'no-store' }); if(!r2.ok) throw await ghError(r2); text = await r2.text(); }
+  return { sha: j.sha, payload: JSON.parse(text) };
+}
+async function ghPush(cfg, sha){
+  const ts = Date.now();
+  const body = { message: 'sync '+new Date(ts).toISOString(), content: b64FromText(JSON.stringify({ app:'ciclo-pt', version:2, updatedAt: ts, data: DATA })) };
+  if(sha) body.sha = sha;
+  const r = await fetch(ghUrl(cfg), { method:'PUT', headers: { ...ghHeaders(cfg), 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  if(r.status===409 || r.status===422) throw new Error('RETRY');
+  if(!r.ok) throw await ghError(r);
+  setSyncMeta({ remoteTs: ts, dirty: false, last: Date.now() });
+}
+function applyRemote(remote){
+  try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
+  const d = remote.payload.data;
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV });
+  localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+  setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
+  renderAll();
+}
+function setSyncStatus(t, bad){
+  const el = document.getElementById('sync-status'); if(el){ el.textContent = t; el.style.color = bad ? 'var(--danger)' : ''; }
+  const foot = document.querySelector('.rail-foot'); if(foot && syncCfg()) foot.textContent = bad ? 'Sincronização com erro' : (t.startsWith('Sincronizado') ? t : foot.textContent);
+}
+async function syncNow(manual, attempt){
+  const cfg = syncCfg(); if(!cfg) return;
+  if(syncBusy) return; syncBusy = true;
+  setSyncStatus('A sincronizar…');
+  try{
+    const meta = syncMeta();
+    const remote = await ghGetRemote(cfg);
+    const localEmpty = !DATA.clients.length && !DATA.workouts.length && !DATA.cycles.length && !DATA.exercises.length;
+    if(!remote){ await ghPush(cfg, null); }
+    else {
+      const remoteChanged = remote.payload.updatedAt !== meta.remoteTs;
+      if(!remoteChanged){ if(meta.dirty) await ghPush(cfg, remote.sha); else setSyncMeta({ last: Date.now() }); }
+      else if(localEmpty || (meta.remoteTs && !meta.dirty)) applyRemote(remote);
+      else {
+        const keepLocal = confirm(meta.remoteTs
+          ? 'Há alterações neste aparelho e noutro aparelho ao mesmo tempo.\\n\\nOK = manter os dados DESTE aparelho (substituem os do outro)\\nCancelar = usar os dados do OUTRO aparelho (as alterações deste perdem-se)'
+          : 'Este aparelho já tem dados e o repositório também.\\n\\nOK = usar os dados DESTE aparelho (substituem os do repositório)\\nCancelar = usar os dados do REPOSITÓRIO (substituem os deste aparelho)');
+        if(keepLocal) await ghPush(cfg, remote.sha); else applyRemote(remote);
+      }
+    }
+    const t = new Date(syncMeta().last||Date.now()).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('Sincronizado às '+t+'. Repositório: '+cfg.repo);
+  }catch(e){
+    if(e.message==='RETRY' && !attempt){ syncBusy = false; return syncNow(manual, 1); }
+    setSyncStatus(e.message==='RETRY' ? 'Houve uma alteração ao mesmo tempo. Carrega em «Sincronizar agora».' : (e instanceof TypeError ? 'Sem ligação à internet. Vai sincronizar quando voltar a ligação.' : e.message), !(e instanceof TypeError));
+  }
+  syncBusy = false; renderSyncForm();
+}
+function renderSyncForm(){
+  const cfg = syncCfg();
+  const on = !!cfg;
+  const el = id=>document.getElementById(id); if(!el('sync-connect-btn')) return;
+  el('sync-connect-btn').style.display = on ? 'none' : '';
+  el('sync-now-btn').style.display = on ? '' : 'none';
+  el('sync-off-btn').style.display = on ? '' : 'none';
+  if(on){ el('sync-repo').value = cfg.repo; el('sync-token').value = '••••••••••'; el('sync-repo').disabled = true; el('sync-token').disabled = true; }
+  else { el('sync-repo').disabled = false; el('sync-token').disabled = false; if(el('sync-token').value.startsWith('•')) el('sync-token').value=''; if(!el('sync-status').textContent) el('sync-status').textContent = 'Não ligado.'; }
+}
+async function connectSync(){
+  const repo = document.getElementById('sync-repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+  const token = document.getElementById('sync-token').value.trim();
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ setSyncStatus('Escreve o repositório no formato utilizador/nome, por exemplo mariote06/ciclo-dados.', true); return; }
+  if(token.length<20){ setSyncStatus('Cola o token do GitHub (começa por github_pat_).', true); return; }
+  const size = JSON.stringify(DATA).length;
+  if(size > 20e6 && !confirm('Os teus dados ocupam '+Math.round(size/1e6)+' MB (provavelmente por vídeos guardados nos exercícios). A sincronização vai ser lenta. Continuar?')) return;
+  localStorage.setItem(SYNC_KEY, JSON.stringify({ repo, token }));
+  localStorage.removeItem(SYNC_META);
+  await syncNow(true);
+  if(document.getElementById('sync-status').style.color){ localStorage.removeItem(SYNC_KEY); renderSyncForm(); }
+}
+function disconnectSync(){
+  if(!confirm('Desligar a sincronização neste aparelho? Os dados deste aparelho ficam como estão e deixam de se atualizar com o outro.')) return;
+  localStorage.removeItem(SYNC_KEY); localStorage.removeItem(SYNC_META);
+  document.getElementById('sync-status').textContent = 'Não ligado.'; document.getElementById('sync-token').value = '';
+  const foot = document.querySelector('.rail-foot'); if(foot) foot.textContent = 'Dados guardados neste dispositivo';
+  renderSyncForm();
+}
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && syncCfg()) syncNow(false); });
+window.addEventListener('online', ()=>{ if(syncCfg()) syncNow(false); });
+setInterval(()=>{ if(!document.hidden && syncCfg()) syncNow(false); }, 90000);
 function renderBackup(){
   document.getElementById('backup-summary').textContent = backupSummaryText();
   let last = '';
@@ -3464,6 +3654,439 @@ function formatDate(iso){
   const [y,m,d] = iso.split('-');
   return `${d}/${m}/${y}`;
 }
+// ---------- PROTOCOLOS DE TREINO / REABILITAÇÃO ----------
+// ex: [nome, séries, repetições, descanso, grupo (se for exercício novo), nota (se for exercício novo)]
+const PROTO_AVISO = 'Protocolo de apoio à prescrição, baseado em práticas gerais de reabilitação. Não substitui o diagnóstico nem as indicações do médico, cirurgião ou fisioterapeuta, que prevalecem sempre. Só avançar de fase quando os critérios estiverem cumpridos.';
+const PROTO_DOR = 'Regra da dor: aceitável até 3-4/10 durante o exercício, desde que passe em 24 h e não haja inchaço novo nem noite pior. Se não passar, reduzir carga ou amplitude e voltar à fase anterior.';
+const PROTOCOLOS = [
+{ id:'lca', nome:'Rotura do LCA — pós-cirúrgico (meses 4 a 6)', grupo:'Joelho', pat:'joelho', g:'Pernas',
+  resumo:'Reconstrução do ligamento cruzado anterior, da fase de reforço até à preparação para o retorno ao desporto. Cobre apenas a janela dos 4 aos 6 meses; o regresso ao desporto de pivot só deve acontecer depois, por critérios.',
+  quando:'Cliente operado há cerca de 4 meses, com alta do fisioterapeuta para ginásio e autorização do cirurgião.',
+  bandeiras:['Joelho inchado, quente ou com derrame novo.','Sensação de falha (joelho "foge") ou bloqueio.','Dor que aumenta de forma persistente ao longo das semanas.','Febre, vermelhidão ou dor na barriga da perna (suspeita de infeção ou trombose): contactar o médico.'],
+  notas:['Tipo de enxerto muda o plano: com enxerto dos isquiotibiais, introduzir carga nos isquiotibiais mais devagar; com enxerto patelar, atenção à dor anterior do joelho e aos agachamentos profundos.','Voltar ao desporto antes dos 9 meses aumenta o risco de nova rotura. A decisão depende de testes de força e de saltos (diferença entre pernas inferior a 10-15%), não do calendário.'],
+  fases:[
+  { nome:'Fase 1 — Força e controlo', sem:4, freq:3,
+    obj:['Recuperar força do quadríceps, glúteos e gémeos.','Controlo do joelho no agachamento (sem valgo).','Amplitude completa sem dor nem derrame.'],
+    criterios:['Sem derrame nem dor ao fim da semana.','Agachamento a duas pernas com 90° de flexão, controlado.','Equilíbrio unipodal 30 s sem compensações.'],
+    evitar:['Corrida, saltos e mudanças de direção.','Rotação do joelho com o pé fixo no chão.','Extensão de pernas em máquina com carga elevada nos últimos graus.'],
+    ex:[['Bicicleta estática em intensidade leve','1','8 min','—'],['Leg press leve','3','12','75s'],['Agachamento com bola na parede','3','10','60s'],['Ponte de glúteos com pausa','3','12','45s'],['Step-up baixo','3','10','60s'],['Elevação de gémeos bipodal','3','15','45s'],['Equilíbrio unipodal','3','30s','30s'],['Prancha frontal','3','30s','45s','Core']]},
+  { nome:'Fase 2 — Força unilateral', sem:4, freq:3,
+    obj:['Força unilateral do quadríceps, glúteos e isquiotibiais.','Corrida em linha reta progressiva (apenas se o fisioterapeuta autorizar).','Aterragens controladas em dois apoios.'],
+    criterios:['Agachamento a uma perna parcial, sem valgo.','Força do quadríceps ≥ 80% do lado são (dinamómetro, se disponível).','Sem derrame após corrida leve.'],
+    evitar:['Mudanças bruscas de direção e desportos de pivot.','Saltos unipodais em altura ou distância máxima.','Agachamento profundo com muita carga.'],
+    ex:[['Agachamento búlgaro leve','3','8','75s','Pernas','Pé de trás elevado. Joelho alinhado com o segundo dedo, tronco firme, descer só até onde está confortável.'],['Leg press unilateral','3','10','75s','Pernas','Uma perna de cada vez, carga moderada, amplitude sem dor.'],['Peso morto romeno unilateral com haltere leve','3','8','60s','Pernas','Equilíbrio numa perna, anca para trás, coluna neutra.'],['Afundo reverso','3','8','60s','Pernas','Passo atrás, controlar a descida, joelho sem cair para dentro.'],['Descida lateral de degrau','3','10','60s'],['Ponte de glúteos unilateral','3','10','45s','Glúteos','Uma perna apoiada, anca nivelada.'],['Elevação de gémeos unipodal','3','12','45s'],['Marcha lateral com mini band','3','12','45s']]},
+  { nome:'Fase 3 — Preparação para o retorno ao desporto', sem:4, freq:3,
+    obj:['Força e potência com pliometria progressiva.','Corrida contínua e primeiras mudanças de direção controladas.','Simetria entre as duas pernas.'],
+    criterios:['Testes de salto (um pé) com diferença inferior a 10-15% entre pernas.','Quadríceps e isquiotibiais ≥ 90% do lado são.','Sem derrame, sem falhas e confiança no joelho.','Autorização do cirurgião/fisioterapeuta para retorno ao desporto.'],
+    evitar:['Desportos de contacto ou de pivot sem autorização.','Treino pliométrico em dias seguidos.','Treinar com fadiga elevada nos exercícios de aterragem.'],
+    ex:[['Agachamento com salto controlado (aterragem suave)','3','6','75s','Pernas','Salto pequeno, aterragem silenciosa em dois apoios, joelhos alinhados.'],['Salto bipodal para a frente com aterragem controlada','3','5','75s','Pernas','Parar 2 s na aterragem. Qualidade antes de altura ou distância.'],['Agachamento búlgaro leve','3','8','75s'],['Peso morto romeno unilateral com haltere leve','3','8','60s'],['Step-up alto','3','8','60s','Pernas','Caixa a nível do joelho. Subir sem impulso da perna de trás.'],['Corrida em tapete progressiva','1','10-15 min','—','Cardio','Ritmo confortável, em plano, só com autorização do fisioterapeuta.'],['Deslocamento lateral controlado (shuffle)','3','20s','45s','Pernas','Passos laterais curtos, anca baixa, sem cruzar os pés.'],['Prancha lateral','3','30s','45s','Core']]}
+  ]},
+
+{ id:'entorse-inv', nome:'Entorse do tornozelo por inversão', grupo:'Tornozelo', pat:'entorse', g:'Pernas',
+  resumo:'Lesão mais comum do tornozelo (ligamentos laterais). Do controlo da dor ao regresso à corrida e aos saltos.',
+  quando:'Entorse de grau I ou II já avaliada. Em grau III, ou com fratura, o protocolo só começa após indicação médica.',
+  bandeiras:['Incapacidade de apoiar o pé ou dar 4 passos logo após a lesão.','Dor óssea localizada (maléolo, base do 5.º metatarso): pedir radiografia.','Deformidade, dormência ou pé frio.','Instabilidade que se repete (tornozelo "vira" sem esforço).'],
+  notas:['Nos primeiros dias, proteção e carga gradual (não repouso absoluto). A fase 1 pode ser feita pelo cliente em casa.','Reforço dos peroneais (eversão) e propriocepção reduzem o risco de nova entorse.'],
+  fases:[
+  { nome:'Fase 1 — Proteção e mobilidade', sem:2, freq:3,
+    obj:['Reduzir dor e inchaço.','Recuperar amplitude do tornozelo.','Voltar a apoiar e a caminhar sem coxear.'],
+    criterios:['Marcha normal sem dor.','Dorsiflexão próxima do lado são.','Inchaço residual mínimo.'],
+    evitar:['Corrida, saltos e superfícies irregulares.','Alongamento forçado dos ligamentos laterais.','Calor intenso e álcool nos primeiros dias.'],
+    ex:[['Alfabeto com o pé','2','1 ronda','—'],['Mobilização de tornozelo com elástico','2','12','30s'],['Alongamento de gémeos na parede','3','30s','—'],['Transferência de peso lateral','2','10','30s'],['Short foot (arco plantar)','3','10','30s'],['Bicicleta estática em intensidade leve','1','8 min','—']]},
+  { nome:'Fase 2 — Força e propriocepção', sem:3, freq:3,
+    obj:['Força dos peroneais e dos gémeos.','Equilíbrio unipodal em superfície estável.','Marcha e agachamento sem compensações.'],
+    criterios:['Equilíbrio unipodal 30 s com olhos abertos e depois fechados.','Elevação unipodal de gémeos 15 repetições.','Sem dor ao agachar e ao subir degraus.'],
+    evitar:['Saltos e mudanças de direção.','Superfícies instáveis antes de dominar o equilíbrio no chão.','Treinar com dor acima de 4/10.'],
+    ex:[['Eversão do tornozelo com elástico','3','15','30s'],['Inversão do tornozelo com elástico','3','15','30s'],['Dorsiflexão do tornozelo com elástico','3','15','30s'],['Elevação de gémeos bipodal','3','15','45s'],['Elevação de gémeos unipodal','3','10','45s'],['Equilíbrio unipodal','3','30s','30s'],['Step-up baixo','3','10','60s'],['Marcha em pontas e calcanhares','2','20 m','30s']]},
+  { nome:'Fase 3 — Função e pliometria', sem:3, freq:3,
+    obj:['Equilíbrio dinâmico e reação a perturbações.','Corrida leve e saltos de baixo impacto.','Força excêntrica dos peroneais.'],
+    criterios:['Equilíbrio unipodal no bosu 30 s.','Salto unipodal repetido sem dor nem instabilidade.','Corrida contínua 10 min sem dor.'],
+    evitar:['Saltos em superfície irregular antes de dominar o chão.','Desportos de mudança de direção rápida.'],
+    ex:[['Equilíbrio no bosu','3','30s','30s'],['Equilíbrio sobre uma perna com bola','3','10 passes','30s'],['Elevação de gémeos unipodal','3','15','45s'],['Afundo reverso','3','10','60s','Pernas'],['Salto bipodal para a frente com aterragem controlada','3','5','60s','Pernas','Parar 2 s na aterragem. Qualidade antes de altura ou distância.'],['Deslocamento lateral controlado (shuffle)','3','20s','45s','Pernas','Passos laterais curtos, anca baixa, sem cruzar os pés.'],['Corrida em tapete progressiva','1','10 min','—','Cardio','Ritmo confortável, em plano.']]},
+  { nome:'Fase 4 — Retorno ao desporto', sem:2, freq:3,
+    obj:['Mudanças de direção, saltos e desaceleração em intensidade de jogo.','Confiança total no tornozelo.'],
+    criterios:['Sem dor nem inchaço após treino intenso.','Testes de salto e equilíbrio simétricos.','Cliente confiante nos movimentos do desporto.'],
+    evitar:['Voltar ao máximo de intensidade num só dia.','Treinar sem aquecimento específico do tornozelo.'],
+    ex:[['Deslocamento lateral controlado (shuffle)','3','30s','45s'],['Agachamento com salto controlado (aterragem suave)','3','8','60s'],['Salto unipodal em altura moderada com aterragem estável','3','5','60s','Pernas','Aterragem em um pé, parar 2 s, tornozelo alinhado.'],['Equilíbrio no bosu','3','30s','30s'],['Elevação de gémeos unipodal','3','15','45s']]}
+  ]},
+
+{ id:'entorse-ev', nome:'Entorse do tornozelo por eversão', grupo:'Tornozelo', pat:'entorse', g:'Pernas',
+  resumo:'Lesão menos frequente (ligamento deltoide, face interna). Com frequência acompanha lesões ósseas ou da sindesmose, por isso exige mais cuidado que a inversão.',
+  quando:'Só depois de avaliação médica que exclua fratura e lesão da sindesmose ("entorse alta").',
+  bandeiras:['Dor acima do tornozelo, entre a tíbia e o perónio (suspeita de sindesmose).','Dor ao rodar o pé para fora com o pé apoiado.','Incapacidade de apoiar o pé.','Dormência ou alteração de cor do pé.'],
+  notas:['Em lesões da sindesmose a recuperação é bem mais longa; seguir os prazos do fisioterapeuta, não os das semanas indicadas.','Ênfase no reforço do tibial posterior e dos músculos inversores.'],
+  fases:[
+  { nome:'Fase 1 — Proteção e mobilidade', sem:2, freq:3,
+    obj:['Controlar a dor e o inchaço.','Recuperar amplitude do tornozelo.','Voltar a apoiar sem dor.'],
+    criterios:['Marcha normal sem dor.','Dorsiflexão próxima do lado são.','Sem dor na face interna ao carregar.'],
+    evitar:['Rotação externa do pé sob carga.','Corrida, saltos e superfícies irregulares.','Alongamentos forçados da face interna do tornozelo.'],
+    ex:[['Alfabeto com o pé','2','1 ronda','—'],['Mobilização de tornozelo com elástico','2','12','30s'],['Alongamento de gémeos na parede','3','30s','—'],['Short foot (arco plantar)','3','10','30s'],['Transferência de peso lateral','2','10','30s'],['Bicicleta estática em intensidade leve','1','8 min','—']]},
+  { nome:'Fase 2 — Força e propriocepção', sem:3, freq:3,
+    obj:['Força do tibial posterior e dos inversores.','Equilíbrio unipodal.','Controlo do arco plantar e do joelho.'],
+    criterios:['Equilíbrio unipodal 30 s.','Elevação unipodal de gémeos 15 repetições sem dor.','Subida de degraus sem dor.'],
+    evitar:['Saltos e mudanças de direção.','Pisar com o pé em pronação marcada (pé "para dentro").'],
+    ex:[['Fortalecimento do tibial posterior com elástico','3','15','30s'],['Inversão do tornozelo com elástico','3','15','30s'],['Eversão do tornozelo com elástico','2','15','30s'],['Toe yoga (elevação do dedo grande)','3','10','30s'],['Elevação de gémeos bipodal','3','15','45s'],['Elevação de gémeos unipodal','3','10','45s'],['Equilíbrio unipodal','3','30s','30s'],['Step-up baixo','3','10','60s']]},
+  { nome:'Fase 3 — Função e pliometria', sem:3, freq:3,
+    obj:['Equilíbrio dinâmico.','Corrida leve e saltos de baixo impacto.','Controlo do arco e do joelho nas aterragens.'],
+    criterios:['Equilíbrio no bosu 30 s.','Corrida contínua 10 min sem dor.','Salto unipodal repetido sem dor.'],
+    evitar:['Mudanças de direção bruscas.','Desportos de pivot sem autorização.'],
+    ex:[['Equilíbrio no bosu','3','30s','30s'],['Elevação de gémeos unipodal','3','15','45s'],['Afundo reverso','3','10','60s'],['Salto bipodal para a frente com aterragem controlada','3','5','60s'],['Deslocamento lateral controlado (shuffle)','3','20s','45s'],['Corrida em tapete progressiva','1','10 min','—']]},
+  { nome:'Fase 4 — Retorno ao desporto', sem:2, freq:3,
+    obj:['Intensidade de jogo, saltos e desacelerações.','Confiança total no tornozelo.'],
+    criterios:['Sem dor nem inchaço após treino intenso.','Testes de salto e equilíbrio simétricos.'],
+    evitar:['Voltar ao máximo num só dia.'],
+    ex:[['Deslocamento lateral controlado (shuffle)','3','30s','45s'],['Agachamento com salto controlado (aterragem suave)','3','8','60s'],['Salto unipodal em altura moderada com aterragem estável','3','5','60s'],['Fortalecimento do tibial posterior com elástico','3','15','30s'],['Equilíbrio no bosu','3','30s','30s']]}
+  ]},
+
+{ id:'tenista', nome:'Cotovelo de tenista (epicondilite lateral)', grupo:'Cotovelo', pat:'epicondilite', g:'Braços',
+  resumo:'Tendinopatia dos extensores do punho na face externa do cotovelo. Carga progressiva do tendão: isométricos, excêntricos, força e preensão.',
+  quando:'Dor na face externa do cotovelo ao agarrar, levantar a chávena ou estender o punho com resistência.',
+  bandeiras:['Dor noturna intensa ou em repouso.','Formigueiro, dormência ou fraqueza da mão (suspeita de compressão nervosa ou origem cervical).','Inchaço, calor ou deformidade do cotovelo.','Trauma recente.'],
+  notas:['Tendão responde a carga: o repouso total piora a recuperação. O objetivo é carregar com dor controlada.','Rever também a ergonomia do trabalho e a pega nas barras (diâmetro, uso de straps).'],
+  fases:[
+  { nome:'Fase 1 — Isométricos e alívio', sem:2, freq:4,
+    obj:['Reduzir a dor com isométricos.','Manter a mobilidade do cotovelo e do punho.','Reduzir as atividades que provocam dor.'],
+    criterios:['Dor em repouso ≤ 2/10.','Isométrico de 30-45 s tolerado sem agravar nas 24 h seguintes.'],
+    evitar:['Pegas pesadas e rosca.','Extensões de tríceps e flexões com punho em extensão.','Trabalho repetitivo de punho com dor.'],
+    ex:[['Isométrico dos extensores do punho','5','30-45s','60s'],['Alongamento dos extensores do punho','3','30s','—'],['Auto-massagem dos extensores do antebraço','1','2 min','—'],['Apertar bola macia','3','10','30s']]},
+  { nome:'Fase 2 — Carga isotónica e excêntrica', sem:4, freq:3,
+    obj:['Reforçar o tendão com contração excêntrica lenta.','Força dos extensores e dos rotadores do antebraço.'],
+    criterios:['Excêntrico 3×15 com carga que cause dor ≤ 3/10.','Pega e levantamento de objetos sem dor relevante.'],
+    evitar:['Aumentar carga e volume ao mesmo tempo.','Fazer o exercício em dias seguidos se a dor não passa em 24 h.'],
+    ex:[['Extensão de punho excêntrica','3','15 (3 s a descer)','60s'],['Extensão de punho com elástico','3','15','45s'],['Pronação e supinação com martelo','3','12','45s'],['Desvio radial com martelo','3','12','45s'],['Rotação de antebraço com barra flexível','3','10','45s'],['Alongamento dos extensores do punho','3','30s','—']]},
+  { nome:'Fase 3 — Força e preensão', sem:4, freq:3,
+    obj:['Força de preensão e resistência do antebraço.','Reintroduzir exercícios de puxar e empurrar leves.'],
+    criterios:['Preensão sem dor com carga moderada.','Remada e puxada leves sem dor no cotovelo.'],
+    evitar:['Pegas máximas e repetições até à falha.','Rosca direta pesada.'],
+    ex:[['Preensão progressiva com toalha enrolada','3','20-30s','45s'],['Extensão de punho excêntrica','3','15','45s'],['Remada com elástico (postura)','3','12','45s'],['Pronação e supinação com martelo','3','12','45s'],['Farmer walk leve','3','20 m','60s','Corpo inteiro','Halteres leves, pega neutra. Aumentar só a duração antes da carga.']]},
+  { nome:'Fase 4 — Retorno à carga e ao desporto', sem:3, freq:3,
+    obj:['Voltar aos exercícios habituais e ao gesto desportivo.','Manter o tendão carregado de forma contínua.'],
+    criterios:['Sem dor em atividades normais e com carga de treino.','Força de preensão simétrica.'],
+    evitar:['Aumentar o treino mais de 10% por semana.'],
+    ex:[['Extensão de punho excêntrica','3','12','45s'],['Preensão progressiva com toalha enrolada','3','30s','45s'],['Remada com elástico (postura)','3','12','45s'],['Farmer walk leve','3','30 m','60s']]}
+  ]},
+
+{ id:'golfista', nome:'Cotovelo de golfista (epitrocleíte medial)', grupo:'Cotovelo', pat:'epitrocleite', g:'Braços',
+  resumo:'Tendinopatia dos flexores do punho na face interna do cotovelo. Carga progressiva do tendão: isométricos, excêntricos, força e preensão.',
+  quando:'Dor na face interna do cotovelo ao fletir o punho com resistência, agarrar ou fazer pegas pronadas.',
+  bandeiras:['Formigueiro nos dedos mínimo e anelar (suspeita de nervo cubital).','Dor noturna ou em repouso.','Inchaço, calor ou deformidade.','Trauma recente ou instabilidade do cotovelo.'],
+  notas:['Tendão responde a carga: o repouso total atrasa a recuperação.','Rever a técnica de pega e de lançamento (golfe, ténis, escalada, remo).'],
+  fases:[
+  { nome:'Fase 1 — Isométricos e alívio', sem:2, freq:4,
+    obj:['Reduzir a dor com isométricos.','Manter a mobilidade do cotovelo e do punho.'],
+    criterios:['Dor em repouso ≤ 2/10.','Isométrico de 30-45 s tolerado sem agravar nas 24 h seguintes.'],
+    evitar:['Pegas pesadas, rosca e trabalho forte de punho.','Pegas supinadas com carga.'],
+    ex:[['Isométrico dos flexores do punho','5','30-45s','60s'],['Alongamento dos flexores do punho','3','30s','—'],['Auto-massagem dos flexores do antebraço','1','2 min','—'],['Apertar bola macia','3','10','30s']]},
+  { nome:'Fase 2 — Carga isotónica e excêntrica', sem:4, freq:3,
+    obj:['Reforçar o tendão com contração excêntrica lenta.','Força dos flexores e dos pronadores do antebraço.'],
+    criterios:['Excêntrico 3×15 com dor ≤ 3/10.','Pega e levantamento de objetos sem dor relevante.'],
+    evitar:['Aumentar carga e volume ao mesmo tempo.'],
+    ex:[['Flexão de punho excêntrica','3','15 (3 s a descer)','60s'],['Flexão de punho com elástico','3','15','45s'],['Pronação e supinação com martelo','3','12','45s'],['Desvio cubital com martelo','3','12','45s'],['Rotação de antebraço com barra flexível','3','10','45s'],['Alongamento dos flexores do punho','3','30s','—']]},
+  { nome:'Fase 3 — Força e preensão', sem:4, freq:3,
+    obj:['Força de preensão e resistência do antebraço.','Reintroduzir exercícios de puxar leves.'],
+    criterios:['Preensão sem dor com carga moderada.','Remada e puxada leves sem dor no cotovelo.'],
+    evitar:['Pegas máximas e repetições até à falha.'],
+    ex:[['Preensão progressiva com toalha enrolada','3','20-30s','45s'],['Flexão de punho excêntrica','3','15','45s'],['Remada com elástico (postura)','3','12','45s'],['Pronação e supinação com martelo','3','12','45s'],['Farmer walk leve','3','20 m','60s','Corpo inteiro','Halteres leves, pega neutra. Aumentar só a duração antes da carga.']]},
+  { nome:'Fase 4 — Retorno à carga e ao desporto', sem:3, freq:3,
+    obj:['Voltar aos exercícios habituais e ao gesto desportivo.'],
+    criterios:['Sem dor em atividades normais e com carga de treino.','Força de preensão simétrica.'],
+    evitar:['Aumentar o treino mais de 10% por semana.'],
+    ex:[['Flexão de punho excêntrica','3','12','45s'],['Preensão progressiva com toalha enrolada','3','30s','45s'],['Remada com elástico (postura)','3','12','45s'],['Farmer walk leve','3','30 m','60s']]}
+  ]},
+
+{ id:'capsulite', nome:'Capsulite adesiva (ombro congelado)', grupo:'Ombro', pat:'ombro', g:'Ombros',
+  resumo:'Rigidez progressiva do ombro, com três estádios: dolorosa, de rigidez e de recuperação. A duração é variável (meses) e a progressão depende do estádio, não do calendário.',
+  quando:'Diagnóstico médico confirmado de capsulite adesiva. Mais frequente em diabéticos e depois de imobilização do ombro.',
+  bandeiras:['Dor noturna intensa e persistente que não melhora.','Perda de força marcada, sem rigidez correspondente (suspeita de lesão da coifa).','Trauma recente, febre ou inchaço do ombro.','Dor irradiada ao braço com formigueiro ou perda de sensibilidade.'],
+  notas:['No estádio doloroso, alongar com força só piora a inflamação. A regra é movimento suave e frequente, várias vezes ao dia.','Fisioterapeuta e médico podem associar infiltrações ou mobilização manual; coordenar o plano com eles.'],
+  fases:[
+  { nome:'Fase 1 — Estádio doloroso (irritável)', sem:6, freq:5,
+    obj:['Controlar a dor e manter a mobilidade.','Evitar perder mais amplitude.','Manter o resto do corpo ativo.'],
+    criterios:['Dor em repouso e à noite a diminuir.','Movimento sem dor aguda nos limites suaves.'],
+    evitar:['Alongamentos fortes ou mantidos até à dor.','Carga pesada acima da altura do ombro.','Dormir sobre o ombro afetado.'],
+    ex:[['Pendular de Codman','3','1 min','30s'],['Respiração diafragmática deitado','1','5 min','—'],['Flexão de ombros com bastão sentado','2','10','30s'],['Mobilização de ombros em círculos','2','10','30s'],['Retração escapular com elástico','2','12','30s'],['Mobilidade torácica sentado','2','10','30s']]},
+  { nome:'Fase 2 — Estádio de rigidez', sem:8, freq:5,
+    obj:['Ganhar amplitude de flexão, abdução e rotação externa.','Mobilização ativa-assistida e alongamento tolerado.','Manter a força da escápula.'],
+    criterios:['Ganho consistente de amplitude semana a semana.','Dor controlada (≤ 4/10) nos limites do movimento.'],
+    evitar:['Forçar além da dor tolerável.','Compensar com o trapézio e o tronco.'],
+    ex:[['Flexão de ombros com bastão sentado','3','12','30s'],['Mobilização do ombro com bastão (rotação externa)','3','12','30s'],['Wall slide (deslizamento na parede)','3','10','45s'],['Alongamento posterior do ombro (cross-body)','3','30s','—'],['Alongamento peitoral na ombreira','3','30s','—'],['Pendular de Codman','2','1 min','30s'],['Retração escapular com elástico','3','12','30s']]},
+  { nome:'Fase 3 — Estádio de recuperação', sem:8, freq:3,
+    obj:['Força da coifa e da escápula.','Controlo do ombro em toda a amplitude.','Voltar às atividades acima da cabeça.'],
+    criterios:['Amplitude próxima do lado são.','Elevação do braço sem compensações.','Sem dor em atividades normais.'],
+    evitar:['Cargas altas acima da cabeça nas primeiras semanas desta fase.'],
+    ex:[['Rotação externa com elástico','3','12','45s'],['Rotação interna com elástico','3','12','45s'],['Elevação no plano da escápula (scaption)','3','10','45s'],['Remada com elástico (postura)','3','12','45s'],['Push-up plus na parede','3','10','45s'],['Abdução horizontal com elástico','3','12','45s'],['Wall slide (deslizamento na parede)','3','10','45s']]}
+  ]},
+
+{ id:'menisco', nome:'Rotura do menisco (conservador ou pós-meniscectomia)', grupo:'Joelho', pat:'joelho', g:'Pernas',
+  resumo:'Tratamento conservador ou depois de meniscectomia parcial. Progressão em cadeia fechada com controlo do joelho.',
+  quando:'Rotura do menisco confirmada, com alta do fisioterapeuta ou autorização médica para ginásio.',
+  bandeiras:['Joelho bloqueado (não estica ou não dobra).','Derrame que aumenta com o exercício.','Sensação de falha do joelho.','Dor persistente na linha articular a piorar.'],
+  notas:['Em sutura meniscal os prazos e restrições são mais exigentes (flexão e carga limitadas durante semanas): seguir o protocolo do cirurgião, que prevalece sobre estas fases.','Evitar rotação do joelho com o pé fixo e agachamentos profundos com carga até o joelho estar estável.'],
+  fases:[
+  { nome:'Fase 1 — Dor e ativação', sem:2, freq:3,
+    obj:['Reduzir dor e derrame.','Recuperar extensão completa.','Ativar quadríceps e glúteos.'],
+    criterios:['Extensão completa.','Marcha normal sem dor.','Sem derrame.'],
+    evitar:['Agachamento profundo e rotação sob carga.','Corrida e saltos.'],
+    ex:[['Contração isométrica de quadríceps','4','10 (5 s)','30s'],['Elevação da perna estendida','3','12','30s'],['Extensão terminal de joelho com elástico','3','12','30s'],['Ponte de glúteos com pausa','3','10','45s'],['Bicicleta estática em intensidade leve','1','8 min','—'],['Alongamento de gémeos na parede','3','30s','—']]},
+  { nome:'Fase 2 — Força em cadeia fechada', sem:4, freq:3,
+    obj:['Força de quadríceps, glúteos e isquiotibiais.','Controlo do joelho no agachamento.'],
+    criterios:['Agachamento parcial controlado, sem dor.','Equilíbrio unipodal 30 s.','Sem derrame após treino.'],
+    evitar:['Flexão do joelho acima de 90° com carga.','Rotação do joelho com o pé fixo.'],
+    ex:[['Leg press leve','3','12','75s'],['Agachamento parcial com apoio','3','10','60s'],['Sentar e levantar da cadeira','3','10','60s'],['Step-up baixo','3','10','60s'],['Ponte de glúteos com pausa','3','12','45s'],['Marcha lateral com mini band','3','12','45s'],['Equilíbrio unipodal','3','30s','30s']]},
+  { nome:'Fase 3 — Força progressiva', sem:4, freq:3,
+    obj:['Força unilateral e resistência.','Estabilidade dinâmica do joelho.'],
+    criterios:['Agachamento unilateral parcial controlado.','Descer degraus sem valgo.','Sem dor após carga moderada.'],
+    evitar:['Pivot e mudanças bruscas de direção.','Agachamento profundo com muita carga.'],
+    ex:[['Leg press unilateral','3','10','75s'],['Afundo reverso','3','8','60s'],['Descida lateral de degrau','3','10','60s'],['Peso morto romeno unilateral com haltere leve','3','8','60s'],['Ponte de glúteos unilateral','3','10','45s'],['Elevação de gémeos unipodal','3','12','45s']]},
+  { nome:'Fase 4 — Função e retorno', sem:4, freq:3,
+    obj:['Corrida leve e saltos de baixo impacto.','Voltar ao desporto progressivamente.'],
+    criterios:['Corrida 15 min sem dor nem derrame.','Salto bipodal e unipodal controlados.','Força simétrica (diferença inferior a 15%).'],
+    evitar:['Voltar a desportos de pivot sem autorização.'],
+    ex:[['Agachamento com salto controlado (aterragem suave)','3','6','75s'],['Corrida em tapete progressiva','1','15 min','—'],['Step-up alto','3','8','60s'],['Afundo reverso','3','8','60s'],['Deslocamento lateral controlado (shuffle)','3','20s','45s']]}
+  ]},
+
+{ id:'lombalgia', nome:'Lombalgia (dor lombar)', grupo:'Coluna', pat:'lombar', g:'Core',
+  resumo:'Dor lombar inespecífica, subaguda ou crónica. Movimento e carga progressiva, controlo motor e confiança, sem evitar o movimento.',
+  quando:'Dor lombar sem sinais de alarme, já avaliada por médico ou fisioterapeuta.',
+  bandeiras:['Perda de força numa perna ou pé que cai.','Dormência na zona genital ou perda de controlo da bexiga/intestino (urgência: hospital).','Dor noturna intensa, febre, perda de peso inexplicável.','Dor após trauma ou queda.'],
+  notas:['A evidência favorece manter-se ativo: caminhar, mexer-se e fortalecer. Repouso prolongado atrasa a recuperação.','Pode haver posições ou movimentos que aliviam (flexão ou extensão): ajustar à resposta do cliente.'],
+  fases:[
+  { nome:'Fase 1 — Mover com conforto', sem:2, freq:4,
+    obj:['Reduzir medo do movimento e tensão muscular.','Respiração e mobilidade suave.','Caminhar todos os dias.'],
+    criterios:['Dor em repouso a diminuir.','Caminhada de 20 min tolerada.'],
+    evitar:['Flexão sob carga e levantamentos pesados.','Ficar muito tempo na mesma posição.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Báscula pélvica deitado','2','12','30s'],['Gato-camelo suave','2','10','30s'],['Joelhos ao peito alternado','2','10','30s'],['Postura da criança','2','30s','—'],['Ativação do transverso do abdómen','3','10 (5 s)','30s']]},
+  { nome:'Fase 2 — Estabilização', sem:4, freq:3,
+    obj:['Controlo do tronco e da bacia.','Ativar glúteos e músculos profundos do core.'],
+    criterios:['Bird dog e dead bug sem dor nem compensações.','Prancha lateral no joelho 20-30 s.'],
+    evitar:['Abdominais clássicos (crunch) com muita repetição.','Cargas axiais pesadas.'],
+    ex:[['Dead bug com braços','3','8 por lado','45s'],['Bird dog lento com pausa','3','8 por lado','45s'],['Ponte de glúteos com pausa','3','12','45s'],['Prancha lateral apoiada no joelho','3','20-30s','45s'],['Clamshell (abdução em decúbito lateral)','3','12','30s'],['Extensão lombar em prono (McKenzie)','2','10','30s'],['Hip hinge com bastão','3','10','45s']]},
+  { nome:'Fase 3 — Força funcional', sem:6, freq:3,
+    obj:['Força dos padrões de agachar, dobrar a anca e carregar.','Resistência do core e capacidade de trabalho.'],
+    criterios:['Agachar e dobrar a anca com técnica firme e sem dor.','Prancha 45-60 s.'],
+    evitar:['Aumentar carga com técnica a falhar.','Flexão lombar repetida sob carga.'],
+    ex:[['Agachamento com bola na parede','3','10','60s'],['Hip hinge com bastão','3','12','45s'],['Peso morto com kettlebell','3','10','60s','Pernas','Kettlebell entre os pés, anca para trás, coluna neutra, empurrar o chão.'],['Prancha frontal','3','30-45s','45s','Core'],['Prancha lateral','3','20-30s','45s','Core'],['Remada com elástico (postura)','3','12','45s'],['Bicicleta estática em intensidade leve','1','10 min','—']]},
+  { nome:'Fase 4 — Manutenção', sem:4, freq:3,
+    obj:['Programa de força geral sustentável.','Autonomia do cliente.'],
+    criterios:['Dor ≤ 2/10 nas atividades diárias.','Volta ao treino habitual sem receio.'],
+    evitar:['Parar de treinar quando a dor desaparece.'],
+    ex:[['Peso morto com kettlebell','3','10','60s'],['Agachamento com bola na parede','3','12','60s'],['Prancha lateral','3','30s','45s'],['Bird dog lento com pausa','3','10 por lado','45s'],['Ponte de glúteos com pausa','3','15','45s']]}
+  ]},
+
+{ id:'cervicalgia', nome:'Cervicalgia (dor cervical)', grupo:'Coluna', pat:'cervical', g:'Pescoço',
+  resumo:'Dor no pescoço inespecífica. Mobilidade, controlo cranio-cervical, força da escápula e ergonomia.',
+  quando:'Dor cervical sem sinais de alarme, avaliada por médico ou fisioterapeuta.',
+  bandeiras:['Tonturas, visão turva, dificuldade em falar ou engolir.','Dormência ou fraqueza em ambos os braços ou pernas.','Dor intensa após trauma, "chicotada" ou queda.','Dor noturna intensa, febre ou perda de peso.'],
+  notas:['Evitar rotações forçadas e extensão máxima do pescoço. Movimento suave, dentro do conforto.','Trabalhar a postura no dia a dia: pausas a cada 30-45 min e ecrã à altura dos olhos.'],
+  fases:[
+  { nome:'Fase 1 — Mobilidade e alívio', sem:2, freq:5,
+    obj:['Reduzir dor e rigidez.','Mover o pescoço sem medo, em amplitude confortável.'],
+    criterios:['Rotação cervical a melhorar.','Dor em repouso ≤ 3/10.'],
+    evitar:['Alongamentos forçados do pescoço.','Estalar o pescoço.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Retração cervical (queixo para dentro)','3','10','30s'],['Rotação cervical ativa','2','10','30s'],['Inclinação lateral cervical ativa','2','10','30s'],['Alongamento suave do pescoço','2','20s','—'],['Mobilidade torácica sentado','2','10','30s']]},
+  { nome:'Fase 2 — Controlo e escápula', sem:4, freq:3,
+    obj:['Força dos flexores profundos do pescoço.','Estabilizar a escápula.'],
+    criterios:['Flexão cranio-cervical 10 s repetida.','Sem dor ao fazer retração escapular com elástico.'],
+    evitar:['Cargas sobre os ombros e a nuca.','Elevação dos ombros em compensação.'],
+    ex:[['Flexão cranio-cervical deitado','3','10 (10 s)','30s'],['Isométricos cervicais (4 direções)','2','5 (10 s)','30s'],['Retração escapular com elástico','3','12','30s'],['Remada com elástico (postura)','3','12','45s'],['Wall slide (deslizamento na parede)','3','10','45s'],['Alongamento do trapézio superior','2','30s','—'],['Extensão torácica sobre foam roller','2','8','—']]},
+  { nome:'Fase 3 — Força de ombro e tórax', sem:4, freq:3,
+    obj:['Força de ombro, escápula e coluna torácica.','Resistência postural.'],
+    criterios:['Trabalho de ombro e remadas sem dor no pescoço.','Postura sustentável durante o trabalho.'],
+    evitar:['Exercícios acima da cabeça com muita carga.','Compensar com o queixo projetado.'],
+    ex:[['Elevação alternada de braço em prono (T)','3','10','45s'],['Rotação externa com elástico','3','12','45s'],['Abdução horizontal com elástico','3','12','45s'],['Remada com elástico (postura)','3','12','45s'],['Alongamento peitoral na ombreira','3','30s','—'],['Alinhamento postural contra a parede','2','30s','—']]},
+  { nome:'Fase 4 — Manutenção', sem:4, freq:3,
+    obj:['Programa sustentável e autonomia.'],
+    criterios:['Dor ≤ 2/10 no dia a dia.'],
+    evitar:['Voltar a longos períodos sem pausas.'],
+    ex:[['Flexão cranio-cervical deitado','2','10 (10 s)','30s'],['Remada com elástico (postura)','3','15','45s'],['Rotação externa com elástico','3','12','45s'],['Mobilidade torácica sentado','2','10','30s'],['Alongamento peitoral na ombreira','2','30s','—']]}
+  ]},
+
+{ id:'hernia-lombar', nome:'Hérnia discal lombar', grupo:'Coluna', pat:'hernia', g:'Core',
+  resumo:'Hérnia do disco na zona lombar, com ou sem dor irradiada para a perna. Estabilização, controlo do movimento e regresso à carga progressiva.',
+  quando:'Hérnia confirmada por imagem e avaliação clínica, sem sinais neurológicos progressivos.',
+  bandeiras:['Dormência na zona genital ou perda de controlo da bexiga/intestino: urgência hospitalar.','Perda de força progressiva na perna ou pé que cai.','Dor que desce abaixo do joelho a piorar.','Dor noturna intensa ou febre.'],
+  notas:['Algumas pessoas toleram melhor a extensão, outras a flexão. Escolher a direção que alivia ou "centraliza" a dor e evitar a que a leva para a perna.','Evitar flexão lombar repetida e rotação sob carga, sobretudo logo de manhã.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e posições de conforto', sem:2, freq:5,
+    obj:['Reduzir dor irradiada.','Respiração, mobilidade suave e caminhadas curtas.'],
+    criterios:['Dor irradiada a diminuir ou a centralizar.','Caminhada de 15-20 min tolerada.'],
+    evitar:['Flexão lombar repetida e abdominais.','Sentar muito tempo, levantar peso e rodar o tronco.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Báscula pélvica deitado','2','12','30s'],['Extensão lombar em prono (McKenzie)','3','10','30s'],['Ativação do transverso do abdómen','3','10 (5 s)','30s'],['Postura da criança','2','30s','—'],['Gato-camelo suave','2','10','30s']]},
+  { nome:'Fase 2 — Estabilização', sem:4, freq:3,
+    obj:['Estabilização do tronco em posição neutra.','Glúteos e músculos profundos do core.'],
+    criterios:['Bird dog e dead bug sem dor.','Prancha lateral no joelho 20-30 s.','Sem dor irradiada com a atividade.'],
+    evitar:['Abdominais clássicos e flexão lombar com carga.','Cargas axiais pesadas.'],
+    ex:[['Dead bug com braços','3','8 por lado','45s'],['Bird dog lento com pausa','3','8 por lado','45s'],['Ponte de glúteos com pausa','3','12','45s'],['Prancha lateral apoiada no joelho','3','20-30s','45s'],['Clamshell (abdução em decúbito lateral)','3','12','30s'],['Hip hinge com bastão','3','10','45s'],['Bicicleta estática em intensidade leve','1','10 min','—']]},
+  { nome:'Fase 3 — Força progressiva', sem:6, freq:3,
+    obj:['Força dos padrões de agachar e dobrar a anca com coluna neutra.','Resistência do core.'],
+    criterios:['Agachar e dobrar a anca sem dor irradiada.','Prancha 45 s.'],
+    evitar:['Flexão lombar sob carga.','Aumentar carga rapidamente.'],
+    ex:[['Agachamento com bola na parede','3','10','60s'],['Hip hinge com bastão','3','12','45s'],['Peso morto com kettlebell','3','8','60s'],['Prancha lateral','3','20-30s','45s'],['Prancha frontal','3','30s','45s'],['Remada com elástico (postura)','3','12','45s']]},
+  { nome:'Fase 4 — Retorno ao treino', sem:4, freq:3,
+    obj:['Reintroduzir cargas e o desporto de forma gradual.'],
+    criterios:['Sem dor irradiada no treino.','Técnica firme em toda a amplitude.'],
+    evitar:['Voltar a cargas máximas de uma só vez.'],
+    ex:[['Peso morto com kettlebell','3','10','60s'],['Agachamento com bola na parede','3','12','60s'],['Prancha lateral','3','30s','45s'],['Bird dog lento com pausa','3','10 por lado','45s'],['Ponte de glúteos com pausa','3','15','45s']]}
+  ]},
+
+{ id:'hernia-toracica', nome:'Hérnia discal torácica', grupo:'Coluna', pat:'hernia', g:'Core',
+  resumo:'Hérnia na zona dorsal, menos frequente e com cuidados próprios. Mobilidade torácica suave, respiração e estabilização, sempre com validação clínica.',
+  quando:'Hérnia torácica confirmada por imagem e com autorização médica para exercício. É a que mais exige validação de um especialista antes de começar.',
+  bandeiras:['Fraqueza, rigidez ou perda de coordenação nas pernas (sinais de compressão da medula): urgência.','Alteração do controlo da bexiga ou intestino.','Dor em faixa à volta do tronco que piora.','Dor intensa, noturna ou febre.'],
+  notas:['Evitar flexão e rotação torácica forçadas e cargas axiais pesadas.','Treino mais conservador e de menor volume que nas hérnias lombares.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e respiração', sem:3, freq:5,
+    obj:['Reduzir dor e rigidez.','Respiração costal e mobilidade torácica suave.'],
+    criterios:['Dor em repouso a diminuir.','Respiração profunda sem dor.'],
+    evitar:['Flexão e rotação torácica forçadas.','Cargas axiais e trabalho acima da cabeça.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Mobilidade torácica sentado','2','10','30s'],['Extensão torácica sobre foam roller','2','8','—'],['Báscula pélvica deitado','2','12','30s'],['Ativação do transverso do abdómen','3','10 (5 s)','30s']]},
+  { nome:'Fase 2 — Estabilização', sem:5, freq:3,
+    obj:['Estabilidade do tronco e da escápula.','Postura sustentável.'],
+    criterios:['Dead bug e bird dog sem dor.','Retração escapular sem dor dorsal.'],
+    evitar:['Flexão torácica repetida com carga.'],
+    ex:[['Dead bug com braços','3','8 por lado','45s'],['Bird dog lento com pausa','3','8 por lado','45s'],['Retração escapular com elástico','3','12','30s'],['Elevação alternada de braço em prono (T)','3','10','45s'],['Ponte de glúteos com pausa','3','12','45s'],['Alinhamento postural contra a parede','2','30s','—']]},
+  { nome:'Fase 3 — Força progressiva', sem:6, freq:3,
+    obj:['Força das costas, escápula e membros inferiores.','Postura e resistência.'],
+    criterios:['Remadas e agachamento leves sem dor dorsal.'],
+    evitar:['Aumentar carga rapidamente.','Cargas pesadas por cima da cabeça.'],
+    ex:[['Remada com elástico (postura)','3','12','45s'],['Agachamento com bola na parede','3','10','60s'],['Hip hinge com bastão','3','10','45s'],['Prancha lateral apoiada no joelho','3','20-30s','45s'],['Wall slide (deslizamento na parede)','3','10','45s']]},
+  { nome:'Fase 4 — Retorno ao treino', sem:4, freq:3,
+    obj:['Reintroduzir cargas de forma gradual e individualizada.'],
+    criterios:['Sem dor dorsal nem sintomas neurológicos.'],
+    evitar:['Voltar a cargas máximas de uma só vez.'],
+    ex:[['Remada com elástico (postura)','3','15','45s'],['Agachamento com bola na parede','3','12','60s'],['Prancha lateral','3','30s','45s'],['Mobilidade torácica sentado','2','10','30s']]}
+  ]},
+
+{ id:'hernia-cervical', nome:'Hérnia discal cervical', grupo:'Coluna', pat:'cervical', g:'Pescoço',
+  resumo:'Hérnia do disco no pescoço, com ou sem dor irradiada para o braço (radiculopatia). Alívio, estabilização cranio-cervical e escápula, sem manobras forçadas.',
+  quando:'Hérnia cervical confirmada por imagem e avaliação clínica, sem sinais neurológicos progressivos.',
+  bandeiras:['Fraqueza progressiva do braço ou da mão, ou dificuldade em abotoar/escrever.','Dormência ou fraqueza nas pernas, marcha instável (sinais de compressão da medula): urgência.','Tonturas, visão turva ou dificuldade em falar.','Dor noturna intensa, febre ou trauma recente.'],
+  notas:['Evitar extensão máxima associada a rotação e inclinação do pescoço (provoca dor irradiada).','Evitar cargas sobre os ombros e a nuca e trabalho forte acima da cabeça.'],
+  fases:[
+  { nome:'Fase 1 — Alívio', sem:2, freq:5,
+    obj:['Reduzir dor irradiada para o braço.','Manter mobilidade do pescoço em conforto.'],
+    criterios:['Dor irradiada a diminuir ou a centralizar.','Dormir sem acordar com dor.'],
+    evitar:['Extensão, rotação e inclinação combinadas do pescoço.','Tração ou manipulação do pescoço.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Retração cervical (queixo para dentro)','3','10','30s'],['Rotação cervical ativa','2','8','30s'],['Mobilidade torácica sentado','2','10','30s'],['Alongamento do elevador da escápula','2','20s','—']]},
+  { nome:'Fase 2 — Estabilização cranio-cervical', sem:4, freq:3,
+    obj:['Força dos flexores profundos do pescoço.','Estabilizar a escápula.'],
+    criterios:['Flexão cranio-cervical 10 s repetida sem dor irradiada.','Retração escapular sem sintomas no braço.'],
+    evitar:['Cargas nos ombros e na nuca.','Exercícios com o pescoço em extensão.'],
+    ex:[['Flexão cranio-cervical deitado','3','10 (10 s)','30s'],['Isométricos cervicais (4 direções)','2','5 (10 s)','30s'],['Retração escapular com elástico','3','12','30s'],['Remada com elástico (postura)','3','12','45s'],['Extensão torácica sobre foam roller','2','8','—'],['Alinhamento postural contra a parede','2','30s','—']]},
+  { nome:'Fase 3 — Força de ombro e escápula', sem:6, freq:3,
+    obj:['Força do ombro, escápula e coluna torácica.','Resistência postural.'],
+    criterios:['Remadas e rotações externas sem dor ou formigueiro no braço.'],
+    evitar:['Trabalho acima da cabeça com muita carga.','Aumentar carga rapidamente.'],
+    ex:[['Elevação alternada de braço em prono (T)','3','10','45s'],['Rotação externa com elástico','3','12','45s'],['Abdução horizontal com elástico','3','12','45s'],['Remada com elástico (postura)','3','12','45s'],['Wall slide (deslizamento na parede)','3','10','45s'],['Alongamento peitoral na ombreira','3','30s','—']]},
+  { nome:'Fase 4 — Retorno ao treino', sem:4, freq:3,
+    obj:['Reintroduzir cargas de forma gradual.'],
+    criterios:['Sem sintomas no braço durante o treino.','Postura sustentável.'],
+    evitar:['Voltar a cargas máximas de uma só vez.'],
+    ex:[['Flexão cranio-cervical deitado','2','10 (10 s)','30s'],['Remada com elástico (postura)','3','15','45s'],['Rotação externa com elástico','3','12','45s'],['Mobilidade torácica sentado','2','10','30s']]}
+  ]}
+];
+
+// ---------- PROTOCOLOS: interface ----------
+let protoFilter = '';
+function protoById(id){ return PROTOCOLOS.find(p=>p.id===id); }
+function protoTotalSem(p){ return p.fases.reduce((a,f)=>a+f.sem,0); }
+function renderProtocolos(){
+  const box = document.getElementById('protocolos-list');
+  if(!box) return;
+  const sel = document.getElementById('proto-grupo');
+  if(sel && !sel.options.length){
+    sel.innerHTML = '<option value="">Todas as áreas</option>' + [...new Set(PROTOCOLOS.map(p=>p.grupo))].map(g=>`<option>${esc(g)}</option>`).join('');
+  }
+  const f = sel ? sel.value : '';
+  const open = [...box.querySelectorAll('details[open]')].map(d=>d.dataset.id);
+  box.innerHTML = PROTOCOLOS.filter(p=>!f || p.grupo===f).map(p=>`
+    <details class="proto" data-id="${p.id}" ${open.includes(p.id)?'open':''}>
+      <summary>
+        <span class="proto-t">${esc(p.nome)}</span>
+        <span class="proto-m">${esc(p.grupo)} · ${p.fases.length} fases · ~${protoTotalSem(p)} semanas</span>
+      </summary>
+      <div class="proto-body">
+        <p class="proto-p">${esc(p.resumo)}</p>
+        <p class="proto-p"><strong>Quando usar:</strong> ${esc(p.quando)}</p>
+        <div class="proto-red"><strong>Sinais de alarme — encaminhar para o médico:</strong><ul>${p.bandeiras.map(b=>`<li>${esc(b)}</li>`).join('')}</ul></div>
+        ${p.notas.map(n=>`<p class="proto-p">• ${esc(n)}</p>`).join('')}
+        <p class="proto-p">${esc(PROTO_DOR)}</p>
+        ${p.fases.map((fa,i)=>`
+          <div class="proto-fase">
+            <div class="proto-fh"><strong>${esc(fa.nome)}</strong><span>${fa.sem} semanas · ${fa.freq}×/semana</span></div>
+            <div class="proto-cols">
+              <div><em>Objetivos</em><ul>${fa.obj.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+              <div><em>Para avançar</em><ul>${fa.criterios.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+              <div><em>Evitar</em><ul>${fa.evitar.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+            </div>
+            <table class="proto-t2">${fa.ex.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[1])}×${esc(x[2])}</td><td>${esc(x[3])}</td></tr>`).join('')}</table>
+            <button class="btn btn-sm" onclick="protoCreateWorkoutBtn('${p.id}',${i})">Criar treino desta fase</button>
+          </div>`).join('')}
+        <div class="proto-aviso">${esc(PROTO_AVISO)}</div>
+        <button class="btn btn-primary" onclick="openProtoModal('${p.id}')">Criar ciclo para um cliente</button>
+      </div>
+    </details>`).join('');
+}
+function protoEnsureEx(x, p){
+  const n = normName(x[0]);
+  let e = DATA.exercises.find(e=>normName(e.nome)===n);
+  if(e){
+    if(e.modalidade==='Reabilitação'){ e.patologias = e.patologias||[]; if(!e.patologias.includes(p.pat)) e.patologias.push(p.pat); }
+    return e.id;
+  }
+  e = { id: uid(), nome: x[0], grupo: x[4] || p.g, equip: '', notas: x[5] || '', padrao: 'isolamento', modalidade: 'Reabilitação', patologias: [p.pat], variantes: [], imagem:'', videoLink:'', videoData:'' };
+  DATA.exercises.push(e);
+  return e.id;
+}
+function protoMakeWorkout(p, fi){
+  const fa = p.fases[fi];
+  const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}`, patologia: p.pat, protocolo: p.id,
+    exercicios: fa.ex.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+  DATA.workouts.push(w);
+  return w;
+}
+function protoCreateWorkoutBtn(id, fi){
+  const p = protoById(id);
+  if(!p) return;
+  protoMakeWorkout(p, fi);
+  saveData();
+  alert('Treino criado. Está no separador Treinos: «' + p.nome.split(' (')[0] + ' — ' + p.fases[fi].nome + '».');
+}
+function openProtoModal(id){
+  if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de criar o ciclo.'); return; }
+  const p = protoById(id);
+  document.getElementById('proto-id').value = id;
+  document.getElementById('proto-title').textContent = p.nome;
+  document.getElementById('proto-cliente').innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  document.getElementById('proto-inicio').value = new Date().toISOString().slice(0,10);
+  document.getElementById('proto-fase').innerHTML = p.fases.map((f,i)=>`<option value="${i}">${esc(f.nome)}</option>`).join('');
+  document.getElementById('proto-fase').value = '0';
+  openModal('modal-proto');
+}
+function protoCreateCycle(){
+  const p = protoById(document.getElementById('proto-id').value);
+  const clientId = document.getElementById('proto-cliente').value;
+  const inicio = document.getElementById('proto-inicio').value;
+  const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
+  const semanas = [];
+  p.fases.forEach((fa, i)=>{
+    if(i < fi0) return;
+    const w = protoMakeWorkout(p, i);
+    const slots = AI_SLOTS[fa.freq] || AI_SLOTS[3];
+    for(let s=1; s<=fa.sem; s++){
+      const dias = DIAS.map(()=>({ workoutId: '' }));
+      slots.forEach(k=>{ dias[k].workoutId = w.id; });
+      let prog = `${fa.nome} (semana ${s}/${fa.sem})`;
+      if(s===fa.sem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
+      semanas.push({ numero: semanas.length+1, progressao: prog, dias });
+    }
+  });
+  DATA.cycles.push({ id: uid(), nome: p.nome.split(' (')[0] + ' (protocolo)', clientId, inicio, numSemanas: semanas.length, semanas });
+  closeModal('modal-proto');
+  saveData();
+  document.querySelector('.rail-btn[data-view="ciclos"]').click();
+}
+
 function esc(str){
   const div = document.createElement('div');
   div.textContent = str || '';
@@ -3473,12 +4096,15 @@ function esc(str){
 function renderAll(){
   renderFicha();
   renderBackup();
+  renderSyncForm();
   renderClients();
   renderLibrary();
   renderWorkouts();
+  renderProtocolos();
   renderCycles();
 }
 renderAll();
+if(syncCfg()) setTimeout(()=>syncNow(false), 800);
 // Instalação como app e uso offline (ficheiros manifest.json e sw.js na mesma pasta)
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
