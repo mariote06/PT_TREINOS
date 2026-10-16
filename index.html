@@ -315,6 +315,7 @@
   .proto-t2{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
   .proto-t2 td{ padding:5px 6px; border-top:1px solid var(--line); }
   .proto-t2 td:nth-child(2), .proto-t2 td:nth-child(3){ white-space:nowrap; opacity:.8; }
+  .proto-sn{ font-weight:600; font-size:13px; margin-top:10px; opacity:.85; }
   .proto-aviso{ font-size:12.5px; opacity:.7; margin:12px 0; }
   @media (max-width:780px){ .proto-cols{ grid-template-columns:1fr; } }
   .btn:focus-visible, .rail-btn:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--ochre); outline-offset:2px; }
@@ -429,7 +430,7 @@
       </div>
       <div class="select-line">
         <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
-        <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Reabilitação</option></select>
+        <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Corrida</option><option>Reabilitação</option></select>
         <select id="lib-pat" onchange="libReset()"><option value="">Todas as patologias</option></select>
         <select id="lib-group" onchange="libReset()"><option value="">Todos os grupos</option></select>
       </div>
@@ -442,7 +443,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Protocolos de treino</h1>
-          <div class="view-sub">Reabilitação e treino por fases para lesões e patologias comuns. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
+          <div class="view-sub">Reabilitação, patologias e preparação de provas, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
         </div>
       </div>
       <div class="select-line"><select id="proto-grupo" onchange="renderProtocolos()"></select></div>
@@ -839,7 +840,7 @@
     </div>
     <div class="field">
       <label>Modalidade</label>
-      <select id="ex-modalidade"><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Reabilitação</option></select>
+      <select id="ex-modalidade"><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Corrida</option><option>Reabilitação</option></select>
     </div>
     <div class="field">
       <label>Indicado para (patologias, opcional; Ctrl/Cmd para várias)</label>
@@ -894,10 +895,14 @@
     <h3>Ciclo de protocolo</h3>
     <div class="view-sub" id="proto-title" style="margin-bottom:12px;"></div>
     <input type="hidden" id="proto-id">
-    <div class="field"><label>Cliente</label><select id="proto-cliente"></select></div>
+    <div class="field"><label>Cliente</label><select id="proto-cliente" onchange="protoPatCheck()"></select></div>
     <div class="row-2">
       <div class="field"><label>Data de início</label><input id="proto-inicio" type="date"></div>
       <div class="field"><label>Começar na fase</label><select id="proto-fase"></select></div>
+    </div>
+    <div id="proto-pat-box" style="display:none; border-left:3px solid #c0533a; background:rgba(192,83,58,.1); padding:10px 12px; border-radius:4px; margin:10px 0; font-size:13.5px; line-height:1.5;">
+      <div id="proto-pat-txt"></div>
+      <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; cursor:pointer;"><input type="checkbox" id="proto-adapt" checked style="margin-top:3px;"><span>Adaptar o protocolo à patologia (sem intervalos duros, ritmos de prova, saltos e estações pesadas)</span></label>
     </div>
     <div class="view-sub">Cria um treino por fase e um ciclo com todas as semanas. Podes editar tudo depois.</div>
     <div class="modal-actions">
@@ -1893,9 +1898,10 @@ function exModalidade(e){
   if(FUNC_EQUIP.test(e.equip||'') || ['Corpo inteiro','Mobilidade','Core','Cardio'].includes(e.grupo)) return 'Funcional';
   return 'Musculação';
 }
+const CORRIDA_EXERCISES = [{"nome": "Skipping A (elevação de joelho)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Drill de técnica. Elevar o joelho à altura da anca, pé em dorsiflexão por baixo do joelho, tronco alto e braços a 90°. Apoio na parte da frente do pé, por baixo do corpo. Rápido e relaxado, não forçado.", "variantes": ["Marcha A (a andar)", "Skipping A a ritmo lento", "Skipping A rápido", "Skipping A com deslocamento lateral"], "rx": ["2", "20 m"]}, {"nome": "Skipping B (extensão da perna)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Igual ao skipping A, mas depois de elevar o joelho estende a perna à frente e puxa o pé para baixo e para trás, com uma \"pisada ativa\" por baixo do corpo. Treina o apoio por baixo do centro de gravidade evitando a passada longa à frente.", "variantes": ["Marcha B (a andar)", "Skipping B lento", "Skipping B rápido"], "rx": ["2", "20 m"]}, {"nome": "Skipping C (calcanhar ao glúteo)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Elevar os calcanhares em direção aos glúteos, com os joelhos a apontar para baixo e a anca estável. Treina a recuperação rápida da perna e a ativação dos isquiotibiais.", "variantes": ["Skipping C a andar", "Skipping C rápido", "Skipping C alternado (um lado de cada vez)"], "rx": ["2", "20 m"]}, {"nome": "Quick feet (passos rápidos)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Passos muito curtos e muito rápidos, com os pés a pouca altura do chão, joelhos ligeiramente fletidos e apoio no antepé. Treina a frequência de passada e o apoio leve.", "variantes": ["Passos rápidos no lugar", "Passos rápidos com deslocamento", "Passos rápidos com resistência de elástico"], "rx": ["3", "15 s"]}, {"nome": "Marcha A (elevação de joelho a andar)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Versão lenta do skipping A: andar com elevação do joelho e posição de corrida, para aprender o padrão antes de aumentar a velocidade.", "variantes": ["Marcha A com pausa de 1 s no joelho elevado", "Marcha A com balanço de braços"], "rx": ["2", "20 m"]}, {"nome": "Passos laterais (side shuffle)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Deslocar lateralmente com pés a não cruzar, anca baixa e peito aberto. Ativa o glúteo médio e melhora o controlo lateral da bacia.", "variantes": ["Shuffle com mini band nos joelhos", "Shuffle lento", "Shuffle rápido"], "rx": ["3", "10 m por lado"]}, {"nome": "Passada ampla (bounding)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Corrida em saltos longos e rítmicos, com tempo de voo e impulsão da perna de trás. Trabalha a potência e a amplitude da passada. Aterrar suave sobre o antepé e a seguir ao centro do corpo.", "variantes": ["Bounding baixo (saltos curtos)", "Bounding alto (saltos longos)", "Bounding unipodal"], "rx": ["3", "20 m"]}, {"nome": "Corrida de costas", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Correr de costas em ritmo fácil, apoiando no antepé. Ativa os quadríceps e melhora o equilíbrio e a consciência da postura. Fazer em espaço livre e com supervisão.", "variantes": ["Marcha de costas", "Corrida de costas lenta"], "rx": ["3", "20 m"]}, {"nome": "Strides (acelerações)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Acelerações de 15-20 s até um ritmo rápido mas relaxado (cerca de 90% da velocidade máxima), com recuperação completa (60 s a andar). Melhoram a técnica e a economia de corrida, e preparam as pernas para a qualidade.", "variantes": ["Strides em relva", "Strides em subida suave", "Strides em tapete"], "rx": ["4", "20 s"]}, {"nome": "Corrida com metrónomo (cadência)", "grupo": "Cardio", "equip": "Metrónomo", "padrao": "cardio", "modalidade": "Corrida", "notas": "Correr ao ritmo de um metrónomo para treinar a cadência. Muitos corredores usam como referência 170-180 passos por minuto, mas o ideal depende da velocidade e da altura. Aumentar a cadência 5% costuma reduzir o apoio à frente do corpo.", "variantes": ["Cadência confortável", "Cadência +5%", "Cadência a ritmo de prova"], "rx": ["3", "2 min"]}, {"nome": "Corrida com braços em ênfase", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Corrida lenta a dar ênfase ao balanço dos braços, com cotovelos a 90°, ombros relaxados e as mãos a passar da anca ao peito, sem cruzar a linha média.", "variantes": ["Balanço de braços de pé", "Balanço de braços sentado"], "rx": ["3", "30 s"]}, {"nome": "Corrida em pontas dos pés (apoio de antepé)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Corrida curta e lenta a trabalhar o apoio sob o corpo, com calcanhar a tocar suavemente. Não é para correr em pontas, é para sentir o apoio leve e silencioso.", "variantes": ["Marcha em apoio de antepé", "Corrida leve silenciosa"], "rx": ["3", "20 m"]}, {"nome": "Aquecimento de corrida leve", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Corrida muito leve para preparar o corpo antes dos exercícios mais intensos. Aumentar o ritmo no final com alguns skippings.", "variantes": ["Aquecimento com drills", "Aquecimento em esteira"], "rx": ["1", "10 min"]}, {"nome": "Corrida contínua leve (Z2)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Ritmo fácil, consegues conversar (Borg 11-12). É a base do treino de corrida.", "variantes": ["Em esteira", "Em terreno plano", "Em trilho"], "rx": ["1", "30-40 min"]}, {"nome": "Corrida longa (Z2)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Ritmo fácil e constante. Treinar a hidratação e a nutrição que vais usar na prova.", "variantes": ["Com blocos a ritmo de prova", "Em terreno variado"], "rx": ["1", "60-90 min"]}, {"nome": "Fartlek", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Variações livres de ritmo: blocos de 1-2 min mais rápidos (Z3-Z4) alternados com trote fácil.", "variantes": ["Fartlek estruturado (1 min / 1 min)", "Fartlek livre"], "rx": ["1", "6×1 min"]}, {"nome": "Intervalos de corrida (Z4)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Blocos em Z4 (esforço duro mas controlado, Borg 15-16), com trote de recuperação entre repetições.", "variantes": ["5×3 min", "8×400 m", "6×800 m"], "rx": ["5", "3 min"]}, {"nome": "Corrida em limiar (tempo run)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Esforço contínuo em Z3-Z4, \"confortavelmente duro\": consegues dizer poucas palavras.", "variantes": ["2×10 min", "20 min contínuo"], "rx": ["2", "10 min"]}, {"nome": "Corrida em ritmo de prova", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Ritmo alvo da prova. Serve para treinar a gestão do esforço e a sensação do ritmo.", "variantes": ["3×8 min", "3×15 min", "2×20 min"], "rx": ["3", "8 min"]}, {"nome": "Corrida em ritmo de maratona", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Ritmo alvo da maratona, controlado e económico. Serve para treinar a gestão do esforço, a nutrição e a sensação do ritmo.", "variantes": ["3×20 min", "2×40 min"], "rx": ["3", "20 min"]}, {"nome": "Corrida em subida (repetições)", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Subidas em esforço Z4. Descer a trote de recuperação. Postura alta, passada curta e braços ativos.", "variantes": ["Subidas curtas (30-60 s)", "Subidas longas (3-6 min)", "Subida em esteira com inclinação"], "rx": ["6", "1 min"]}, {"nome": "Corrida regenerativa", "grupo": "Cardio", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Corrida muito fácil e curta para recuperar. Se te sentires cansado, caminha.", "variantes": ["Corrida regenerativa em relva", "Caminhada rápida"], "rx": ["1", "20-30 min"]}, {"nome": "Pogo jumps (saltos de tornozelo)", "grupo": "Pernas", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Saltos pequenos e rápidos só com o tornozelo, joelhos quase estendidos e contacto curto com o chão. Treinam a rigidez do tendão de Aquiles e a reatividade.", "variantes": ["Pogo bipodal", "Pogo unipodal", "Pogo com deslocamento"], "rx": ["3", "15"]}, {"nome": "Salto horizontal unipodal (hop)", "grupo": "Pernas", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Saltar para a frente numa perna e aterrar com controlo, a parar 2 s antes de repetir. Joelho alinhado com o pé e anca estável. Trabalha a potência e a estabilidade.", "variantes": ["Hop curto", "Hop com salto contínuo", "Hop em zigue-zague"], "rx": ["3", "5 por perna"]}, {"nome": "Skater jumps (saltos laterais)", "grupo": "Pernas", "equip": "Peso corporal", "padrao": "cardio", "modalidade": "Corrida", "notas": "Saltos laterais de perna para perna, com aterragem controlada sobre a perna da frente e joelho alinhado. Trabalha o glúteo médio e a estabilidade lateral.", "variantes": ["Skater com pausa", "Skater contínuo", "Skater com salto mais longo"], "rx": ["3", "10"]}, {"nome": "Salto na caixa baixa", "grupo": "Pernas", "equip": "Caixa", "padrao": "cardio", "modalidade": "Corrida", "notas": "Saltar para uma caixa baixa (20-30 cm) e descer a andar. Treina a potência com baixo impacto na aterragem.", "variantes": ["Caixa 20 cm", "Caixa 30 cm", "Salto unipodal na caixa baixa"], "rx": ["3", "6"]}, {"nome": "Salto à corda leve", "grupo": "Pernas", "equip": "Corda", "padrao": "cardio", "modalidade": "Corrida", "notas": "Saltos pequenos e rítmicos com a corda, apoiando no antepé, com baixo impacto. Melhora a coordenação e o tónus do tornozelo.", "variantes": ["Salto bipodal", "Salto alternado", "Salto unipodal"], "rx": ["3", "30-45 s"]}, {"nome": "Elevação de gémeos unipodal com pausa", "grupo": "Pernas", "equip": "Step", "padrao": "isolamento", "modalidade": "Corrida", "notas": "Subir em pontas num pé e fazer uma pausa de 2 s em cima, descer de forma controlada. Força o tríceps sural, que absorve até 6-8 vezes o peso corporal em cada passada.", "variantes": ["Gémeos bipodal", "Gémeos com joelho fletido (sóleo)", "Gémeos com carga"], "rx": ["3", "10-12 por perna"]}, {"nome": "Elevação de gémeos excêntrica unipodal", "grupo": "Pernas", "equip": "Step", "padrao": "isolamento", "modalidade": "Corrida", "notas": "Subir com as duas pernas e descer 3-4 s com uma perna. Boa para o tendão de Aquiles e para prevenir lesões.", "variantes": ["Excêntrico lento", "Com joelho fletido"], "rx": ["3", "10 por perna"]}, {"nome": "Step-up com elevação do joelho", "grupo": "Pernas", "equip": "Caixa", "padrao": "agachamento", "modalidade": "Corrida", "notas": "Subir para a caixa e elevar o joelho da perna livre até à altura da anca. Treina o impulso da passada e o equilíbrio unipodal.", "variantes": ["Step-up simples", "Step-up com halteres leves", "Step-up com salto"], "rx": ["3", "8 por perna"]}, {"nome": "Ponte de glúteos unipodal", "grupo": "Glúteos", "equip": "Peso corporal", "padrao": "dobradica", "modalidade": "Corrida", "notas": "Deitado de costas, com um pé apoiado e a outra perna estendida. Subir a anca sem rodar a bacia. Fortalece o glúteo máximo, essencial para o impulso na corrida.", "variantes": ["Ponte bipodal", "Ponte unipodal com pausa", "Ponte unipodal com os pés elevados"], "rx": ["3", "10 por perna"]}, {"nome": "Hip thrust unilateral", "grupo": "Glúteos", "equip": "Banco", "padrao": "dobradica", "modalidade": "Corrida", "notas": "Costas apoiadas no banco, uma perna a empurrar. Subir a anca até alinhar com o tronco, sem arquear a lombar. Trabalha o glúteo com carga de uma perna.", "variantes": ["Hip thrust bipodal", "Hip thrust unilateral com carga"], "rx": ["3", "8 por perna"]}, {"nome": "Agachamento unipodal em caixa", "grupo": "Pernas", "equip": "Caixa", "padrao": "agachamento", "modalidade": "Corrida", "notas": "Sentar numa caixa e levantar numa perna só, com controlo e sem deixar o joelho ir para dentro. Fortalece quadríceps e glúteos de forma unilateral.", "variantes": ["Agachamento em caixa alta", "Agachamento em caixa baixa", "Pistol assistido"], "rx": ["3", "6 por perna"]}, {"nome": "Nordic curl assistido", "grupo": "Pernas", "equip": "Peso corporal", "padrao": "dobradica", "modalidade": "Corrida", "notas": "De joelhos, com os pés fixos, descer o tronco devagar a controlar com os isquiotibiais, apoiando as mãos no chão quando necessário. Previne lesões dos isquiotibiais. Começar com poucas repetições.", "variantes": ["Nordic com elástico", "Nordic excêntrico lento", "Nordic completo"], "rx": ["3", "5"]}, {"nome": "Prancha lateral com abdução da perna", "grupo": "Core", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "Em prancha lateral, elevar a perna de cima sem deixar cair a anca. Trabalha o glúteo médio e o core lateral, ajudando a estabilidade da bacia na corrida.", "variantes": ["Prancha lateral simples", "Com mini band", "Com apoio no joelho"], "rx": ["3", "10 por lado"]}, {"nome": "Equilíbrio unipodal com alcance (Y-balance)", "grupo": "Pernas", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "De pé numa perna, alcançar com a outra em três direções (frente, trás-lateral e trás-medial), sem perder o equilíbrio. Treina propriocepção e controlo do joelho.", "variantes": ["Alcance só à frente", "Com cones", "Com os olhos fechados (avançado)"], "rx": ["3", "5 por direção"]}, {"nome": "Hip hinge com banda (corredor)", "grupo": "Glúteos", "equip": "Mini band", "padrao": "dobradica", "modalidade": "Corrida", "notas": "Dobrar a anca com as costas direitas e banda à volta dos joelhos, mantendo os joelhos para fora. Ensina o padrão de impulsão da anca para a corrida.", "variantes": ["Hip hinge com bastão", "Hip hinge unipodal"], "rx": ["3", "10"]}, {"nome": "Mobilidade da anca 90/90", "grupo": "Mobilidade", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "Sentado com as duas pernas a 90°, rodar de um lado para o outro e inclinar o tronco sobre a perna da frente. Melhora a rotação interna e externa da anca.", "variantes": ["90/90 simples", "90/90 com elevação do joelho", "90/90 com inclinação"], "rx": ["2", "8 por lado"]}, {"nome": "Balanço dinâmico de perna", "grupo": "Mobilidade", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "De pé com apoio na parede, balançar a perna para a frente e para trás e depois para os lados, em amplitude confortável. Aquece a anca antes da corrida.", "variantes": ["Balanço frontal", "Balanço lateral", "Balanço cruzado"], "rx": ["2", "10 por perna"]}, {"nome": "Alongamento do flexor da anca", "grupo": "Mobilidade", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "Em afundo com o joelho de trás no chão, contrair o glúteo e empurrar a anca para a frente até sentir o alongamento na frente da anca. Útil para quem fica muito tempo sentado.", "variantes": ["Com braço no ar", "Com banda", "Contra a parede"], "rx": ["2", "30 s por lado"]}, {"nome": "Mobilidade do tornozelo contra a parede", "grupo": "Mobilidade", "equip": "Peso corporal", "padrao": "core", "modalidade": "Corrida", "notas": "Pé a poucos centímetros da parede, empurrar o joelho para a frente até tocar sem levantar o calcanhar. Melhora a dorsiflexão, importante para a passada e para o agachamento.", "variantes": ["Com banda no tornozelo", "Joelho em direção ao 2.º dedo"], "rx": ["2", "10 por lado"]}, {"nome": "Alongamento de isquiotibiais em pé", "grupo": "Mobilidade", "equip": "Peso corporal", "padrao": "dobradica", "modalidade": "Corrida", "notas": "De pé com o calcanhar apoiado num degrau, inclinar o tronco com as costas direitas até sentir o alongamento atrás da coxa. Sem forçar nem fazer ressalto.", "variantes": ["Com toalha deitado", "Dinâmico (balanço de perna)"], "rx": ["2", "30 s por perna"]}, {"nome": "Rolo de espuma para gémeos e quadríceps", "grupo": "Mobilidade", "equip": "Rolo de espuma", "padrao": "core", "modalidade": "Corrida", "notas": "Rolar devagar sobre os músculos das pernas, parando 20-30 s nos pontos mais sensíveis. Sem dor intensa. Ajuda a relaxar antes ou depois da corrida.", "variantes": ["Rolo para gémeos", "Rolo para quadríceps", "Rolo para glúteos"], "rx": ["1", "1-2 min por zona"]}];
 function loadFullLibrary(){
   const byName = new Map(DATA.exercises.map(e=>[normName(e.nome), e]));
-  const all = [...BASE_EXERCISES.map(e=>({...e, notas:'', variantes:[]})), ...EXTRA_EXERCISES, ...REHAB_EXERCISES, ...HYROX_EXERCISES];
+  const all = [...BASE_EXERCISES.map(e=>({...e, notas:'', variantes:[]})), ...EXTRA_EXERCISES, ...REHAB_EXERCISES, ...HYROX_EXERCISES, ...CORRIDA_EXERCISES];
   const toAdd = all.filter(e=>!byName.has(normName(e.nome)));
   const toUpdate = all.filter(e=>{ const x=byName.get(normName(e.nome)); return x && ((!x.rx && e.rx) || (!x.notas && e.notas) || (!(x.variantes||[]).length && (e.variantes||[]).length)); });
   if(!toAdd.length && !toUpdate.length){ alert('A biblioteca completa já está carregada.'); return; }
@@ -2746,7 +2752,7 @@ function aiExercisePool(equipChoice, withCF){
     'Casa, sem material': ['', 'Peso corporal','Toalha'],
     'Casa, com elásticos': ['', 'Peso corporal','Elástico','Mini band','Toalha']
   }[equipChoice];
-  return DATA.exercises.filter(e=>e.grupo!=='Mobilidade' && e.modalidade!=='Reabilitação' && e.modalidade!=='HYROX' && (withCF || e.modalidade!=='CrossFit') && (!allowed || allowed.includes(e.equip||'')));
+  return DATA.exercises.filter(e=>e.grupo!=='Mobilidade' && e.modalidade!=='Reabilitação' && e.modalidade!=='HYROX' && e.modalidade!=='Corrida' && (withCF || e.modalidade!=='CrossFit') && (!allowed || allowed.includes(e.equip||'')));
 }
 
 function openAIModal(){
@@ -2909,6 +2915,9 @@ const PLAN_LIMITS = [
 // e Exercise Management for Persons with Chronic Diseases). São pontos de partida conservadores, não substituem
 // a avaliação nem a autorização médica.
 const PATOLOGIAS = {
+  em: { nome:'Esclerose múltipla', contra:'esforços até à exaustão, saltos e impacto, calor excessivo e exercícios de equilíbrio sem apoio', dias:3, series:2, reps:['10-15','10-15'], rest:90, carga:'RPE 5-6 (Borg 11-13), parar antes da fadiga', cardio:15, maq:true, grp:'Neurológicas',
+    ex:/salto|jump|burpee|skipping|corda|climber|box|pliometr|sprint|pistol|handstand|slam|wall ball|snatch|clean|jerk/,
+    avisos:['Esclerose múltipla: aeróbio 2-3 dias/semana (10-30 min, intensidade moderada) e força 2-3 dias/semana (1-3 séries de 10-15 repetições), em dias não consecutivos. Sessões curtas e fracionadas toleram-se melhor.','Sensibilidade ao calor: treinar em ambiente fresco, hidratar, usar roupa leve e arrefecer no final. O agravamento transitório de sintomas com o calor costuma passar com o arrefecimento.','Respeitar a fadiga e adaptar o dia: nos dias maus, reduzir o volume. Descansos mais longos e exercícios de equilíbrio com apoio por perto. Não treinar durante um surto ou com infeção; confirmar o plano com o neurologista.'] },
   hta: { nome:'Hipertensão arterial', contra:'isométricos prolongados, cabeça abaixo do coração, saltos e esforços máximos', dias:3, series:2, reps:['10-15','12-15'], rest:75, carga:'RPE 5-6 (Borg 11-13)', cardio:15, maq:true, grp:'Cardiometabólicas',
     ex:/wall sit|isometri|handstand|pike|invertid|decline|declinado|stiff|prancha.*(60|90)|farmer|carry|salto|jump|burpee|sprint|climber/,
     avisos:['Hipertensão (ACSM): treino de força 2-3 dias/semana, intensidade moderada (RPE 5-6), 10-15 repetições, sem chegar à falha.','Expirar no esforço e nunca prender a respiração (evitar manobra de Valsalva). Evitar exercícios isométricos prolongados e com a cabeça abaixo do coração.','Não treinar com tensão arterial em repouso ≥ 200/110 mmHg ou com sintomas. Cliente medicado: confirmar com o médico o efeito da medicação (ex.: betabloqueantes) na frequência cardíaca.'] },
@@ -2973,6 +2982,7 @@ function contraAlert(e, key){
   if(e.modalidade==='Reabilitação' && (e.patologias||[]).includes(key)) return null;
   if(e.modalidade==='CrossFit') return 'exercícios de CrossFit (alta intensidade e complexidade)';
   if(e.modalidade==='HYROX') return 'exercícios de HYROX (alta intensidade, carga e impacto)';
+  if(e.modalidade==='Corrida') return 'exercícios de corrida e saltos (impacto repetido)';
   return pat.ex.test(normText(e.nome)) ? pat.contra : null;
 }
 const PLAN_CF_ADV = /snatch|clean|jerk|muscle|handstand|parada de maos|pistol|overhead squat|kipping|toes to bar|ring dips|subida de corda|double under|sumo deadlift high|wall walk|l sit|devil|man maker|butterfly|chest to bar/;
@@ -3021,7 +3031,7 @@ const PLAN_SPLIT = {
   5:['PUSH_A','PULL_A','LOW_A','UP_B','LOW_B'], 6:['PUSH_A','PULL_A','LOW_A','PUSH_B','PULL_B','LOW_B']
 };
 function patOptions(sel){
-  const order = ['Cardiometabólicas','Coluna','Ombro e joelho','Cotovelo','Tornozelo','Músculo-esqueléticas'];
+  const order = ['Cardiometabólicas','Neurológicas','Coluna','Ombro e joelho','Cotovelo','Tornozelo','Músculo-esqueléticas'];
   return order.map(g=>{
     const items = Object.entries(PATOLOGIAS).filter(([k,v])=>v.grp===g);
     return items.length ? `<optgroup label="${g}">` + items.map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${esc(v.nome)}</option>`).join('') + '</optgroup>' : '';
@@ -3053,7 +3063,7 @@ function planPickExercise(slot, ctx, usedPlan, usedSession){
   const penalty = e=>PLAN_ODD.test(normText(e.nome)) ? 20 : 0;
   const base = (useKw)=>ctx.pool.filter(e=>{
     const n = normText(e.nome);
-    if(slot.mod ? e.modalidade!==slot.mod : (e.modalidade==='CrossFit' || e.modalidade==='Reabilitação' || e.modalidade==='HYROX')) return false;
+    if(slot.mod ? e.modalidade!==slot.mod : (e.modalidade==='CrossFit' || e.modalidade==='Reabilitação' || e.modalidade==='HYROX' || e.modalidade==='Corrida')) return false;
     return slot.p.includes(e.padrao) && slot.g.includes(e.grupo) && !usedSession.has(e.id)
       && (!useKw || ((!slot.kw || slot.kw.test(n)) && (!slot.not || !slot.not.test(n))));
   });
@@ -3983,12 +3993,465 @@ const PROTOCOLOS = [
     criterios:['Sem sintomas no braço durante o treino.','Postura sustentável.'],
     evitar:['Voltar a cargas máximas de uma só vez.'],
     ex:[['Flexão cranio-cervical deitado','2','10 (10 s)','30s'],['Remada com elástico (postura)','3','15','45s'],['Rotação externa com elástico','3','12','45s'],['Mobilidade torácica sentado','2','10','30s']]}
+  ]},
+{ id:'hta', nome:'Hipertensão arterial', grupo:'Cardiometabólicas', pat:'hta', g:'Corpo inteiro',
+  resumo:'Treino aeróbio regular e força moderada, sem esforços máximos nem apneia. Objetivo: melhorar a condição física e ajudar a baixar a tensão arterial.',
+  quando:'Hipertensão controlada, com autorização médica. Cliente medicado: confirmar o efeito da medicação (ex.: betabloqueantes) na frequência cardíaca.',
+  bandeiras:['Tensão arterial em repouso ≥ 180/110 mmHg no dia (não treinar).','Dor ou pressão no peito, falta de ar desproporcionada, tonturas ou palpitações.','Dor de cabeça súbita e intensa, alterações da visão.','Inchaço novo nas pernas.'],
+  notas:['Expirar no esforço e nunca prender a respiração (evitar Valsalva).','Evitar isométricos prolongados e posições com a cabeça abaixo do coração. Arrefecimento gradual no final; não parar de repente.','Medir a tensão antes do treino nas primeiras semanas.'],
+  fases:[
+  { nome:'Fase 1 — Adaptação', sem:4, freq:3,
+    obj:['Habituar-se ao exercício e à respiração correta.','Aeróbio leve e força com cargas muito baixas.'],
+    criterios:['Caminhada de 20 min sem sintomas.','Tensão estável antes e depois do treino.'],
+    evitar:['Esforços máximos e isométricos longos.','Treinar com tensão acima do limite definido.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','15-20 min','—','Cardio','Esforço 11-13 na escala de Borg (consegues falar sem dificuldade).'],['Sentar e levantar da cadeira','2','12','60s'],['Remada com elástico (postura)','2','12','60s'],['Elevação de gémeos bipodal','2','15','45s'],['Respiração diafragmática deitado','1','5 min','—']]},
+  { nome:'Fase 2 — Base', sem:6, freq:3,
+    obj:['Aeróbio de 30 min em intensidade moderada.','Força 2×12-15 com esforço moderado.'],
+    criterios:['30 min contínuos sem sintomas.','Tensão estável ao longo das semanas.'],
+    evitar:['Chegar à falha muscular.','Trabalho acima da cabeça prolongado.'],
+    ex:[['Bicicleta estática em intensidade leve','1','25-30 min','—','Cardio','Esforço 12-13 de Borg.'],['Leg press leve','2','12-15','75s'],['Remada com elástico (postura)','2','15','60s'],['Press de peito com elástico','2','12-15','60s','Peito','Expirar ao empurrar. Sem prender a respiração.'],['Agachamento parcial com apoio','2','12','60s'],['Prancha lateral apoiada no joelho','2','20s','45s']]},
+  { nome:'Fase 3 — Consolidação', sem:6, freq:3,
+    obj:['Chegar a 150 min de aeróbio por semana.','Força 2-3 dias por semana, esforço moderado (RPE 6-7).'],
+    criterios:['Mantém o treino sem sintomas.','Tensão de repouso melhorou ou manteve-se estável.'],
+    evitar:['Esforços máximos e isométricos prolongados.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','30-35 min','—','Cardio','Pode incluir 2-3 blocos de 2 min mais rápidos, a RPE 13-14.'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','3','12','60s'],['Agachamento com bola na parede','2','10','60s'],['Prancha frontal','2','20-30s','45s','Core']]}
+  ]},
+
+{ id:'dm2', nome:'Diabetes tipo 2', grupo:'Cardiometabólicas', pat:'dm2', g:'Corpo inteiro',
+  resumo:'Aeróbio regular e força moderada em dias não consecutivos, com cuidado à glicemia e aos pés.',
+  quando:'Diabetes tipo 2 controlada, com autorização médica. Atenção especial se houver insulina, retinopatia ou neuropatia.',
+  bandeiras:['Glicemia > 250 mg/dL com cetonas, ou > 300 mg/dL: não treinar.','Hipoglicemia (tremores, suor frio, confusão): parar e tomar hidratos rápidos.','Dor ou pressão no peito, falta de ar desproporcionada.','Úlcera, bolha ou ferida no pé; perda súbita de visão.'],
+  notas:['Medir a glicemia antes e depois do treino; ter hidratos de carbono rápidos sempre à mão. A hipoglicemia pode surgir horas depois.','Verificar os pés antes e depois; calçado adequado.','Com retinopatia ou neuropatia: evitar esforços máximos, Valsalva e impacto.'],
+  fases:[
+  { nome:'Fase 1 — Adaptação', sem:4, freq:3,
+    obj:['Criar hábito de exercício.','Aeróbio leve e força com carga baixa.'],
+    criterios:['Caminhada de 20 min sem sintomas.','Glicemia sem oscilações bruscas com o treino.'],
+    evitar:['Treinar em jejum prolongado sem orientação.','Esforços máximos e impacto.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','15-20 min','—','Cardio','Esforço 11-13 de Borg.'],['Sentar e levantar da cadeira','2','12','60s'],['Remada com elástico (postura)','2','12','60s'],['Elevação de gémeos bipodal','2','15','45s'],['Equilíbrio unipodal','2','30s','30s']]},
+  { nome:'Fase 2 — Construção', sem:6, freq:3,
+    obj:['Aeróbio de 30 min.','Força 2-3×10-15, esforço moderado.'],
+    criterios:['30 min contínuos sem sintomas.','Sem hipoglicemias associadas ao treino.'],
+    evitar:['Dois dias seguidos sem qualquer atividade.','Chegar à falha.'],
+    ex:[['Bicicleta estática em intensidade leve','1','25-30 min','—','Cardio','Esforço 12-13 de Borg.'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','3','12','60s','Peito'],['Agachamento parcial com apoio','3','10','60s'],['Prancha lateral apoiada no joelho','2','20s','45s']]},
+  { nome:'Fase 3 — Consolidação', sem:6, freq:4,
+    obj:['≥ 150 min de aeróbio por semana.','Força em dias não consecutivos.'],
+    criterios:['Cumpre o volume semanal.','Glicemia mais estável.'],
+    evitar:['Impacto elevado com neuropatia.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','35-40 min','—','Cardio'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','3','12','60s'],['Agachamento com bola na parede','3','10','60s'],['Prancha frontal','2','30s','45s','Core']]}
+  ]},
+
+{ id:'obesidade', nome:'Obesidade (IMC ≥ 30)', grupo:'Cardiometabólicas', pat:'obes', g:'Corpo inteiro',
+  resumo:'Aeróbio de baixo impacto progressivo e força moderada, com foco na regularidade e não na intensidade.',
+  quando:'Cliente com obesidade sem limitações médicas por avaliar. Em IMC muito elevado, comorbilidades ou dor articular, validar com o médico.',
+  bandeiras:['Dor ou pressão no peito, falta de ar desproporcionada, tonturas.','Dor articular que aumenta ao longo das semanas.','Inchaço novo nas pernas.','Sobreaquecimento, náuseas ou suores frios.'],
+  notas:['Foco no volume e na regularidade. Evitar saltos e impacto.','Aquecimento mais longo, hidratação e superfícies estáveis.'],
+  fases:[
+  { nome:'Fase 1 — Base de baixo impacto', sem:4, freq:3,
+    obj:['Criar hábito e tolerância ao esforço.','Aeróbio de baixo impacto e força com peso corporal.'],
+    criterios:['20 min contínuos sem dor.','Sem dor articular nas 24 h seguintes.'],
+    evitar:['Saltos e corrida.','Treinar até à exaustão.'],
+    ex:[['Bicicleta estática em intensidade leve','1','15-20 min','—','Cardio'],['Sentar e levantar da cadeira','3','10','60s'],['Remada com elástico (postura)','3','12','60s'],['Ponte de glúteos com pausa','3','12','45s'],['Prancha lateral apoiada no joelho','2','20s','45s']]},
+  { nome:'Fase 2 — Aumento de volume', sem:6, freq:4,
+    obj:['Aeróbio de 30-40 min.','Força 3×10-15, moderada.'],
+    criterios:['30 min contínuos tolerados.','Sem dor articular persistente.'],
+    evitar:['Impacto.','Aumentar tempo e intensidade ao mesmo tempo.'],
+    ex:[['Elíptica em intensidade leve','1','30 min','—','Cardio'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','3','12','60s','Peito'],['Step-up baixo','3','10','60s'],['Prancha frontal','2','20-30s','45s','Core']]},
+  { nome:'Fase 3 — Intensidade moderada', sem:6, freq:4,
+    obj:['Progredir para 150-300 min por semana.','Força com cargas moderadas, RPE 6-7.'],
+    criterios:['Cumpre o volume semanal.','Melhor tolerância ao esforço.'],
+    evitar:['Impacto elevado.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','35-45 min','—','Cardio','Incluir inclinação suave, esforço 12-14 de Borg.'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','3','12','60s'],['Agachamento com bola na parede','3','10','60s'],['Prancha lateral','3','20-30s','45s','Core']]}
+  ]},
+
+{ id:'osteoporose', nome:'Osteoporose / osteopenia', grupo:'Músculo-esquelético', pat:'osteop', g:'Corpo inteiro',
+  resumo:'Força com carga axial moderada a alta, equilíbrio e postura, sem flexão nem torção da coluna sob carga.',
+  quando:'Osteoporose ou osteopenia diagnosticada. Com fraturas vertebrais ou T-score muito baixo, validar o plano com o médico.',
+  bandeiras:['Dor súbita e intensa nas costas (suspeita de fratura vertebral).','Queda recente ou trauma.','Perda de altura recente.','Tonturas ou desequilíbrio marcado.'],
+  notas:['Evitar flexão e torção da coluna sob carga (crunch, abdominais, rotações) e impacto elevado.','Prevenir quedas: superfície estável e supervisão nos exercícios de equilíbrio.'],
+  fases:[
+  { nome:'Fase 1 — Postura e equilíbrio', sem:4, freq:3,
+    obj:['Postura e extensão torácica.','Equilíbrio e confiança no movimento.'],
+    criterios:['Equilíbrio unipodal 20-30 s.','Sentar e levantar 10 vezes sem apoio.'],
+    evitar:['Flexão e rotação da coluna sob carga.','Impacto.'],
+    ex:[['Alinhamento postural contra a parede','2','30s','—'],['Extensão torácica sobre foam roller','2','8','—'],['Equilíbrio unipodal','3','20-30s','30s'],['Sentar e levantar da cadeira','3','10','60s'],['Marcha em pontas e calcanhares','2','20 m','30s'],['Retração escapular com elástico','3','12','45s']]},
+  { nome:'Fase 2 — Carga axial moderada', sem:6, freq:3,
+    obj:['Força dos membros inferiores e das costas.','Cargas moderadas, 8-12 repetições.'],
+    criterios:['Técnica estável em toda a amplitude.','Sem dor nas costas após treino.'],
+    evitar:['Flexão da coluna sob carga.','Rotações com carga.'],
+    ex:[['Leg press leve','3','10-12','75s'],['Agachamento com bola na parede','3','10','60s'],['Remada com elástico (postura)','3','12','60s'],['Elevação de gémeos bipodal','3','12','45s'],['Step-up baixo','3','10','60s'],['Equilíbrio unipodal','3','30s','30s']]},
+  { nome:'Fase 3 — Força com carga', sem:8, freq:3,
+    obj:['Aumentar a carga progressivamente (RPE 6-7).','Equilíbrio dinâmico e prevenção de quedas.'],
+    criterios:['Progressão de cargas sem dor.','Equilíbrio dinâmico seguro.'],
+    evitar:['Impacto elevado e saltos.','Crunch e abdominais clássicos.'],
+    ex:[['Leg press leve','3','8-10','90s'],['Remada com elástico (postura)','3','10','75s'],['Step-up baixo','3','8-10','60s'],['Prancha lateral','2','20-30s','45s','Core'],['Marcha em pontas e calcanhares','2','20 m','30s'],['Equilíbrio no bosu','2','20s','30s']]}
+  ]},
+
+{ id:'osteoartrite', nome:'Osteoartrite (anca/joelho)', grupo:'Músculo-esquelético', pat:'oa', g:'Pernas',
+  resumo:'Força e aeróbio de baixo impacto, em amplitudes sem dor, para reduzir a dor e melhorar a função.',
+  quando:'Osteoartrite diagnosticada da anca ou do joelho.',
+  bandeiras:['Joelho ou anca muito inchados, quentes ou vermelhos.','Dor em repouso ou noturna intensa.','Bloqueio ou falha da articulação.','Dor que dura mais de 2 h após o treino.'],
+  notas:['Dor até 4/10 durante o exercício é aceitável, desde que passe em 2 h.','Aquecimento mais longo e respeitar a rigidez matinal.'],
+  fases:[
+  { nome:'Fase 1 — Mobilidade e controlo da dor', sem:3, freq:4,
+    obj:['Reduzir a rigidez e a dor.','Ativar quadríceps e glúteos.'],
+    criterios:['Marcha mais fluida.','Dor ≤ 4/10 nas atividades diárias.'],
+    evitar:['Impacto, saltos e flexão profunda sob carga.'],
+    ex:[['Bicicleta estática em intensidade leve','1','10 min','—','Cardio'],['Contração isométrica de quadríceps','3','10 (5 s)','30s'],['Elevação da perna estendida','3','12','30s'],['Ponte de glúteos com pausa','3','10','45s'],['Abdução de anca em pé com apoio','2','12','30s']]},
+  { nome:'Fase 2 — Força de baixo impacto', sem:6, freq:3,
+    obj:['Força 2×10-15, intensidade moderada.','Aeróbio de baixo impacto.'],
+    criterios:['Dor ≤ 4/10 e sem agravamento.','Sentar e levantar 10 vezes sem dor.'],
+    evitar:['Afundos profundos e saltos.'],
+    ex:[['Bicicleta estática em intensidade leve','1','15 min','—','Cardio'],['Sentar e levantar da cadeira','3','10','60s'],['Leg press leve','3','12','75s'],['Step-up baixo','3','10','60s'],['Ponte de glúteos com pausa','3','12','45s'],['Marcha lateral com mini band','3','12','45s']]},
+  { nome:'Fase 3 — Função', sem:6, freq:3,
+    obj:['Manter a força e ganhar resistência.','Passar a atividades do dia a dia sem receio.'],
+    criterios:['Dor controlada nas atividades.','Cumpre o programa regularmente.'],
+    evitar:['Impacto.'],
+    ex:[['Elíptica em intensidade leve','1','20 min','—','Cardio'],['Leg press leve','3','12','75s'],['Agachamento com bola na parede','3','10','60s'],['Step-up baixo','3','10','60s'],['Equilíbrio unipodal','3','30s','30s']]}
+  ]},
+
+{ id:'cad', nome:'Doença coronária estável', grupo:'Cardiometabólicas', pat:'cad', g:'Corpo inteiro',
+  resumo:'Aeróbio leve a moderado e força leve com intensidade definida pelo cardiologista.',
+  quando:'Só com autorização e intensidade definidas pelo cardiologista (zona de frequência cardíaca ou RPE máximo).',
+  bandeiras:['Dor, pressão ou desconforto no peito, braço, mandíbula ou costas: parar e contactar o médico.','Falta de ar desproporcionada, tonturas ou desmaio.','Palpitações ou batimento irregular.','Sudorese fria súbita.'],
+  notas:['Respeitar a zona de frequência cardíaca indicada. Aquecimento e arrefecimento longos.','Evitar Valsalva, isométricos e esforços máximos.'],
+  fases:[
+  { nome:'Fase 1 — Aeróbio leve', sem:4, freq:3,
+    obj:['Criar tolerância ao esforço.','Aeróbio leve, esforço 11-12 de Borg.'],
+    criterios:['20 min sem sintomas.','Frequência cardíaca dentro da zona definida.'],
+    evitar:['Esforços máximos e isométricos.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','15-20 min','—','Cardio','Esforço 11-12 de Borg, dentro da zona do cardiologista.'],['Sentar e levantar da cadeira','2','10','60s'],['Remada com elástico (postura)','2','12','60s'],['Respiração diafragmática deitado','1','5 min','—']]},
+  { nome:'Fase 2 — Construção', sem:6, freq:3,
+    obj:['Aeróbio de 30 min.','Força leve, 1-2×10-15.'],
+    criterios:['30 min sem sintomas.','Boa recuperação após o treino.'],
+    evitar:['Esforço superior ao definido.'],
+    ex:[['Bicicleta estática em intensidade leve','1','25-30 min','—','Cardio'],['Leg press leve','2','12','75s'],['Remada com elástico (postura)','2','12','60s'],['Press de peito com elástico','2','12','60s','Peito'],['Elevação de gémeos bipodal','2','15','45s']]},
+  { nome:'Fase 3 — Consolidação', sem:6, freq:3,
+    obj:['Manter o aeróbio regular.','Força moderada dentro dos limites médicos.'],
+    criterios:['Cumpre o programa sem sintomas.'],
+    evitar:['Mudar a intensidade sem aval médico.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','30-35 min','—','Cardio'],['Leg press leve','2','12','75s'],['Remada com elástico (postura)','2','12','60s'],['Agachamento parcial com apoio','2','10','60s'],['Prancha lateral apoiada no joelho','2','20s','45s']]}
+  ]},
+
+{ id:'asma-dpoc', nome:'Asma / DPOC', grupo:'Cardiometabólicas', pat:'asma', g:'Corpo inteiro',
+  resumo:'Respiração, aeróbio progressivo (com intervalos) e força, com a medicação de alívio sempre disponível.',
+  quando:'Asma ou DPOC controladas, com autorização médica.',
+  bandeiras:['Falta de ar que não passa com a medicação de alívio.','Pieira, tosse ou aperto no peito progressivos.','Lábios ou dedos azulados, tonturas ou confusão.','Crise recente ou infeção respiratória em curso.'],
+  notas:['Ter o inalador de alívio à mão. Aquecimento longo e gradual; evitar frio e ar seco intenso.','Respiração com lábios semicerrados ajuda a controlar a falta de ar. Aeróbio em intervalos curtos é mais tolerado.'],
+  fases:[
+  { nome:'Fase 1 — Respiração e adaptação', sem:4, freq:3,
+    obj:['Controlo da respiração.','Aeróbio leve e força com carga baixa.'],
+    criterios:['Caminhada de 15 min com falta de ar controlada.','Sabe usar a respiração com lábios semicerrados.'],
+    evitar:['Treinar durante uma crise.','Esforços súbitos sem aquecimento.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Respiração com lábios semicerrados','2','10 resp.','—','Respiração','Inspirar pelo nariz 2 s, expirar pela boca 4 s com os lábios semicerrados.'],['Caminhada em tapete (ritmo moderado)','1','10-15 min','—','Cardio','Esforço 11-13 de Borg; conseguir falar.'],['Sentar e levantar da cadeira','2','10','60s'],['Remada com elástico (postura)','2','12','60s']]},
+  { nome:'Fase 2 — Aeróbio intermitente', sem:6, freq:3,
+    obj:['Aeróbio em intervalos (1 min mais rápido, 2 min lento).','Força leve.'],
+    criterios:['20-30 min com pausas curtas.','Menos falta de ar para o mesmo esforço.'],
+    evitar:['Esforço máximo.'],
+    ex:[['Bicicleta estática em intensidade leve','1','20-25 min','—','Cardio','Intervalos 1 min moderado, 2 min leve.'],['Respiração com lábios semicerrados','2','10 resp.','—'],['Leg press leve','2','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Press de peito com elástico','2','12','60s','Peito']]},
+  { nome:'Fase 3 — Força e resistência', sem:6, freq:3,
+    obj:['Resistência aeróbia contínua.','Força moderada.'],
+    criterios:['30 min contínuos.','Boa recuperação após o esforço.'],
+    evitar:['Treinar em ambientes frios, secos ou com poluição elevada.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','30 min','—','Cardio'],['Leg press leve','3','12','75s'],['Remada com elástico (postura)','3','12','60s'],['Agachamento com bola na parede','2','10','60s'],['Respiração diafragmática deitado','1','5 min','—']]}
+  ]},
+
+{ id:'fibromialgia', nome:'Fibromialgia', grupo:'Músculo-esquelético', pat:'fibro', g:'Corpo inteiro',
+  resumo:'Exercício muito leve com progressão lenta, para evitar agravamentos. Regularidade é mais importante que intensidade.',
+  quando:'Fibromialgia diagnosticada. Cliente com muita fadiga ou sono muito mau: começar ainda mais devagar.',
+  bandeiras:['Dor súbita muito diferente do habitual.','Febre, perda de peso ou inchaço articular.','Dor no peito ou falta de ar desproporcionada.','Agravamento prolongado (mais de 48 h) após o treino.'],
+  notas:['Aumentar 10% por semana, no máximo. Evitar o ciclo "dia bom, treino a mais; dia mau, nada".','Dor ligeira e transitória é esperada. Se houver pioria no dia seguinte, reduzir o volume.'],
+  fases:[
+  { nome:'Fase 1 — Muito leve', sem:4, freq:3,
+    obj:['Habituar o corpo ao movimento.','Mobilidade e respiração.'],
+    criterios:['10 min de caminhada sem agravamento no dia seguinte.'],
+    evitar:['Esforço elevado e volume grande.'],
+    ex:[['Respiração diafragmática deitado','1','5 min','—'],['Gato-camelo suave','2','8','30s'],['Mobilização de ombros em círculos','2','10','30s'],['Caminhada em tapete (ritmo moderado)','1','5-10 min','—','Cardio','Ritmo muito confortável (Borg 9-11).'],['Postura da criança','2','30s','—']]},
+  { nome:'Fase 2 — Progressão lenta', sem:6, freq:3,
+    obj:['Aeróbio leve de 15-20 min.','Força leve 1-2 séries.'],
+    criterios:['20 min tolerados.','Sem pioria no dia seguinte.'],
+    evitar:['Aumentar tempo e intensidade ao mesmo tempo.'],
+    ex:[['Bicicleta estática em intensidade leve','1','15-20 min','—','Cardio'],['Sentar e levantar da cadeira','2','8-10','60s'],['Remada com elástico (postura)','2','10-12','60s'],['Ponte de glúteos com pausa','2','10','45s'],['Alongamento de isquiotibiais com toalha','2','30s','—']]},
+  { nome:'Fase 3 — Consolidação', sem:6, freq:3,
+    obj:['Aeróbio de 20-30 min.','Força 2×10-12 de intensidade ligeira a moderada.'],
+    criterios:['Cumpre o programa com regularidade.'],
+    evitar:['Excessos nos dias bons.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','25-30 min','—','Cardio'],['Leg press leve','2','12','75s'],['Remada com elástico (postura)','2','12','60s'],['Ponte de glúteos com pausa','2','12','45s'],['Mobilidade torácica sentado','2','10','30s']]}
+  ]},
+
+{ id:'escoliose', nome:'Escoliose', grupo:'Coluna', pat:'escoliose', g:'Core',
+  resumo:'Mobilidade, respiração, controlo postural e força geral. Não substitui o programa específico de um fisioterapeuta em curvas mais acentuadas.',
+  quando:'Escoliose já avaliada. Em curvas acentuadas, ou com colete, o plano deve ser definido por um fisioterapeuta com formação específica.',
+  bandeiras:['Dor intensa e persistente ou noturna.','Perda de força, dormência ou alterações na marcha.','Agravamento rápido da curva.','Falta de ar a esforços pequenos.'],
+  notas:['Trabalho simétrico e de qualidade postural, sem forçar a curva.','Evitar movimentos extremos de torção e cargas assimétricas pesadas.'],
+  fases:[
+  { nome:'Fase 1 — Mobilidade e respiração', sem:4, freq:4,
+    obj:['Mobilidade torácica e costal.','Consciência postural.'],
+    criterios:['Respiração costal mais ampla.','Postura mantida sem esforço visível.'],
+    evitar:['Alongamentos extremos da curva.','Cargas pesadas assimétricas.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—'],['Mobilidade torácica sentado','2','10','30s'],['Extensão torácica sobre foam roller','2','8','—'],['Gato-camelo suave','2','10','30s'],['Alinhamento postural contra a parede','2','30s','—']]},
+  { nome:'Fase 2 — Controlo e core', sem:6, freq:3,
+    obj:['Estabilização do tronco e da escápula.','Glúteos e core profundo.'],
+    criterios:['Bird dog e prancha lateral no joelho com controlo.','Sem dor nas costas.'],
+    evitar:['Rotações forçadas.'],
+    ex:[['Bird dog lento com pausa','3','8 por lado','45s'],['Dead bug com braços','3','8 por lado','45s'],['Prancha lateral apoiada no joelho','3','20-30s','45s'],['Ponte de glúteos com pausa','3','12','45s'],['Retração escapular com elástico','3','12','45s'],['Remada com elástico (postura)','3','12','45s']]},
+  { nome:'Fase 3 — Força geral', sem:6, freq:3,
+    obj:['Força geral simétrica.','Resistência postural.'],
+    criterios:['Técnica estável nos exercícios.','Sem dor.'],
+    evitar:['Cargas muito pesadas assimétricas.'],
+    ex:[['Agachamento com bola na parede','3','10','60s'],['Remada com elástico (postura)','3','12','45s'],['Prancha lateral','3','20-30s','45s','Core'],['Wall slide (deslizamento na parede)','3','10','45s'],['Hip hinge com bastão','3','12','45s']]}
+  ]},
+
+{ id:'aquiles', nome:'Tendinopatia de Aquiles', grupo:'Tornozelo', pat:'aquiles', g:'Pernas',
+  resumo:'Carga progressiva do tendão: isométricos, força lenta e pesada, depois energia elástica e corrida.',
+  quando:'Dor no tendão de Aquiles (parte média ou inserção), sem rotura. Dor súbita com estalo: pedir avaliação urgente.',
+  bandeiras:['Estalo súbito, incapacidade de ficar em pontas dos pés (suspeita de rotura): urgência.','Inchaço, calor ou vermelhidão marcados.','Dor noturna em repouso.','Dor que aumenta de forma persistente.'],
+  notas:['O tendão responde a carga. Dor até 4/10 durante o exercício é aceitável, se estiver estável no dia seguinte.','Na inserção do tendão, evitar dorsiflexão profunda (alongamentos de gémeos em degrau).'],
+  fases:[
+  { nome:'Fase 1 — Isométricos', sem:2, freq:5,
+    obj:['Reduzir a dor com isométricos.','Manter a mobilidade do tornozelo.'],
+    criterios:['Dor ao andar ≤ 3/10.','Isométrico tolerado sem agravar no dia seguinte.'],
+    evitar:['Corrida, saltos e alongamentos fortes.'],
+    ex:[['Isométrico de gémeos (elevação mantida)','5','30-45s','60s','Pernas','Subir para pontas e manter. Carga que provoque desconforto ≤ 4/10.'],['Mobilização de tornozelo com elástico','2','12','30s'],['Equilíbrio unipodal','3','30s','30s'],['Bicicleta estática em intensidade leve','1','10 min','—']]},
+  { nome:'Fase 2 — Força lenta e pesada', sem:6, freq:3,
+    obj:['Força do tríceps sural com carga progressiva.','Tempo lento (3 s a subir, 3 s a descer).'],
+    criterios:['Elevação unipodal de gémeos 15 repetições.','Dor estável ou a diminuir.'],
+    evitar:['Saltar ou correr.'],
+    ex:[['Elevação de gémeos bipodal','3','12 (3 s + 3 s)','60s'],['Elevação de gémeos unipodal','3','10-12','60s'],['Elevação de gémeos sentado','3','12','60s','Pernas','Joelho a 90°. Peso sobre os joelhos.'],['Elevação de gémeos excêntrica unipodal','3','10','60s','Pernas','Subir com as duas pernas, descer 3-4 s com a perna afetada.'],['Ponte de glúteos com pausa','3','12','45s'],['Leg press leve','3','12','75s']]},
+  { nome:'Fase 3 — Energia elástica', sem:4, freq:3,
+    obj:['Reintroduzir saltos pequenos e a corrida leve.','Energia elástica do tendão.'],
+    criterios:['Saltos pequenos sem dor.','Corrida contínua 10 min sem dor.'],
+    evitar:['Aumentar volume e intensidade ao mesmo tempo.'],
+    ex:[['Elevação de gémeos unipodal','3','12','60s'],['Salto bipodal na ponta dos pés','3','10','60s','Pernas','Saltos pequenos, aterragem suave.'],['Skipping baixo','3','20s','45s','Pernas','Passos rápidos, próximo do chão.'],['Corrida em tapete progressiva','1','10 min','—','Cardio']]},
+  { nome:'Fase 4 — Retorno ao desporto', sem:3, freq:3,
+    obj:['Corrida e mudanças de direção.','Voltar ao treino habitual.'],
+    criterios:['Sem dor a correr e nos dias seguintes.'],
+    evitar:['Aumentos de carga superiores a 10% por semana.'],
+    ex:[['Elevação de gémeos unipodal','3','15','45s'],['Skipping baixo','3','30s','45s'],['Corrida em tapete progressiva','1','15-20 min','—'],['Deslocamento lateral controlado (shuffle)','3','20s','45s']]}
+  ]},
+
+{ id:'fascite', nome:'Fascite plantar', grupo:'Tornozelo', pat:'fascite', g:'Pernas',
+  resumo:'Alívio da dor, força do pé e da barriga da perna com carga elevada e lenta, e retorno gradual.',
+  quando:'Dor na planta do pé junto ao calcanhar, pior nos primeiros passos da manhã.',
+  bandeiras:['Dor noturna intensa ou em repouso.','Dormência, formigueiro ou queimadura no pé.','Inchaço, calor ou trauma recente.','Dor que não melhora após semanas de tratamento.'],
+  notas:['Calçado de apoio no dia a dia e evitar andar descalço em superfícies duras.','A carga elevada e lenta (3 s a subir, 2 s em cima, 3 s a descer) tem evidência para a fascite.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e mobilidade', sem:3, freq:5,
+    obj:['Reduzir a dor dos primeiros passos.','Mobilidade da fáscia e dos gémeos.'],
+    criterios:['Dor matinal diminuída.','Caminhada de 20 min tolerada.'],
+    evitar:['Corrida e saltos.','Andar descalço em chão duro.'],
+    ex:[['Rolar bola sob o pé','2','1-2 min','—','Pernas','Bola de ténis, pressão confortável, dos dedos ao calcanhar.'],['Alongamento da fáscia plantar','3','30s','—','Pernas','Sentado, puxar os dedos do pé para trás.'],['Alongamento de gémeos na parede','3','30s','—'],['Short foot (arco plantar)','3','10','30s'],['Toe yoga (elevação do dedo grande)','3','10','30s']]},
+  { nome:'Fase 2 — Força de carga elevada', sem:6, freq:3,
+    obj:['Força do pé e dos gémeos com carga elevada e lenta.','Controlo do arco plantar.'],
+    criterios:['Elevação de gémeos unipodal 12 repetições.','Dor matinal mínima.'],
+    evitar:['Aumentar carga e volume em simultâneo.'],
+    ex:[['Elevação de gémeos com toalha sob os dedos','3','8-12 (3 s + 2 s + 3 s)','60s','Pernas','Toalha enrolada sob os dedos para manter os dedos em extensão. Subir devagar, pausar em cima, descer devagar.'],['Elevação de gémeos unipodal','3','10-12','60s'],['Short foot (arco plantar)','3','10','30s'],['Toe yoga (elevação do dedo grande)','3','10','30s'],['Equilíbrio unipodal','3','30s','30s']]},
+  { nome:'Fase 3 — Função e retorno', sem:4, freq:3,
+    obj:['Marcha e corrida sem dor.','Voltar ao desporto progressivamente.'],
+    criterios:['Corrida de 15 min sem dor.'],
+    evitar:['Aumentar o treino mais de 10% por semana.'],
+    ex:[['Elevação de gémeos unipodal','3','15','45s'],['Equilíbrio no bosu','3','30s','30s'],['Skipping baixo','3','20s','45s'],['Corrida em tapete progressiva','1','10-15 min','—','Cardio']]}
+  ]},
+
+{ id:'ombro-subacromial', nome:'Dor no ombro (síndrome subacromial / coifa)', grupo:'Ombro', pat:'ombro', g:'Ombros',
+  resumo:'Dor no ombro ao elevar o braço, por sobrecarga da coifa dos rotadores. Alívio, controlo escapular, força da coifa e retorno ao treino.',
+  quando:'Dor no ombro mecânica, sem trauma recente nem rotura total da coifa por confirmar.',
+  bandeiras:['Trauma recente (queda, deslocamento).','Perda de força marcada ao levantar o braço.','Dor noturna intensa e persistente.','Dor irradiada ao braço com formigueiro, dormência ou perda de sensibilidade.'],
+  notas:['Evitar rotação interna forçada e trabalho acima da cabeça com carga nas primeiras fases.','Dor até 3-4/10 durante o exercício é aceitável.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e controlo escapular', sem:2, freq:4,
+    obj:['Reduzir a dor.','Ativar a escápula e manter a mobilidade.'],
+    criterios:['Dor em repouso ≤ 2/10.','Elevação do braço sem dor aguda.'],
+    evitar:['Movimentos acima da cabeça.','Dormir sobre o ombro doloroso.'],
+    ex:[['Pendular de Codman','3','1 min','30s'],['Retração escapular com elástico','3','12','30s'],['Alongamento posterior do ombro (cross-body)','3','30s','—'],['Mobilização de ombros em círculos','2','10','30s'],['Mobilidade torácica sentado','2','10','30s']]},
+  { nome:'Fase 2 — Força da coifa e escápula', sem:6, freq:3,
+    obj:['Força dos rotadores externos e da escápula.','Controlo do movimento até à altura do ombro.'],
+    criterios:['Rotação externa 3×15 sem dor.','Elevação até 90° sem compensações.'],
+    evitar:['Cargas acima da cabeça.'],
+    ex:[['Rotação externa com elástico','3','12','45s'],['Rotação interna com elástico','3','12','45s'],['Elevação no plano da escápula (scaption)','3','10','45s'],['Remada com elástico (postura)','3','12','45s'],['Push-up plus na parede','3','10','45s'],['Remada em prono com haltere leve','3','10','45s']]},
+  { nome:'Fase 3 — Força funcional', sem:6, freq:3,
+    obj:['Força funcional e controlo acima da altura do ombro.','Voltar progressivamente aos exercícios de empurrar e puxar.'],
+    criterios:['Elevação completa sem dor.','Sem compensações do trapézio.'],
+    evitar:['Aumentar carga rapidamente.'],
+    ex:[['Wall slide (deslizamento na parede)','3','10','45s'],['Abdução horizontal com elástico','3','12','45s'],['Rotação externa com elástico','3','12','45s'],['Remada com elástico (postura)','3','12','45s'],['Elevação no plano da escápula (scaption)','3','10','45s']]},
+  { nome:'Fase 4 — Retorno ao treino', sem:3, freq:3,
+    obj:['Voltar ao treino habitual e ao desporto.'],
+    criterios:['Sem dor com cargas de treino.'],
+    evitar:['Aumentos de carga superiores a 10% por semana.'],
+    ex:[['Rotação externa com elástico','3','12','45s'],['Remada com elástico (postura)','3','15','45s'],['Push-up plus na parede','3','12','45s'],['Wall slide (deslizamento na parede)','3','12','45s']]}
+  ]},
+
+{ id:'joelho-patelofemoral', nome:'Dor no joelho (patelofemoral)', grupo:'Joelho', pat:'joelho', g:'Pernas',
+  resumo:'Dor à frente do joelho ao subir escadas, agachar ou correr. Força da anca e do quadríceps, controlo do joelho e retorno à corrida.',
+  quando:'Dor anterior do joelho sem trauma recente, bloqueio ou instabilidade.',
+  bandeiras:['Joelho inchado, quente ou com derrame.','Bloqueio ou falha da articulação.','Dor noturna ou em repouso intensa.','Trauma recente.'],
+  notas:['Dor até 3-4/10 durante o exercício é aceitável, se estiver estável no dia seguinte.','Fortalecer a anca (glúteo médio) é tão importante como o quadríceps.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e ativação', sem:3, freq:4,
+    obj:['Reduzir a dor.','Ativar quadríceps e glúteos.'],
+    criterios:['Dor nas atividades ≤ 3/10.','Elevação da perna estendida sem falhas.'],
+    evitar:['Agachamento profundo e saltos.'],
+    ex:[['Contração isométrica de quadríceps','3','10 (5 s)','30s'],['Elevação da perna estendida','3','12','30s'],['Ponte de glúteos com pausa','3','12','45s'],['Clamshell (abdução em decúbito lateral)','3','12','30s'],['Bicicleta estática em intensidade leve','1','10 min','—']]},
+  { nome:'Fase 2 — Força de anca e quadríceps', sem:6, freq:3,
+    obj:['Força do quadríceps e do glúteo médio.','Controlo do joelho no agachamento e nos degraus.'],
+    criterios:['Agachamento parcial sem valgo e sem dor.','Descida de degrau controlada.'],
+    evitar:['Agachamento profundo com carga.'],
+    ex:[['Leg press leve','3','12','75s'],['Agachamento parcial com apoio','3','10','60s'],['Step-up baixo','3','10','60s'],['Descida lateral de degrau','3','10','60s'],['Marcha lateral com mini band','3','12','45s'],['Ponte de glúteos com pausa','3','12','45s']]},
+  { nome:'Fase 3 — Função e corrida', sem:6, freq:3,
+    obj:['Força unilateral e controlo dinâmico.','Voltar à corrida e ao desporto.'],
+    criterios:['Corrida contínua de 15 min sem dor.','Agachamento unilateral controlado.'],
+    evitar:['Aumentar volume e intensidade ao mesmo tempo.'],
+    ex:[['Afundo reverso','3','8','60s'],['Peso morto romeno unilateral com haltere leve','3','8','60s'],['Step-up alto','3','8','60s'],['Ponte de glúteos unilateral','3','10','45s'],['Corrida em tapete progressiva','1','10-15 min','—','Cardio']]}
+  ]},
+{ id:'em', nome:'Esclerose múltipla', grupo:'Neurológicas', pat:'em', g:'Corpo inteiro',
+  resumo:'Aeróbio moderado e força em sessões curtas, com gestão da fadiga e do calor, equilíbrio com apoio e trabalho da espasticidade. Adapta-se ao dia e ao nível de incapacidade do cliente.',
+  quando:'Esclerose múltipla diagnosticada e estável (fora de surto), com autorização do neurologista. A tolerância varia muito de pessoa para pessoa e de dia para dia.',
+  bandeiras:['Novos sintomas ou agravamento súbito (visão, força, sensibilidade, equilíbrio, fala): possível surto, parar e contactar o neurologista.','Quedas, ou quase quedas, repetidas.','Fadiga extrema que dura mais de 24 h após o treino.','Febre ou infeção em curso; dor torácica ou falta de ar desproporcionada.'],
+  notas:['Treinar em ambiente fresco, com água à mão, e arrefecer no final. Evitar o horário mais quente do dia e banhos quentes logo após o treino.','Guiar o esforço pela fadiga e não pelo plano: se o dia é mau, fazer metade ou só mobilidade. Fracionar a sessão em blocos curtos com pausas.','Equilíbrio sempre com apoio por perto (barra, parede) e ao lado do cliente. Não exigir exercícios até à falha.','Cliente com muita incapacidade (cadeira de rodas, andarilho): adaptar os exercícios para sentado e validar com o fisioterapeuta.'],
+  fases:[
+  { nome:'Fase 1 — Adaptação e gestão da fadiga', sem:4, freq:3,
+    obj:['Habituar-se ao exercício sem provocar fadiga excessiva.','Conhecer o limite de esforço e a resposta ao calor.','Mobilidade, respiração e equilíbrio com apoio.'],
+    criterios:['Sessão de 20-30 min sem fadiga extrema no dia seguinte.','Equilíbrio unipodal com apoio 20 s.','Sem novos sintomas associados ao treino.'],
+    evitar:['Esforço até à exaustão.','Ambientes quentes e sessões longas.','Equilíbrio sem apoio.'],
+    ex:[['Respiração diafragmática deitado','1','5 min','—'],['Bicicleta estática em intensidade leve','1','10 min','—','Cardio','Ventilador à frente, ritmo muito confortável (Borg 9-11). Pode ser dividido em 2 blocos de 5 min.'],['Sentar e levantar da cadeira','2','8','75s'],['Remada com elástico (postura)','2','10','75s'],['Equilíbrio unipodal','2','20s','45s'],['Alongamento de gémeos na parede','2','30s','—'],['Alongamento de isquiotibiais com toalha','2','30s','—']]},
+  { nome:'Fase 2 — Construção', sem:6, freq:3,
+    obj:['Aeróbio de 20-30 min, intensidade moderada.','Força 2×10-15 dos grandes grupos musculares.','Melhorar o equilíbrio e a marcha.'],
+    criterios:['Aeróbio de 20-30 min tolerado.','Força 2×12 sem fadiga excessiva.','Marcha mais segura e estável.'],
+    evitar:['Aumentar tempo e intensidade ao mesmo tempo.','Treinar em dias consecutivos de força.'],
+    ex:[['Bicicleta estática em intensidade leve','1','15-20 min','—','Cardio','Em ambiente fresco, esforço 11-13 de Borg.'],['Leg press leve','2','12','90s'],['Remada com elástico (postura)','2','12','75s'],['Press de peito com elástico','2','12','75s','Peito'],['Ponte de glúteos com pausa','2','10','60s'],['Transferência de peso lateral','2','10','45s'],['Marcha em pontas e calcanhares','2','10 m','45s'],['Alongamento de gémeos na parede','2','30s','—']]},
+  { nome:'Fase 3 — Consolidação funcional', sem:6, freq:3,
+    obj:['Manter e melhorar a força e a resistência.','Função no dia a dia: levantar, subir degraus, caminhar.','Equilíbrio dinâmico com segurança.'],
+    criterios:['Cumpre o programa sem agravamentos.','Subir degraus e levantar da cadeira com mais autonomia.'],
+    evitar:['Saltos e impacto.','Treinar durante um surto ou com infeção.'],
+    ex:[['Caminhada em tapete (ritmo moderado)','1','20-30 min','—','Cardio','Ambiente fresco, pausas se necessário.'],['Leg press leve','3','12','90s'],['Step-up baixo','2','8','75s'],['Remada com elástico (postura)','3','12','75s'],['Marcha lateral com mini band','2','10','60s'],['Equilíbrio unipodal','3','20-30s','45s'],['Alongamento de isquiotibiais com toalha','2','30s','—']]}
+  ]}
+
+];
+
+// ---------- PROTOCOLOS DE PROVA (corrida, triatlo, trail, HYROX) ----------
+const PROVA_AVISO = 'Plano de apoio à preparação de uma prova, a ajustar ao nível, ao historial de lesões e à disponibilidade do atleta. Recomenda-se avaliação médica e eletrocardiograma antes de começar, sobretudo acima dos 35 anos ou com fatores de risco. Parar e consultar um médico perante dor no peito, tonturas, falta de ar anormal ou dor articular persistente.';
+const PROVA_REGRAS = 'Regras de carga: aumentar o volume semanal no máximo 10%, fazer uma semana mais leve a cada 3-4 semanas, e manter 80% do treino em intensidade fácil (Z1-Z2, consegues conversar). Zonas: Z2 ritmo conversável (Borg 11-12), Z3 moderado, Z4 limiar (confortavelmente duro, Borg 15-16), Z5 máximo.';
+const PN = {
+  z2:'Ritmo fácil, consegues conversar (Borg 11-12). É a base do treino.',
+  longa:'Ritmo fácil e constante. Treinar a hidratação e a nutrição que vais usar na prova.',
+  stride:'Acelerações de 15-20 s até ritmo rápido mas relaxado, com recuperação completa (60 s). Melhoram a técnica e a economia de corrida.',
+  fartlek:'Variações livres de ritmo: blocos de 1-2 min mais rápidos (Z3-Z4) alternados com trote fácil.',
+  int:'Blocos em Z4 (esforço duro mas controlado, Borg 15-16), com trote de recuperação entre repetições.',
+  limiar:'Esforço contínuo em Z3-Z4, "confortavelmente duro": consegues dizer poucas palavras.',
+  prova:'Ritmo alvo da prova. Serve para treinar a gestão do esforço e a sensação do ritmo.',
+  sub:'Subidas em esforço Z4. Descer a trote de recuperação. Postura alta, passada curta.',
+  tec:'Exercícios de técnica: skipping A e B, passos laterais, elevação de joelhos. Foco na postura e no apoio.',
+  rega:'Corrida muito fácil e curta para recuperar. Se te sentires cansado, caminha.'
+};
+function cx(n, reps, nota, s, d){ return [n, s||'1', reps, d||'—', 'Cardio', nota||'']; }
+const FB = [['Agachamento goblet com kettlebell','3','10','75s','Pernas'],['Peso morto','3','8','90s','Pernas'],['Box step-up','3','10','60s','Pernas'],['Ponte de glúteos','3','12','45s','Glúteos'],['Gémeos em pé','3','12','45s','Pernas'],['Prancha Frontal','3','30-45s','45s','Core'],['Prancha Lateral','2','20-30s','45s','Core']];
+const FF = [['Agachamento com barra','4','5-6','120s','Pernas'],['Peso morto','3','5','120s','Pernas'],['Agachamento búlgaro','3','6-8 por perna','90s','Pernas'],['Hip thrust com barra','3','8','90s','Glúteos'],['Gémeos em pé','4','8','60s','Pernas'],['Prancha Lateral','3','30s','45s','Core']];
+const FM = [['Agachamento goblet com kettlebell','2','8','75s','Pernas'],['Peso morto','2','6','90s','Pernas'],['Box step-up','2','8','60s','Pernas'],['Gémeos em pé','2','10','45s','Pernas'],['Prancha Frontal','2','30s','45s','Core']];
+const FT = [['Agachamento búlgaro','3','8 por perna','90s','Pernas'],['Descida de step controlada (excêntrico)','3','10 por perna','60s','Pernas','Subir com as duas pernas e descer 3-4 s com uma perna. Prepara os quadríceps para as descidas.'],['Peso morto','3','6','120s','Pernas'],['Afundo caminhado','3','10 por perna','60s','Pernas'],['Gémeos em pé','4','10','60s','Pernas'],['Prancha Lateral','3','30s','45s','Core']];
+const FH = [['Agachamento com barra','3','6-8','120s','Pernas'],['Peso morto','3','6','120s','Pernas'],['Afundo caminhado','3','10 por perna','75s','Pernas'],['Barra fixa estrita (strict pull-up)','3','5-8','90s','Costas'],['Kettlebell swing','3','15','60s','Corpo inteiro'],['Prancha Frontal','3','45s','45s','Core']];
+const PROVAS = [
+{ id:'p-10k', prova:true, nome:'Prova de 10 km (10 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 10 semanas para correr 10 km, com 3 a 4 sessões por semana: corrida fácil, qualidade, corrida longa e força.',
+  quando:'Atleta que já corre 30 min seguidos, 2-3 vezes por semana, sem dor.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou óssea que aumenta de forma persistente (suspeita de lesão de stress).','Fadiga que se acumula e não recupera com o descanso.','Palpitações ou batimento irregular.'],
+  notas:[PROVA_REGRAS,'Calçado adequado e com menos de 600-800 km. Aquecimento de 10 min antes das sessões de qualidade.'],
+  fases:[
+  { nome:'Fase 1 — Base aeróbia', sem:3, freq:3, obj:['Consolidar a corrida contínua em Z2.','Introduzir a força para prevenir lesões.'], criterios:['Corre 40 min seguidos em Z2.','Sem dor articular após as sessões.'], evitar:['Correr rápido em todas as sessões.','Aumentar o volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride,'1')]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','45-50 min',PN.longa)]},{n:'Força',ex:FB}]},
+  { nome:'Fase 2 — Construção', sem:4, freq:4, obj:['Introduzir intervalos em Z4.','Aumentar a corrida longa para 60 min.'], criterios:['Completa 5×3 min em Z4 com controlo.','Corrida longa de 60 min sem dor.'], evitar:['Fazer qualidade em dias seguidos.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-40 min',PN.z2)]},{n:'Intervalos',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Intervalos de corrida (Z4)','3 min',PN.int,'5','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','55-60 min',PN.longa)]},{n:'Força',ex:FF}]},
+  { nome:'Fase 3 — Específica', sem:2, freq:4, obj:['Treinar ao ritmo de prova.','Manter a força com menos volume.'], criterios:['3×8 min a ritmo de prova com controlo.','Sem dor nem fadiga acumulada.'], evitar:['Aumentar volume nesta fase.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','8 min',PN.prova,'3','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60 min',PN.longa)]},{n:'Força',ex:FM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume e chegar fresco à prova.','Manter alguma intensidade curta.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.','Alterar calçado ou alimentação.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','25 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','4 min',PN.prova,'3','2 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
+  ]},
+
+{ id:'p-meia', prova:true, nome:'Meia-maratona (12 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 12 semanas para uma meia-maratona (21,1 km), com 4 sessões por semana e corrida longa até cerca de 105 min.',
+  quando:'Atleta que já corre 10 km confortavelmente, 3 vezes por semana, sem dor.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou óssea persistente, sobretudo na canela, pé ou anca (suspeita de lesão de stress).','Fadiga que se acumula, má qualidade do sono ou frequência cardíaca de repouso elevada.','Palpitações ou batimento irregular.'],
+  notas:[PROVA_REGRAS,'Treinar a hidratação e a nutrição nas corridas longas (cerca de 30-45 g de hidratos de carbono por hora acima de 75 min).'],
+  fases:[
+  { nome:'Fase 1 — Base aeróbia', sem:4, freq:4, obj:['Consolidar o volume em Z2.','Introduzir variações de ritmo e força.'], criterios:['Corrida longa de 70 min sem dor.','Fartlek completo com controlo.'], evitar:['Aumentar volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-45 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60-70 min',PN.longa)]},{n:'Força',ex:FB}]},
+  { nome:'Fase 2 — Construção', sem:4, freq:4, obj:['Trabalhar o limiar.','Corrida longa de 80-95 min.'], criterios:['2×10 min em limiar com controlo.','Corrida longa de 90 min sem dor.'], evitar:['Qualidade em dias seguidos.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Limiar',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em limiar (tempo run)','10 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','80-95 min',PN.longa)]},{n:'Força',ex:FF}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:4, obj:['Treinar o ritmo de prova.','Corrida longa de 100-105 min com blocos a ritmo de prova.'], criterios:['3×15 min a ritmo de prova com controlo.','Corrida longa completada sem dor.'], evitar:['Aumentar o volume nesta fase.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','15 min',PN.prova,'3','3 min trote')]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-105 min (com 4×10 min a ritmo de prova)',PN.longa)]},{n:'Força',ex:FM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume 40-50%.','Chegar fresco à prova.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','10 min',PN.prova,'2','3 min trote')]},{n:'Ativação',ex:[cx('Corrida longa (Z2)','45-50 min',PN.longa)]}]}
+  ]},
+
+{ id:'p-maratona', prova:true, nome:'Maratona (16 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 16 semanas para uma maratona (42,2 km), com 4 a 5 sessões por semana e corrida longa até cerca de 3 h.',
+  quando:'Atleta que já correu uma meia-maratona ou corre regularmente 30-40 km por semana, sem dor. Avaliação médica recomendada.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor óssea localizada que aumenta com o impacto (suspeita de lesão de stress).','Fadiga acumulada, sono mau, frequência cardíaca de repouso elevada ou perda de apetite.','Palpitações ou batimento irregular.'],
+  notas:[PROVA_REGRAS,'Nutrição: nas corridas longas treinar 30-60 g de hidratos de carbono por hora (géis, bebida), testar o que vais usar na prova. Hidratar de forma regular, sem excessos.','Na última fase (afinação de 2 semanas) reduzir o volume cerca de 30% na primeira semana e 50% na segunda, mantendo algum ritmo.'],
+  fases:[
+  { nome:'Fase 1 — Base aeróbia', sem:4, freq:4, obj:['Construir volume em Z2.','Força de base para tolerar o impacto.'], criterios:['Corrida longa de 90 min sem dor.','Volume semanal estável.'], evitar:['Aumentar volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','8×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','75-90 min',PN.longa)]},{n:'Força',ex:FB}]},
+  { nome:'Fase 2 — Construção', sem:6, freq:5, obj:['Trabalhar limiar e ritmo de maratona.','Corrida longa de 100 a 150 min.'], criterios:['Corrida longa de 2h30 sem dor.','Limiar de 2×15 min com controlo.'], evitar:['Qualidade em dias seguidos.','Semanas sem descarga.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45 min',PN.z2)]},{n:'Limiar',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em limiar (tempo run)','15 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-150 min',PN.longa)]},{n:'Força',ex:FF}]},
+  { nome:'Fase 3 — Específica', sem:4, freq:5, obj:['Treinar ao ritmo de maratona.','Corrida longa de 150-180 min com blocos a ritmo de prova.'], criterios:['2×40 min a ritmo de maratona com controlo.','Corrida longa de 3 h sem dor.'], evitar:['Aumentar volume e intensidade em simultâneo.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','20 min',PN.prova,'3','3 min trote')]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','150-180 min (com 2×40 min a ritmo de maratona)',PN.longa)]},{n:'Força',ex:FM}]},
+  { nome:'Fase 4 — Afinação', sem:2, freq:4, obj:['Reduzir o volume 30% e depois 50%.','Chegar fresco e confiante.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos.','Alterar calçado, alimentação ou equipamento.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-35 min',PN.z2)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','15 min',PN.prova,'2','3 min trote')]},{n:'Corrida longa curta',ex:[cx('Corrida longa (Z2)','60-90 min',PN.longa)]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
+  ]},
+
+{ id:'p-trail', prova:true, nome:'Trail running (12 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 12 semanas para uma prova de trail (15-30 km), com subidas, descidas, força excêntrica e corrida longa com desnível.',
+  quando:'Atleta que já corre 10 km, sem dor, e tem acesso a trilhos com declives.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal.','Dor no joelho, tornozelo ou tendão de Aquiles que persiste.','Entorses de repetição.','Fadiga acumulada ou sono mau.'],
+  notas:[PROVA_REGRAS,'Em subidas muito íngremes, caminhar com passo rápido (power hiking) é estratégia, não fraqueza. Treinar descidas com técnica: passos curtos, tronco ligeiramente à frente, olhar 3-4 m adiante.','Material: calçado de trail, mochila de hidratação, bastões se a prova permitir e o material obrigatório. Testar tudo nos treinos longos.'],
+  fases:[
+  { nome:'Fase 1 — Base e força', sem:4, freq:4, obj:['Volume base em Z2 em terreno variado.','Força de pernas e de tornozelos.'], criterios:['Longa de 75 min em trilho sem dor.','Subidas curtas executadas com controlo.'], evitar:['Descidas longas e rápidas sem preparação.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Subidas',ex:[cx('Corrida em subida (repetições)','1 min',PN.sub,'6','Descida a trote')]},{n:'Corrida longa em trilho',ex:[cx('Corrida longa (Z2)','75 min em terreno variado',PN.longa)]},{n:'Força',ex:FT}]},
+  { nome:'Fase 2 — Construção com desnível', sem:4, freq:4, obj:['Subidas mais longas.','Corrida longa de 2 h com 600-800 m de desnível positivo.'], criterios:['Longa de 2 h sem dor.','Descidas com técnica e sem dor nos joelhos.'], evitar:['Aumentar desnível e distância em simultâneo.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Subidas',ex:[cx('Corrida em subida (repetições)','2 min',PN.sub,'8','Descida a trote')]},{n:'Corrida longa com desnível',ex:[cx('Corrida longa (Z2)','120 min com 600-800 m D+',PN.longa)]},{n:'Força',ex:FT}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:4, obj:['Simular a prova: desnível, nutrição e material.','Corrida longa de 2h30-3h com cerca de 1000 m D+.'], criterios:['Longa de prova concluída sem dor.','Nutrição e material testados.'], evitar:['Treinos longos novos na última semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Subidas longas',ex:[cx('Corrida em subida (repetições)','6 min (ritmo de subida da prova)',PN.sub,'4','Descida a trote')]},{n:'Corrida longa de prova',ex:[cx('Corrida longa (Z2)','150-180 min com cerca de 1000 m D+',PN.longa)]},{n:'Força',ex:FM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume 40-50%.','Chegar fresco e sem dores.'], criterios:['Chega descansado.'], evitar:['Treinos longos ou novos.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Subidas curtas',ex:[cx('Corrida em subida (repetições)','1 min',PN.sub,'4','Descida a trote')]},{n:'Corrida longa curta',ex:[cx('Corrida longa (Z2)','60 min em terreno variado',PN.longa)]}]}
+  ]},
+
+{ id:'p-triatlo', prova:true, nome:'Triatlo sprint / olímpico (12 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 12 semanas para triatlo sprint ou olímpico, com 6 sessões por semana: natação, bicicleta, corrida, treinos "brick" e força.',
+  quando:'Atleta que consegue nadar 400 m seguidos, andar de bicicleta 60 min e correr 30 min, sem dor.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal.','Dor de ombro persistente (natação) ou dor no joelho (bicicleta, corrida).','Fadiga acumulada, sono mau ou frequência cardíaca de repouso elevada.','Palpitações ou batimento irregular.'],
+  notas:[PROVA_REGRAS,'Treinar sempre em segurança: natação em águas abertas acompanhado e com boia, capacete e luzes na bicicleta.','Treinos "brick" (bicicleta seguida de corrida) preparam as pernas para a transição.'],
+  fases:[
+  { nome:'Fase 1 — Base', sem:4, freq:6, obj:['Técnica de natação e volume aeróbio nas três modalidades.','Força geral.'], criterios:['Nadar 800 m seguidos.','Bicicleta de 90 min em Z2.'], evitar:['Treinar forte em todas as sessões.'],
+    sess:[{n:'Natação técnica',ex:[cx('Natação técnica (drills)','8×50 m',PN.tec+' Foco na posição do corpo e na braçada.','1','20s')]},{n:'Bicicleta',ex:[cx('Ciclismo contínuo (Z2)','60 min',PN.z2)]},{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2)]},{n:'Força',ex:FB},{n:'Natação contínua',ex:[cx('Natação contínua (Z2)','600-800 m',PN.z2)]},{n:'Bicicleta longa',ex:[cx('Ciclismo longo (Z2)','75-90 min',PN.longa)]}]},
+  { nome:'Fase 2 — Construção', sem:4, freq:6, obj:['Introduzir intervalos nas três modalidades.','Primeiros treinos brick.'], criterios:['Intervalos de bicicleta e natação com controlo.','Brick de 60 + 10 min sem dor.'], evitar:['Mais de 2 sessões de qualidade seguidas.'],
+    sess:[{n:'Natação intervalada',ex:[cx('Natação intervalada','100 m',PN.int,'8','20 s')]},{n:'Bicicleta intervalada',ex:[cx('Ciclismo intervalado (limiar)','6 min',PN.int,'4','3 min fácil')]},{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Força',ex:FM},{n:'Natação contínua',ex:[cx('Natação contínua (Z2)','1000 m',PN.z2)]},{n:'Brick',ex:[cx('Treino brick (bicicleta + corrida)','60 min bicicleta + 10 min corrida',PN.z2+' Passar logo da bicicleta à corrida; as primeiras passadas custam, é normal.')]}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:6, obj:['Ritmo de prova nas três modalidades.','Brick de simulação e transições.'], criterios:['Brick de 75 + 20 min sem dor.','Natação de 1500 m seguidos.'], evitar:['Aumentar volume nesta fase.'],
+    sess:[{n:'Natação ritmo de prova',ex:[cx('Natação intervalada','300 m a ritmo de prova',PN.prova,'3','45 s')]},{n:'Bicicleta ritmo de prova',ex:[cx('Ciclismo intervalado (limiar)','15 min a ritmo de prova',PN.prova,'2','5 min fácil')]},{n:'Corrida limiar',ex:[cx('Corrida em limiar (tempo run)','8 min',PN.limiar,'3','3 min trote')]},{n:'Brick de simulação',ex:[cx('Treino brick (bicicleta + corrida)','75 min bicicleta + 20 min corrida',PN.prova)]},{n:'Natação contínua',ex:[cx('Natação contínua (Z2)','1500 m',PN.z2)]},{n:'Bicicleta longa',ex:[cx('Ciclismo longo (Z2)','100 min',PN.longa)]}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:5, obj:['Reduzir o volume 40-50%.','Manter alguma intensidade curta.'], criterios:['Chega descansado.'], evitar:['Treinos longos ou novos.','Mudar material ou posição na bicicleta.'],
+    sess:[{n:'Natação de ativação',ex:[cx('Natação intervalada','100 m',PN.prova,'4','20 s')]},{n:'Bicicleta de ativação',ex:[cx('Ciclismo contínuo (Z2)','40 min com 3×3 min a ritmo de prova',PN.z2)]},{n:'Corrida de ativação',ex:[cx('Corrida contínua leve (Z2)','25 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]},{n:'Brick curto',ex:[cx('Treino brick (bicicleta + corrida)','30 min bicicleta + 10 min corrida',PN.z2)]},{n:'Natação técnica',ex:[cx('Natação técnica (drills)','500 m',PN.tec)]}]}
+  ]},
+
+{ id:'p-hyrox', prova:true, nome:'HYROX (12 semanas)', grupo:'Provas', pat:'', mod:'HYROX', g:'Corpo inteiro',
+  resumo:'Preparação de 12 semanas para uma prova de HYROX: 8 km de corrida intercalados com 8 estações (SkiErg, sled push e pull, burpee broad jump, remo, farmers carry, sandbag lunges e wall balls).',
+  quando:'Atleta que corre 5 km, sem dor, com experiência básica de treino de força.',
+  bandeiras:['Dor no peito, tonturas ou falta de ar anormal.','Dor lombar, de ombro ou de joelho que persiste.','Fadiga acumulada, sono mau ou quebra de rendimento.','Palpitações ou batimento irregular.'],
+  notas:[PROVA_REGRAS,'As cargas oficiais variam com a categoria (open, pro, individual ou pares). Confirmar os pesos de prova e treinar com cargas progressivas até lá.','Treinar a transição corrida-estação ("Roxzone") e a corrida comprometida, ou seja, correr depois de esforço de força.'],
+  fases:[
+  { nome:'Fase 1 — Base e técnica', sem:4, freq:4, obj:['Base aeróbia e força geral.','Aprender a técnica das estações com cargas leves.'], criterios:['Corre 40 min em Z2.','Técnica das 8 estações segura.'], evitar:['Cargas pesadas com técnica por consolidar.'],
+    sess:[{n:'Corrida Z2',ex:[['HYROX - Corrida contínua (Zona 2)','1','30-40 min','—','Cardio']]},{n:'Intervalos de corrida',ex:[['HYROX - Intervalos de corrida 400 m','6','400 m','90s','Cardio']]},{n:'Estações — técnica',ex:[['HYROX - SkiErg 1000 m','3','250 m','90s','Costas'],['HYROX - Sled Push 50 m','4','25 m (leve)','90s','Pernas'],['HYROX - Farmers Carry 200 m','3','50 m','75s','Corpo inteiro'],['HYROX - Wall Balls em séries','3','15','75s','Corpo inteiro']]},{n:'Força',ex:FH}]},
+  { nome:'Fase 2 — Construção', sem:4, freq:5, obj:['Estações com cargas mais pesadas.','Corrida comprometida e intervalos.'], criterios:['4 rondas de 1 km + estação com controlo.','Força de base consolidada.'], evitar:['Fazer corrida e estações pesadas no mesmo dia sem planeamento.'],
+    sess:[{n:'Corrida Z2',ex:[['HYROX - Corrida contínua (Zona 2)','1','40-50 min','—','Cardio']]},{n:'Intervalos de corrida',ex:[['HYROX - Intervalos de corrida 400 m','8','400 m','75s','Cardio']]},{n:'Estações pesadas',ex:[['HYROX - Sled Push pesado curto','5','20 m','120s','Pernas'],['HYROX - Sled Pull mão sobre mão com corda','4','25 m','90s','Costas'],['HYROX - Farmers Carry pesado','4','40 m','90s','Corpo inteiro'],['HYROX - Sandbag Lunges 100 m','3','25 m','90s','Pernas']]},{n:'Corrida comprometida',ex:[['HYROX - Corrida comprometida','4','1 km + 1 estação','2 min','Cardio'],['HYROX - Roxzone (transição)','4','1 min','—','Corpo inteiro']]},{n:'Força',ex:FH}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:5, obj:['Simular a prova completa e parcial.','Ritmo de prova na corrida de 1 km.','Na última semana desta fase, substituir a simulação parcial pela completa.'], criterios:['Simulação parcial completa com controlo.','Ritmo de 1 km sustentado.'], evitar:['Aumentar o volume de força nesta fase.'],
+    sess:[{n:'Corrida Z2',ex:[['HYROX - Corrida contínua (Zona 2)','1','40 min','—','Cardio']]},{n:'Ritmo de prova',ex:[['HYROX - Corrida 1 km (ritmo de prova)','4','1 km','2 min','Cardio']]},{n:'Simulação',ex:[['HYROX - Simulação (metade da prova)','1','4 × (1 km + estação)','—','Corpo inteiro']]},{n:'Estações — velocidade',ex:[['HYROX - SkiErg intervalado','4','250 m','90s','Costas'],['HYROX - Remo intervalado','4','250 m','90s','Costas'],['HYROX - Wall Balls 100 reps','1','100 reps','—','Corpo inteiro'],['HYROX - Burpee Broad Jump em séries','4','10','75s','Corpo inteiro']]},{n:'Força',ex:FM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume 40-50%.','Manter o ritmo com estações leves.'], criterios:['Chega descansado.'], evitar:['Treinos novos ou muito pesados.'],
+    sess:[{n:'Corrida fácil',ex:[['HYROX - Corrida contínua (Zona 2)','1','25 min','—','Cardio']]},{n:'Ativação',ex:[['HYROX - Corrida 1 km (ritmo de prova)','2','1 km','2 min','Cardio'],['HYROX - Sled Push 50 m','2','25 m (leve)','90s','Pernas'],['HYROX - Wall Balls em séries','2','15','75s','Corpo inteiro']]},{n:'Roxzone e mobilidade',ex:[['HYROX - Roxzone (transição)','3','1 min','—','Corpo inteiro'],['Mobilidade torácica sentado','2','10','30s','Mobilidade']]}]}
   ]}
 ];
+['p-10k','p-meia','p-maratona','p-trail'].forEach(id=>{ const p = PROVAS.find(x=>x.id===id); p.fases[0].sess[0].ex.push(['Skipping A (elevação de joelho)','2','20 m','Voltar a andar'],['Skipping C (calcanhar ao glúteo)','2','20 m','Voltar a andar'],['Quick feet (passos rápidos)','3','15 s','30s']); });
+PROTOCOLOS.push(...PROVAS);
 
 // ---------- PROTOCOLOS: interface ----------
 let protoFilter = '';
 function protoById(id){ return PROTOCOLOS.find(p=>p.id===id); }
+function protoSess(fa){ return fa.sess || [{n:'', ex:fa.ex}]; }
 function protoTotalSem(p){ return p.fases.reduce((a,f)=>a+f.sem,0); }
 function renderProtocolos(){
   const box = document.getElementById('protocolos-list');
@@ -4010,19 +4473,19 @@ function renderProtocolos(){
         <p class="proto-p"><strong>Quando usar:</strong> ${esc(p.quando)}</p>
         <div class="proto-red"><strong>Sinais de alarme — encaminhar para o médico:</strong><ul>${p.bandeiras.map(b=>`<li>${esc(b)}</li>`).join('')}</ul></div>
         ${p.notas.map(n=>`<p class="proto-p">• ${esc(n)}</p>`).join('')}
-        <p class="proto-p">${esc(PROTO_DOR)}</p>
+        ${p.prova?'':`<p class="proto-p">${esc(PROTO_DOR)}</p>`}
         ${p.fases.map((fa,i)=>`
           <div class="proto-fase">
-            <div class="proto-fh"><strong>${esc(fa.nome)}</strong><span>${fa.sem} semanas · ${fa.freq}×/semana</span></div>
+            <div class="proto-fh"><strong>${esc(fa.nome)}</strong><span>${fa.sem} semanas · ${protoSess(fa).length}×/semana</span></div>
             <div class="proto-cols">
               <div><em>Objetivos</em><ul>${fa.obj.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
               <div><em>Para avançar</em><ul>${fa.criterios.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
               <div><em>Evitar</em><ul>${fa.evitar.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
             </div>
-            <table class="proto-t2">${fa.ex.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[1])}×${esc(x[2])}</td><td>${esc(x[3])}</td></tr>`).join('')}</table>
+            ${protoSess(fa).map(se=>`${se.n?`<div class="proto-sn">${esc(se.n)}</div>`:''}<table class="proto-t2">${se.ex.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[1])}×${esc(x[2])}</td><td>${esc(x[3])}</td></tr>`).join('')}</table>`).join('')}
             <button class="btn btn-sm" onclick="protoCreateWorkoutBtn('${p.id}',${i})">Criar treino desta fase</button>
           </div>`).join('')}
-        <div class="proto-aviso">${esc(PROTO_AVISO)}</div>
+        <div class="proto-aviso">${esc(p.prova?PROVA_AVISO:PROTO_AVISO)}</div>
         <button class="btn btn-primary" onclick="openProtoModal('${p.id}')">Criar ciclo para um cliente</button>
       </div>
     </details>`).join('');
@@ -4031,26 +4494,70 @@ function protoEnsureEx(x, p){
   const n = normName(x[0]);
   let e = DATA.exercises.find(e=>normName(e.nome)===n);
   if(e){
-    if(e.modalidade==='Reabilitação'){ e.patologias = e.patologias||[]; if(!e.patologias.includes(p.pat)) e.patologias.push(p.pat); }
+    if(e.modalidade==='Reabilitação' && p.pat){ e.patologias = e.patologias||[]; if(!e.patologias.includes(p.pat)) e.patologias.push(p.pat); }
     return e.id;
   }
-  e = { id: uid(), nome: x[0], grupo: x[4] || p.g, equip: '', notas: x[5] || '', padrao: 'isolamento', modalidade: 'Reabilitação', patologias: [p.pat], variantes: [], imagem:'', videoLink:'', videoData:'' };
+  const cd = (typeof CORRIDA_EXERCISES!=='undefined') && CORRIDA_EXERCISES.find(c=>normName(c.nome)===n);
+  if(cd){
+    e = { id: uid(), nome: cd.nome, grupo: cd.grupo, equip: cd.equip, notas: cd.notas, padrao: cd.padrao, modalidade: 'Corrida', patologias: [], variantes: cd.variantes.slice(), rx: cd.rx, imagem:'', videoLink:'', videoData:'' };
+    DATA.exercises.push(e);
+    return e.id;
+  }
+  e = { id: uid(), nome: x[0], grupo: x[4] || p.g, equip: '', notas: x[5] || '', padrao: 'isolamento', modalidade: p.mod || 'Reabilitação', patologias: p.pat ? [p.pat] : [], variantes: [], imagem:'', videoLink:'', videoData:'' };
   DATA.exercises.push(e);
   return e.id;
 }
-function protoMakeWorkout(p, fi){
-  const fa = p.fases[fi];
-  const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}`, patologia: p.pat, protocolo: p.id,
-    exercicios: fa.ex.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
-  DATA.workouts.push(w);
-  return w;
+const PROTO_PAT_MUSC = ['lombar','hernia','cervical','escoliose','entorse','aquiles','fascite','epicondilite','epitrocleite','ombro','joelho','oa','osteop','fibro'];
+const PROTO_ADAPT_DROP = /interval|limiar|strides|fartlek|subida|ritmo de|bounding|salto|pogo|hop\b|skater|skipping|quick feet|brick|sprint|burpee|sled|wall ball|simula|sandbag|farmers|skierg|remo\b|roxzone|comprometida/i;
+function protoPatInfo(clientId){
+  const c = DATA.clients.find(x=>x.id===clientId);
+  const key = c && c.patologia;
+  if(!key || !PATOLOGIAS[key]) return null;
+  const nome = PATOLOGIAS[key].nome;
+  if(PROTO_PAT_MUSC.includes(key)) return { key, tipo:'musc', txt:`Cliente com patologia músculo-esquelética (${nome}). Recomendação: concluir primeiro o protocolo de reabilitação respetivo e só depois iniciar a prova, com autorização do fisioterapeuta ou médico. Com a adaptação ativa, as sessões passam a corrida e caminhada alternadas, sem intervalos duros, ritmos de prova nem saltos, e o volume deve subir mais devagar (cerca de 5% por semana).` };
+  return { key, tipo:'sis', txt:`Cliente com condição cardiometabólica, respiratória ou neurológica (${nome}). Exige autorização médica e, se existir, a zona de esforço definida pelo médico. Com a adaptação ativa, tudo fica em esforço fácil (Z2), sem intervalos nem ritmos de prova. Uma prova longa pode não ser adequada: avaliar uma distância menor.` };
 }
+function protoPatCheck(){
+  const box = document.getElementById('proto-pat-box');
+  const p = protoById(document.getElementById('proto-id').value);
+  const info = p && p.prova ? protoPatInfo(document.getElementById('proto-cliente').value) : null;
+  if(!info){ box.style.display = 'none'; return; }
+  document.getElementById('proto-pat-txt').textContent = info.txt;
+  box.style.display = 'block';
+}
+function protoAdaptEx(se, p, info){
+  const kept = [];
+  let dropped = null;
+  se.ex.forEach(x=>{ if(PROTO_ADAPT_DROP.test(x[0])){ if(!dropped) dropped = x; } else kept.push(x); });
+  const nota = info.tipo==='musc' ? ' (alternar 3 min a correr e 1 min a caminhar)' : ' (Z2, esforço conversável; parar se houver sintomas)';
+  const out = kept.map(x=> /^(HYROX - )?Corrida (contínua leve|longa|contínua)/i.test(x[0]) ? [x[0], x[1], x[2].replace(/\s*\(com[^)]*\)/i,'')+nota, x[3], x[4]] : x);
+  if(!out.length && dropped){
+    const n = dropped[0];
+    if(/^Natação/i.test(n)) out.push(['Natação contínua (Z2)','1','500 m','—','Cardio']);
+    else if(/^Ciclismo/i.test(n)) out.push(['Ciclismo contínuo (Z2)','1','45 min','—','Cardio']);
+    else out.push([p.mod==='HYROX' ? 'HYROX - Corrida contínua (Zona 2)' : 'Corrida contínua leve (Z2)','1','30 min'+nota,'—','Cardio']);
+  }
+  return out;
+}
+function protoMakeWorkouts(p, fi, opt){
+  const fa = p.fases[fi];
+  const ses = protoSess(fa);
+  const info = opt && opt.adapt ? opt.info : null;
+  return ses.map(se=>{
+    const lines = info ? protoAdaptEx(se, p, info) : se.ex;
+    const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: (opt && opt.info ? opt.info.key : '') || p.pat || '', protocolo: p.id,
+      exercicios: lines.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+    DATA.workouts.push(w);
+    return w;
+  });
+}
+function protoMakeWorkout(p, fi){ return protoMakeWorkouts(p, fi)[0]; }
 function protoCreateWorkoutBtn(id, fi){
   const p = protoById(id);
   if(!p) return;
-  protoMakeWorkout(p, fi);
+  const ws = protoMakeWorkouts(p, fi);
   saveData();
-  alert('Treino criado. Está no separador Treinos: «' + p.nome.split(' (')[0] + ' — ' + p.fases[fi].nome + '».');
+  alert(ws.length===1 ? 'Treino criado. Está no separador Treinos: «' + ws[0].nome + '».' : ws.length + ' treinos criados. Estão no separador Treinos (' + p.nome.split(' (')[0] + ' — ' + p.fases[fi].nome + ').');
 }
 function openProtoModal(id){
   if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de criar o ciclo.'); return; }
@@ -4061,6 +4568,8 @@ function openProtoModal(id){
   document.getElementById('proto-inicio').value = new Date().toISOString().slice(0,10);
   document.getElementById('proto-fase').innerHTML = p.fases.map((f,i)=>`<option value="${i}">${esc(f.nome)}</option>`).join('');
   document.getElementById('proto-fase').value = '0';
+  document.getElementById('proto-adapt').checked = true;
+  protoPatCheck();
   openModal('modal-proto');
 }
 function protoCreateCycle(){
@@ -4068,15 +4577,18 @@ function protoCreateCycle(){
   const clientId = document.getElementById('proto-cliente').value;
   const inicio = document.getElementById('proto-inicio').value;
   const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
+  const info = p.prova ? protoPatInfo(clientId) : null;
+  const opt = info ? { adapt: document.getElementById('proto-adapt').checked, info } : null;
+  if(info && !opt.adapt && !confirm('Este cliente tem patologia (' + PATOLOGIAS[info.key].nome + ') e o protocolo vai ser criado sem adaptação. Continuar mesmo assim?')) return;
   const semanas = [];
   p.fases.forEach((fa, i)=>{
     if(i < fi0) return;
-    const w = protoMakeWorkout(p, i);
-    const slots = AI_SLOTS[fa.freq] || AI_SLOTS[3];
+    const ws = protoMakeWorkouts(p, i, opt);
+    const slots = AI_SLOTS[ws.length] || AI_SLOTS[3];
     for(let s=1; s<=fa.sem; s++){
       const dias = DIAS.map(()=>({ workoutId: '' }));
-      slots.forEach(k=>{ dias[k].workoutId = w.id; });
-      let prog = `${fa.nome} (semana ${s}/${fa.sem})`;
+      slots.forEach((k, j)=>{ if(ws[j]) dias[k].workoutId = ws[j].id; });
+      let prog = `${fa.nome} (semana ${s}/${fa.sem})` + (opt && opt.adapt ? ' — adaptado à patologia' : '');
       if(s===fa.sem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
       semanas.push({ numero: semanas.length+1, progressao: prog, dias });
     }
