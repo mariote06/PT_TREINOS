@@ -588,7 +588,7 @@
       </div>
       <div class="field">
         <label>Equipamento</label>
-        <select id="plan-equip"><option>Ginásio completo</option><option>Halteres e bancos</option><option>Casa, sem material</option><option>Casa, com elásticos</option></select>
+        <select id="plan-equip" onchange="equipPreset('plan-equiplist', this.value)"><option>Ginásio completo</option><option>Halteres e bancos</option><option>Casa, sem material</option><option>Casa, com elásticos</option></select>
       </div>
     </div>
     <div class="row-3">
@@ -599,6 +599,7 @@
       </div>
       <div class="field"><label>Semanas do ciclo</label><input id="plan-semanas" type="number" min="2" max="12" value="4"></div>
     </div>
+    <div class="field"><label>Equipamento disponível (o plano só usa exercícios com este equipamento)</label><div id="plan-equiplist"></div></div>
     <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, ignora «Treinos por semana»)</label><div id="plan-dayspick" data-v="0000000"></div></div>
     <div class="field">
       <label>Patologias / condições (podes escolher várias; o plano segue as recomendações do ACSM)</label>
@@ -957,6 +958,8 @@
     <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
     <div class="field"><label>Treinos por semana</label><select id="proto-nsem"><option value="">Automático (como vem no protocolo)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
       <div class="view-sub" style="margin-top:4px;">A app ajusta cada fase a este número e distribui os dias. Mantém sempre o treino mais longo (ex.: corrida longa) no último dia.</div></div>
+    <div class="field"><label>Objetivo (ajusta os blocos de força dos protocolos de prova)</label><select id="proto-obj"><option value="">Automático (objetivo da ficha)</option><option>Força</option><option>Hipertrofia</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option></select></div>
+    <div class="field"><label>Equipamento disponível (a app troca os exercícios que precisem de equipamento que não tens)</label><div id="proto-equiplist"></div></div>
     <div class="field"><label>Condição física (a app ajusta volume e séries)</label><select id="proto-nivel"><option value="">Automático (nível da ficha do cliente)</option><option>Iniciante</option><option>Intermédio</option><option>Avançado</option></select>
       <div class="view-sub" style="margin-top:4px;">Intermédio = protocolo como está. Iniciante reduz cerca de 25% o volume das corridas e uma série nos exercícios de força. Avançado aumenta cerca de 10%. Com dois clientes, vale o nível mais baixo.</div></div>
     <div class="field"><label>Ou escolhe tu os dias: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, o número acima é ignorado)</label><div id="proto-dayspick" data-v="0000000"></div></div>
@@ -2842,8 +2845,8 @@ function prefillAI(){
   if(c.diasSemana) document.getElementById('ai-dias').value = c.diasSemana;
   document.getElementById('ai-limitacoes').value = c.limitacoes || '';
 }
-function aiExercisePool(equipChoice, withCF){
-  const allowed = {
+function aiExercisePool(equipChoice, withCF, equipList){
+  const allowed = (equipList !== undefined) ? (equipList===null ? null : ['', 'Peso corporal', ...equipList]) : {
     'Ginásio completo': null,
     'Halteres e bancos': ['', 'Peso corporal','Halteres','Barra','Kettlebell','Caixa','Step','Disco','Medicine ball'],
     'Casa, sem material': ['', 'Peso corporal','Toalha'],
@@ -2941,6 +2944,51 @@ function importAI(){
   importResult(aiResult, document.getElementById('ai-cliente').value);
   aiResult = null;
   closeModal('modal-ai');
+}
+// ---------- EQUIPAMENTO DISPONÍVEL ----------
+const EQ_PRESETS = { 'Ginásio completo': null, 'Halteres e bancos': ['Halteres','Barra','Kettlebell','Caixa','Step','Disco','Medicine ball','Banco'], 'Casa, sem material': [], 'Casa, com elásticos': ['Elástico','Mini band','Toalha'] };
+function equipAll(){
+  const m = {}; DATA.exercises.forEach(e=>{ const q = e.equip||''; if(q && q!=='Peso corporal') m[q] = (m[q]||0)+1; });
+  return Object.keys(m).sort((a,b)=>m[b]-m[a] || a.localeCompare(b,'pt'));
+}
+function equipPickerInit(id, list){
+  const el = document.getElementById(id); if(!el) return;
+  el.dataset.sel = JSON.stringify(list===null || list===undefined ? equipAll() : list);
+  equipPickerDraw(id);
+}
+function equipPickerGet(id){
+  const el = document.getElementById(id); if(!el) return null;
+  let sel = []; try{ sel = JSON.parse(el.dataset.sel||'[]'); }catch(e){}
+  const all = equipAll();
+  return all.every(x=>sel.includes(x)) ? null : sel;
+}
+function equipPickerDraw(id){
+  const el = document.getElementById(id); const all = equipAll(); let sel = []; try{ sel = JSON.parse(el.dataset.sel||'[]'); }catch(e){}
+  const open = el.dataset.open==='1';
+  el.innerHTML = `<details ${open?'open':''} ontoggle="document.getElementById('${id}').dataset.open = this.open ? '1' : ''"><summary style="cursor:pointer; font-size:13px;">${sel.filter(x=>all.includes(x)).length === all.length ? 'Todo o equipamento da biblioteca' : sel.length + ' de ' + all.length + ' equipamentos'} (toca para escolher)</summary>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;">${Object.keys(EQ_PRESETS).map(n=>`<button type="button" class="btn btn-sm" onclick="equipPreset('${id}','${n}')">${n}</button>`).join('')}<button type="button" class="btn btn-sm" onclick="equipSaveDefault('${id}')">Guardar como padrão</button></div>
+    <div style="display:flex; flex-wrap:wrap; gap:4px 12px; max-height:170px; overflow:auto;">${all.map(q=>`<label style="display:flex; gap:4px; align-items:center; font-size:12.5px; cursor:pointer;"><input type="checkbox" ${sel.includes(q)?'checked':''} onchange="equipToggle('${id}','${q.replace(/'/g,"\\'")}', this.checked)">${esc(q)}</label>`).join('')}</div>
+    <div class="view-sub" style="margin-top:4px;">Peso corporal e exercícios sem equipamento estão sempre disponíveis.</div></details>`;
+}
+function equipToggle(id, name, on){
+  const el = document.getElementById(id); let sel = []; try{ sel = JSON.parse(el.dataset.sel||'[]'); }catch(e){}
+  sel = sel.filter(x=>x!==name); if(on) sel.push(name);
+  el.dataset.sel = JSON.stringify(sel); equipPickerDraw(id);
+}
+function equipPreset(id, name){
+  if(!(name in EQ_PRESETS)) return;
+  const el = document.getElementById(id); el.dataset.open = '1'; equipPickerInit(id, EQ_PRESETS[name]);
+}
+function equipSaveDefault(id){
+  DATA.equip = equipPickerGet(id);
+  const el = document.getElementById(id); el.dataset.open = '1';
+  saveData();
+  alert('Equipamento guardado como padrão.');
+}
+function equipOk(e, avail){
+  if(!avail) return true;
+  const q = e && e.equip || '';
+  return !q || q==='Peso corporal' || avail.includes(q);
 }
 // ---------- DIAS DE TREINO / DESCANSO / PT ----------
 const DP_LBL = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
@@ -3239,7 +3287,7 @@ function buildAutoPlan(p){
     else avisos.push('Não reconheci automaticamente a limitação escrita. Revê os exercícios à mão.');
   }
   const HOME_OK = /squat|lunge|afundo|ponte|bacia|push|flexo|prancha|plank|crunch|abdominal|hollow|bird|climber|burpee|skipping|jumping|abdu|abductor|adductor|monster|calcanhar|gemeo|flexao plantar|wall sit|step|dead bug|superman/;
-  const home = p.equipamento.startsWith('Casa');
+  const home = p.equipamento.startsWith('Casa') || (Array.isArray(p.equipList) && !p.equipList.some(q=>['Máquina','Polia','Barra','Multipower','Passadeira','Bicicleta'].includes(q)));
   const cfAllowed = p.nivel!=='Iniciante' && !pat;
   const useCF = cfAllowed && comp.cf!==0;
   const nHyrox = cfAllowed ? (comp.hyrox||0) : 0;
@@ -3248,7 +3296,7 @@ function buildAutoPlan(p){
   const usedHyrox = new Set();
   if(comp.cf>0 && !cfAllowed) avisos.push('CrossFit ignorado: só entra em planos Intermédio/Avançado sem patologia.');
   if(pat) p = { ...p, dias: Math.min(p.dias, pat.dias) };
-  const pool = aiExercisePool(p.equipamento, useCF).filter(e=>{
+  const pool = aiExercisePool(p.equipamento, useCF, p.equipList).filter(e=>{
     const n = normText(e.nome);
     if(home && e.equip==='' && !HOME_OK.test(n)) return false;
     if(pat && pat.ex.test(n)) return false;
@@ -3407,6 +3455,8 @@ function prefillPlan(){
   ['plan-met','plan-met-cardio','plan-met-cf','plan-met-reab','plan-met-hyrox'].forEach(id=>{ document.getElementById(id).innerHTML = '<option value="">Nenhuma</option>' + Object.keys(METODOLOGIAS).map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join(''); });
   ['plan-n-forca','plan-n-cardio','plan-cardio-min','plan-n-reab','plan-n-cf','plan-n-hyrox'].forEach(id=>{ document.getElementById(id).value=''; });
   dayPickInit('plan-dayspick');
+  const _pe = document.getElementById('plan-equiplist'); if(_pe) _pe.dataset.open = '';
+  equipPickerInit('plan-equiplist', DATA.equip===undefined ? null : DATA.equip);
 }
 function generatePlan(){
   const status = document.getElementById('plan-status');
@@ -3417,6 +3467,7 @@ function generatePlan(){
     duracao: parseInt(document.getElementById('plan-duracao').value) || 45,
     semanas: Math.min(12, Math.max(2, parseInt(document.getElementById('plan-semanas').value) || 4)),
     equipamento: document.getElementById('plan-equip').value,
+    equipList: equipPickerGet('plan-equiplist'),
     limitacoes: document.getElementById('plan-limitacoes').value.trim(),
     patologia: patPickerGet('plan-patologia')[0] || '',
     patologiasExtra: patPickerGet('plan-patologia').slice(1)
@@ -5266,6 +5317,28 @@ function protoScaleEx(x, level){
   }
   return o;
 }
+const PROTO_OBJ = { 'Força': { reps:'5', desc:'120s' }, 'Hipertrofia': { reps:'8-12', desc:'75s' }, 'Perda de gordura': { reps:'12-15', desc:'45s' } };
+function protoObjEx(x, obj){
+  const o = PROTO_OBJ[obj]; if(!o || x[4]==='Cardio') return x;
+  const m = String(x[2]).match(/^\d+(?:-\d+)?(.*)$/);
+  if(!m || /s$|min/.test(String(x[2]).trim())) return x;
+  const y = x.slice(); y[2] = o.reps + m[1]; y[3] = o.desc; return y;
+}
+function protoEquipEx(x, p, avail, used, keys, report, fase){
+  if(!avail) return x;
+  const e = protoExObj(x, p);
+  if(equipOk(e, avail)) return x;
+  const alt = DATA.exercises.filter(c=>c.grupo===e.grupo && !used.has(normName(c.nome)) && equipOk(c, avail) && !keys.some(k=>contraAlert(c,k)) && c.modalidade!=='HYROX' && c.modalidade!=='CrossFit')
+    .map(c=>({ c, sc: (e.padrao && c.padrao===e.padrao ? 4 : 0) + (c.modalidade===e.modalidade ? 2 : 0) + (p.pat && (c.patologias||[]).includes(p.pat) ? 3 : 0) })).sort((a,b)=>b.sc-a.sc)[0];
+  if(alt && alt.sc>0){ used.add(normName(alt.c.nome)); if(report) report.push({ fase, nome:x[0], acao:'substituído por '+alt.c.nome, motivo:'equipamento indisponível: '+e.equip }); return [alt.c.nome, x[1], x[2], x[3], alt.c.grupo]; }
+  if(report) report.push({ fase, nome:x[0], acao:'retirado', motivo:'equipamento indisponível: '+e.equip });
+  return null;
+}
+function protoEqList(list, p, opt, keys, fase){
+  if(!opt || !opt.equip) return list;
+  const used = new Set(list.map(x=>normName(x[0])));
+  return list.map(x=>protoEquipEx(x, p, opt.equip, used, keys, opt.report, fase)).filter(Boolean);
+}
 function protoMakeWorkouts(p, fi, opt){
   const keys = opt && opt.keys ? opt.keys : [];
   const ses = protoAdaptPhase(p, fi, keys, !!(opt && opt.adapt), opt && opt.report ? opt.report : null);
@@ -5273,7 +5346,7 @@ function protoMakeWorkouts(p, fi, opt){
   const fa = p.fases[fi];
   return ses.map(se=>{
     const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: keys[0] || p.pat || '', patologias: [...new Set([...keys, p.pat].filter(Boolean))], protocolo: p.id,
-      exercicios: se.ex.map(x=>protoScaleEx(x, level)).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+      exercicios: protoEqList(se.ex.map(x=>protoScaleEx(x, level)).map(x=>p.prova ? protoObjEx(x, opt && opt.obj) : x), p, opt, keys, fa.nome).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
     DATA.workouts.push(w);
     return w;
   });
@@ -5302,6 +5375,9 @@ function openProtoModal(id){
   dayPickInit('proto-dayspick');
   document.getElementById('proto-nsem').value = '';
   document.getElementById('proto-nivel').value = '';
+  document.getElementById('proto-obj').value = '';
+  document.getElementById('proto-equiplist').dataset.open = '';
+  equipPickerInit('proto-equiplist', DATA.equip===undefined ? null : DATA.equip);
   protoModalChange();
   openModal('modal-proto');
 }
@@ -5334,7 +5410,8 @@ function protoCreateCycle(){
   const level = protoLevel(clientId, clientId2, document.getElementById('proto-nivel').value);
   if(p.prova && level==='Iniciante' && ['p-maratona','p-meia'].includes(p.id) && !confirm('Este protocolo pressupõe que o atleta já corre com regularidade (' + p.nome.split(' (')[0] + '). Para um nível iniciante, considera primeiro um plano de 10 km. Criar mesmo assim, com o volume reduzido?')) return;
   const report = [];
-  const opt = { keys, adapt, level, report };
+  const obj = document.getElementById('proto-obj').value || (DATA.clients.find(c=>c.id===clientId)||{}).objetivo || '';
+  const opt = { keys, adapt, level, report, obj, equip: equipPickerGet('proto-equiplist') };
   let inicio = inicio0;
   let sems = p.fases.slice(fi0).map(f=>f.sem);
   const provaISO = p.prova ? document.getElementById('proto-prova').value : '';
@@ -5378,7 +5455,7 @@ function protoCreateCycle(){
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
   const seen = new Set(), lines = [];
   report.forEach(r=>{ const k = r.nome+'|'+r.acao; if(seen.has(k)) return; seen.add(k); lines.push('• '+r.nome+': '+r.acao+' ('+r.motivo+')'); });
-  if(lines.length || level!=='Intermédio') alert('Plano criado.' + (level!=='Intermédio' ? '\nNível aplicado: ' + level + '.' : '') + (lines.length ? '\n\nAjustes feitos às patologias:\n' + lines.slice(0,14).join('\n') + (lines.length>14 ? '\n…' : '') : ''));
+  if(lines.length || level!=='Intermédio') alert('Plano criado.' + (level!=='Intermédio' ? '\nNível aplicado: ' + level + '.' : '') + (lines.length ? '\n\nAjustes feitos (patologias e equipamento):\n' + lines.slice(0,14).join('\n') + (lines.length>14 ? '\n…' : '') : ''));
 }
 
 function esc(str){
