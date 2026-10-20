@@ -964,7 +964,7 @@
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
     <div id="proto-pat-box" style="display:none; border-left:3px solid #c0533a; background:rgba(192,83,58,.1); padding:10px 12px; border-radius:4px; margin:10px 0; font-size:13.5px; line-height:1.5;">
       <div id="proto-pat-txt"></div>
-      <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; cursor:pointer;"><input type="checkbox" id="proto-adapt" checked style="margin-top:3px;"><span id="proto-adapt-label"></span></label>
+      <label style="display:none; gap:8px; align-items:flex-start; margin-top:8px; cursor:pointer;"><input type="checkbox" id="proto-adapt" checked style="margin-top:3px;"><span id="proto-adapt-label"></span></label>
     </div>
     <div class="view-sub">Cria um treino por fase e um ciclo com todas as semanas. Podes editar tudo depois.</div>
     <div class="modal-actions">
@@ -2492,6 +2492,7 @@ function saveFicha(){
   if(!c) return;
   const nome = document.getElementById('f-nome').value.trim();
   if(!nome){ document.getElementById('ficha-msg').textContent = 'O nome não pode ficar vazio.'; return; }
+  const patsBefore = clientPats(c).join(',');
   const v = id=>document.getElementById(id).value.trim();
   Object.assign(c, {
     nome, cat: v('f-cat') || 'pt', codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
@@ -2500,8 +2501,17 @@ function saveFicha(){
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
   c.extras = Array.from(document.querySelectorAll('#f-extras .extra-row')).map(r=>({ k: r.querySelector('.ex-k').value.trim(), v: r.querySelector('.ex-v').value.trim() })).filter(e=>e.k||e.v);
+  let ajuste = '';
+  if(clientPats(c).join(',') !== patsBefore && clientPats(c).length){
+    const cys = DATA.cycles.filter(cy=>cycleHas(cy, c.id));
+    if(cys.length && confirm('Mudaste as patologias de ' + c.nome + '. Ajustar automaticamente os ' + cys.length + ' plano(s) deste cliente (trocar ou retirar exercícios contraindicados)?')){
+      const rel = []; cys.forEach(cy=>rel.push(...cycleAutoAdjust(cy)));
+      const u = [...new Set(rel)];
+      ajuste = u.length ? ' ' + u.length + ' exercício(s) ajustado(s) nos planos.' : ' Os planos não precisaram de alterações.';
+    }
+  }
   saveData();
-  document.getElementById('ficha-msg').textContent = 'Alterações guardadas.';
+  document.getElementById('ficha-msg').textContent = 'Alterações guardadas.' + ajuste;
 }
 function openClientCycles(id){
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
@@ -3625,6 +3635,47 @@ function updateDayAula(cycleId, weekIdx, dayIdx, aulaId){
   d.aulaId = aulaId; if(!aulaId) d.aulaHora = '';
   saveData();
 }
+// ---------- AJUSTE AUTOMÁTICO DE UM PLANO A PATOLOGIAS ----------
+function findSafeAlt(e, keys, used){
+  let best = null, bs = -1;
+  DATA.exercises.forEach(x=>{
+    if(x.id===e.id || used.has(x.id) || x.grupo!==e.grupo) return;
+    if(keys.some(k=>contraAlert(x,k))) return;
+    let sc = 0;
+    if(e.padrao && x.padrao===e.padrao) sc += 4;
+    if(x.modalidade===e.modalidade) sc += 2;
+    if(x.modalidade==='Reabilitação' && (x.patologias||[]).some(k=>keys.includes(k))) sc += 3;
+    if(e.equip && x.equip===e.equip) sc += 1;
+    if(sc > bs){ bs = sc; best = x; }
+  });
+  return best;
+}
+function cycleAutoAdjust(cy){
+  const keys = [...new Set([...cyclePats(cy), ...(cy.patologias||[]).filter(k=>PATOLOGIAS[k])])];
+  const out = [];
+  if(!keys.length) return out;
+  const map = {};
+  cy.semanas.forEach(sem=>sem.dias.forEach(d=>{
+    if(!d.workoutId) return;
+    if(d.workoutId in map){ d.workoutId = map[d.workoutId]; return; }
+    const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w){ return; }
+    const used = new Set((w.exercicios||[]).map(l=>l.exId)); const lines = []; let changed = false;
+    (w.exercicios||[]).forEach(l=>{
+      const e = DATA.exercises.find(x=>x.id===l.exId);
+      const k = e ? keys.find(k=>contraAlert(e,k)) : null;
+      if(!k){ lines.push(l); return; }
+      changed = true;
+      const alt = findSafeAlt(e, keys, used);
+      if(alt){ used.add(alt.id); lines.push({ ...l, exId: alt.id, variante: '' }); out.push(`${w.nome.replace(cy.nome+' — ','')}: ${e.nome} → ${alt.nome} (${PATOLOGIAS[k].nome})`); }
+      else out.push(`${w.nome.replace(cy.nome+' — ','')}: ${e.nome} retirado (${PATOLOGIAS[k].nome})`);
+    });
+    if(changed){
+      const nw = JSON.parse(JSON.stringify(w)); nw.id = uid(); nw.exercicios = lines; nw.patologias = [...new Set([...(w.patologias||[]), ...keys])];
+      DATA.workouts.push(nw); map[w.id] = nw.id; d.workoutId = nw.id;
+    } else map[w.id] = w.id;
+  }));
+  return out;
+}
 // ---------- AJUSTAR PLANO (patologias + dias) ----------
 function openAdjust(cycleId){
   const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
@@ -3661,18 +3712,10 @@ function applyAdjust(){
       });
     }
   }
-  // avisos de contraindicações
-  const client = DATA.clients.find(c=>c.id===cy.clientId);
-  const keys = [...new Set([...cyclePats(cy), ...(cy.patologias||[])])];
-  const msgs = [];
-  const seen = new Set();
-  cy.semanas.forEach(sem=>sem.dias.forEach(d=>{ if(!d.workoutId || seen.has(d.workoutId)) return; seen.add(d.workoutId);
-    const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w) return;
-    keys.forEach(k=>{ const bad = (w.exercicios||[]).map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,k));
-      if(bad.length) msgs.push(`• ${w.nome} (${PATOLOGIAS[k].nome}): ${bad.map(e=>e.nome).join(', ')}`); }); }));
+  const rel = cycleAutoAdjust(cy);
   closeModal('modal-adj');
   saveData();
-  if(msgs.length) alert('Atenção: há exercícios contraindicados para as patologias deste plano:\n\n' + msgs.slice(0,12).join('\n') + (msgs.length>12 ? '\n…' : '') + '\n\nRevê estes treinos.');
+  if(rel.length){ const u = [...new Set(rel)]; alert('Plano ajustado automaticamente às patologias (' + u.length + ' alteração(ões)):\n\n' + u.slice(0,14).map(x=>'• '+x).join('\n') + (u.length>14 ? '\n…' : '') + '\n\nOs treinos originais continuam na lista de Treinos.'); }
 }
 function updateDayPT(cycleId, weekIdx, dayIdx, on){
   const cycle = DATA.cycles.find(c=>c.id===cycleId); const d = cycle.semanas[weekIdx].dias[dayIdx];
@@ -5191,6 +5234,7 @@ function protoPatCheck(){
     h += `<div style="margin-top:8px;"><strong>Alterações previstas (${lista.length}):</strong><ul style="margin:4px 0 0; padding-left:18px;">${lista.slice(0,10).map(r=>`<li>${esc(r.nome)} — ${esc(r.acao)} (${esc(r.motivo)})</li>`).join('')}${lista.length>10?`<li>… e mais ${lista.length-10}</li>`:''}</ul></div>`;
   } else if(!p.prova) h += `<div style="margin-top:8px;">Nenhum exercício do protocolo está contraindicado para esta patologia.</div>`;
   document.getElementById('proto-pat-txt').innerHTML = h;
+  document.getElementById('proto-pat-txt').innerHTML = h + '<div style="margin-top:8px;"><b>O protocolo é ajustado automaticamente a estas patologias.</b></div>';
   document.getElementById('proto-adapt-label').textContent = p.prova ? 'Ajustar o protocolo à patologia (sem intervalos duros, ritmos de prova, saltos e estações pesadas) e retirar exercícios contraindicados' : 'Ajustar o protocolo à patologia: retirar ou substituir os exercícios contraindicados';
   box.style.display = 'block';
 }
@@ -5286,8 +5330,7 @@ function protoCreateCycle(){
   const keys = protoKeys(clientId, patPickerGet('proto-extra'), clientId2);
   const act = keys.filter(k=>k!==p.pat);
   const hasAdapt = p.prova ? keys.length>0 : act.length>0;
-  const adapt = hasAdapt ? document.getElementById('proto-adapt').checked : false;
-  if(hasAdapt && !adapt && !confirm('Há patologia associada (' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') + ') e o protocolo vai ser criado sem ajuste. Continuar mesmo assim?')) return;
+  const adapt = hasAdapt;
   const level = protoLevel(clientId, clientId2, document.getElementById('proto-nivel').value);
   if(p.prova && level==='Iniciante' && ['p-maratona','p-meia'].includes(p.id) && !confirm('Este protocolo pressupõe que o atleta já corre com regularidade (' + p.nome.split(' (')[0] + '). Para um nível iniciante, considera primeiro um plano de 10 km. Criar mesmo assim, com o volume reduzido?')) return;
   const report = [];
