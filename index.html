@@ -957,6 +957,8 @@
     <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
     <div class="field"><label>Treinos por semana</label><select id="proto-nsem"><option value="">Automático (como vem no protocolo)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
       <div class="view-sub" style="margin-top:4px;">A app ajusta cada fase a este número e distribui os dias. Mantém sempre o treino mais longo (ex.: corrida longa) no último dia.</div></div>
+    <div class="field"><label>Condição física (a app ajusta volume e séries)</label><select id="proto-nivel"><option value="">Automático (nível da ficha do cliente)</option><option>Iniciante</option><option>Intermédio</option><option>Avançado</option></select>
+      <div class="view-sub" style="margin-top:4px;">Intermédio = protocolo como está. Iniciante reduz cerca de 25% o volume das corridas e uma série nos exercícios de força. Avançado aumenta cerca de 10%. Com dois clientes, vale o nível mais baixo.</div></div>
     <div class="field"><label>Ou escolhe tu os dias: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, o número acima é ignorado)</label><div id="proto-dayspick" data-v="0000000"></div></div>
     <div class="field"><label>Outras patologias ou condicionantes (opcional, podes escolher várias)</label><div class="patpick" id="proto-extra" data-keys="[]" data-cb="protoModalChange"></div>
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
@@ -5192,13 +5194,42 @@ function protoPatCheck(){
   document.getElementById('proto-adapt-label').textContent = p.prova ? 'Ajustar o protocolo à patologia (sem intervalos duros, ritmos de prova, saltos e estações pesadas) e retirar exercícios contraindicados' : 'Ajustar o protocolo à patologia: retirar ou substituir os exercícios contraindicados';
   box.style.display = 'block';
 }
+const NIVEL_ORD = ['Iniciante','Intermédio','Avançado'];
+const NIVEL_F = { 'Iniciante':0.75, 'Intermédio':1, 'Avançado':1.1 };
+function protoLevel(clientId, clientId2, sel){
+  if(NIVEL_ORD.includes(sel)) return sel;
+  const lv = [clientId, clientId2].map(i=>(DATA.clients.find(c=>c.id===i)||{}).nivel).filter(v=>NIVEL_ORD.includes(v));
+  if(!lv.length) return 'Intermédio';
+  return lv.sort((a,b)=>NIVEL_ORD.indexOf(a)-NIVEL_ORD.indexOf(b))[0];
+}
+function protoScaleNum(n, f, step){ let v = n*f; if(step) v = Math.round(v/step)*step; else v = Math.round(v); return Math.max(step||1, v); }
+function protoScaleText(t, f){
+  return String(t).replace(/(\d+)×|(\d+)(?:-(\d+))?\s*min\b|(\d+)(?:-(\d+))?\s*m D\+/g, (m, cnt, a, b, d1, d2)=>{
+    if(cnt) return protoScaleNum(+cnt, f) + '×';
+    if(a){ const st = x=>protoScaleNum(+x, f, +x>=10 ? 5 : 0); return st(a) + (b ? '-' + st(b) : '') + ' min'; }
+    const sd = x=>protoScaleNum(+x, f, 50); return sd(d1) + (d2 ? '-' + sd(d2) : '') + ' m D+';
+  });
+}
+function protoScaleEx(x, level){
+  const f = NIVEL_F[level] || 1;
+  if(f===1) return x;
+  const o = x.slice();
+  if(o[4]==='Cardio'){
+    o[2] = protoScaleText(o[2], f);
+    if(/^\d+$/.test(String(o[1])) && +o[1] >= 2) o[1] = String(protoScaleNum(+o[1], f));
+  } else if(f < 1 && /^\d+$/.test(String(o[1]))){
+    o[1] = String(Math.max(2, +o[1] - 1));
+  }
+  return o;
+}
 function protoMakeWorkouts(p, fi, opt){
   const keys = opt && opt.keys ? opt.keys : [];
-  const ses = protoAdaptPhase(p, fi, keys, !!(opt && opt.adapt), null);
+  const ses = protoAdaptPhase(p, fi, keys, !!(opt && opt.adapt), opt && opt.report ? opt.report : null);
+  const level = opt && opt.level ? opt.level : 'Intermédio';
   const fa = p.fases[fi];
   return ses.map(se=>{
     const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: keys[0] || p.pat || '', patologias: [...new Set([...keys, p.pat].filter(Boolean))], protocolo: p.id,
-      exercicios: se.ex.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+      exercicios: se.ex.map(x=>protoScaleEx(x, level)).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
     DATA.workouts.push(w);
     return w;
   });
@@ -5226,6 +5257,7 @@ function openProtoModal(id){
   patPickerSet('proto-extra', []);
   dayPickInit('proto-dayspick');
   document.getElementById('proto-nsem').value = '';
+  document.getElementById('proto-nivel').value = '';
   protoModalChange();
   openModal('modal-proto');
 }
@@ -5256,7 +5288,10 @@ function protoCreateCycle(){
   const hasAdapt = p.prova ? keys.length>0 : act.length>0;
   const adapt = hasAdapt ? document.getElementById('proto-adapt').checked : false;
   if(hasAdapt && !adapt && !confirm('Há patologia associada (' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') + ') e o protocolo vai ser criado sem ajuste. Continuar mesmo assim?')) return;
-  const opt = keys.length ? { keys, adapt } : null;
+  const level = protoLevel(clientId, clientId2, document.getElementById('proto-nivel').value);
+  if(p.prova && level==='Iniciante' && ['p-maratona','p-meia'].includes(p.id) && !confirm('Este protocolo pressupõe que o atleta já corre com regularidade (' + p.nome.split(' (')[0] + '). Para um nível iniciante, considera primeiro um plano de 10 km. Criar mesmo assim, com o volume reduzido?')) return;
+  const report = [];
+  const opt = { keys, adapt, level, report };
   let inicio = inicio0;
   let sems = p.fases.slice(fi0).map(f=>f.sem);
   const provaISO = p.prova ? document.getElementById('proto-prova').value : '';
@@ -5282,7 +5317,7 @@ function protoCreateCycle(){
     for(let s=1; s<=nSem; s++){
       const dias = layoutDays(protoFitSessions(ws.map(w=>w.id), nFit), dayPick, [clientId, clientId2].some(i=>i && isPtClient(DATA.clients.find(x=>x.id===i))));
       dias.forEach(d=>{ if(d.workoutId) usedW.add(d.workoutId); });
-      let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '');
+      let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt && keys.length ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '') + (level!=='Intermédio' ? ' — nível ' + level : '');
       if(s===nSem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
       semanas.push({ numero: semanas.length+1, progressao: prog, dias });
     }
@@ -5298,6 +5333,9 @@ function protoCreateCycle(){
   closeModal('modal-proto');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
+  const seen = new Set(), lines = [];
+  report.forEach(r=>{ const k = r.nome+'|'+r.acao; if(seen.has(k)) return; seen.add(k); lines.push('• '+r.nome+': '+r.acao+' ('+r.motivo+')'); });
+  if(lines.length || level!=='Intermédio') alert('Plano criado.' + (level!=='Intermédio' ? '\nNível aplicado: ' + level + '.' : '') + (lines.length ? '\n\nAjustes feitos às patologias:\n' + lines.slice(0,14).join('\n') + (lines.length>14 ? '\n…' : '') : ''));
 }
 
 function esc(str){
