@@ -782,6 +782,7 @@
       <label>Nome</label>
       <input id="cliente-nome" type="text" placeholder="Nome do cliente">
     </div>
+    <div class="field"><label>Tipo de cliente</label><select id="cliente-cat"><option value="pt">Cliente PT (tem sessões com o personal trainer)</option><option value="normal">Cliente normal (só plano de treino)</option></select></div>
     <div class="field">
       <label>Notas (opcional)</label>
       <textarea id="cliente-notas" rows="2" placeholder="Objetivo, restrições, etc."></textarea>
@@ -950,7 +951,9 @@
     </div>
     <div class="field" id="proto-prova-field" style="display:none;"><label>Data da prova (a app planeia as semanas até lá)</label><input id="proto-prova" type="date" onchange="protoModalChange()"></div>
     <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
-    <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT (opcional; sem escolha, a app distribui)</label><div id="proto-dayspick" data-v="0000000"></div></div>
+    <div class="field"><label>Treinos por semana</label><select id="proto-nsem"><option value="">Automático (como vem no protocolo)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
+      <div class="view-sub" style="margin-top:4px;">A app ajusta cada fase a este número e distribui os dias. Mantém sempre o treino mais longo (ex.: corrida longa) no último dia.</div></div>
+    <div class="field"><label>Ou escolhe tu os dias: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, o número acima é ignorado)</label><div id="proto-dayspick" data-v="0000000"></div></div>
     <div class="field"><label>Outras patologias ou condicionantes (opcional, podes escolher várias)</label><div class="patpick" id="proto-extra" data-keys="[]" data-cb="protoModalChange"></div>
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
     <div id="proto-pat-box" style="display:none; border-left:3px solid #c0533a; background:rgba(192,83,58,.1); padding:10px 12px; border-radius:4px; margin:10px 0; font-size:13.5px; line-height:1.5;">
@@ -1056,12 +1059,13 @@ function openModal(id){ document.getElementById(id).classList.add('active'); }
 function openClientModal(){
   document.getElementById('cliente-nome').value='';
   document.getElementById('cliente-notas').value='';
+  document.getElementById('cliente-cat').value='pt';
   openModal('modal-cliente');
 }
 function saveClient(){
   const nome = document.getElementById('cliente-nome').value.trim();
   if(!nome) return;
-  DATA.clients.push({ id: uid(), nome, notas: document.getElementById('cliente-notas').value.trim() });
+  DATA.clients.push({ id: uid(), nome, cat: document.getElementById('cliente-cat').value, notas: document.getElementById('cliente-notas').value.trim() });
   closeModal('modal-cliente');
   saveData();
 }
@@ -1071,17 +1075,22 @@ function deleteClient(id){
   DATA.cycles = DATA.cycles.filter(c=>c.clientId!==id);
   saveData();
 }
+function isPtClient(c){ return !c || c.cat !== 'normal'; }
+let clientesFiltro = '';
+function setClientesFiltro(v){ clientesFiltro = v; renderClients(); }
 function renderClients(){
   const list = document.getElementById('clientes-list');
   if(DATA.clients.length===0){
     list.innerHTML = `<div class="empty"><strong>Ainda não há clientes</strong>Adiciona o primeiro cliente para começar a atribuir ciclos.</div>`;
     return;
   }
-  list.innerHTML = `<div class="list">` + [...DATA.clients].sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(c=>{
+  const nPt = DATA.clients.filter(isPtClient).length, nNo = DATA.clients.length - nPt;
+  const fb = (v, l)=>`<button class="btn btn-sm ${clientesFiltro===v?'btn-primary':''}" onclick="setClientesFiltro('${v}')">${l}</button>`;
+  list.innerHTML = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">${fb('', 'Todos ('+DATA.clients.length+')')}${fb('pt', 'Clientes PT ('+nPt+')')}${fb('normal', 'Clientes normais ('+nNo+')')}</div><div class="list">` + [...DATA.clients].filter(c=>!clientesFiltro || (clientesFiltro==='pt') === isPtClient(c)).sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(c=>{
     const numCycles = DATA.cycles.filter(cy=>cy.clientId===c.id).length;
     return `<div class="list-row">
       <div class="list-row-main" style="cursor:pointer; flex:1;" onclick="openFicha('${c.id}')">
-        <div class="list-row-title">${esc(c.nome)}</div>
+        <div class="list-row-title">${esc(c.nome)} ${isPtClient(c) ? '<span class="tag" style="background:#3a7bd5;color:#fff;">PT</span>' : '<span class="tag">Normal</span>'}</div>
         <div class="list-row-meta">${[esc(clientMeta(c)), `${numCycles} ciclo${numCycles===1?'':'s'}`, c.notas ? esc(c.notas) : ''].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="list-row-actions">
@@ -2419,6 +2428,7 @@ function renderFicha(){
       <div class="field"><label>IMC (calculado)</label><input type="text" value="${esc(imc||'—')}" disabled></div>
     </div>
 
+    <div class="field" style="margin-top:20px;"><label>Tipo de cliente</label><select id="f-cat"><option value="pt" ${isPtClient(c)?'selected':''}>Cliente PT (sessões com o personal trainer)</option><option value="normal" ${!isPtClient(c)?'selected':''}>Cliente normal (só plano de treino)</option></select></div>
     <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Perfil de treino</h2>
     <div class="row-4">
       <div class="field"><label>Objetivo</label><select id="f-objetivo">${optionsHtml(OBJETIVOS, c.objetivo, '—')}</select></div>
@@ -2462,7 +2472,7 @@ function saveFicha(){
   if(!nome){ document.getElementById('ficha-msg').textContent = 'O nome não pode ficar vazio.'; return; }
   const v = id=>document.getElementById(id).value.trim();
   Object.assign(c, {
-    nome, codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
+    nome, cat: v('f-cat') || 'pt', codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
     cadInicio: v('f-cadinicio'), cadFim: v('f-cadfim'),
     objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: patPickerGet('f-patologia')[0] || '', patologias: patPickerGet('f-patologia'), notas: v('f-notas'),
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
@@ -2922,7 +2932,8 @@ function dayPickToggle(id, i){
   document.getElementById(id).dataset.v = v.join(''); dayPickDraw(id);
 }
 // distribui os treinos (ids, por ordem; o último costuma ser o mais longo) pelos dias escolhidos
-function layoutDays(ids, pick){
+function layoutDays(ids, pick, allowPT){
+  if(allowPT === undefined) allowPT = true;
   const out = DIAS.map(()=>({ workoutId: '' }));
   const days = []; (pick||[]).forEach((x,i)=>{ if(x>0) days.push(i); });
   if(!days.length){
@@ -2934,7 +2945,7 @@ function layoutDays(ids, pick){
   days.forEach((d,j)=>{
     const k = n>=m ? j%m : (j<n-1 ? j : m-1);
     out[d].workoutId = ids[k] || '';
-    if(pick[d]===2){ out[d].pt = true; out[d].ptHora = ''; }
+    if(pick[d]===2 && allowPT){ out[d].pt = true; out[d].ptHora = ''; }
   });
   return out;
 }
@@ -2961,7 +2972,7 @@ function importResult(r, clientId, pick){
 
   const semanas = r.semanas.map((s, i)=>{
     const sessoes = s.sessoes || [];
-    const dias = layoutDays(sessoes.map(n=>workoutIds[n]).filter(Boolean), pick);
+    const dias = layoutDays(sessoes.map(n=>workoutIds[n]).filter(Boolean), pick, isPtClient(DATA.clients.find(x=>x.id===clientId)));
     return { numero: s.numero || (i+1), progressao: String(s.progressao||''), dias };
   });
 
@@ -3611,7 +3622,8 @@ function applyAdjust(){
       const old = sem.dias;
       let pk = pick.slice();
       if(ids.length && ids.length < nPick){ let keep = ids.length; pk = pk.map(x=>{ if(x>0){ if(keep>0){ keep--; return x; } return 0; } return 0; }); }
-      const lay = ids.length ? layoutDays(ids, pk) : DIAS.map((_,i)=>pick[i]===2 ? { workoutId:'', pt:true, ptHora:'' } : { workoutId:'' });
+      const ptOk = isPtClient(DATA.clients.find(x=>x.id===cy.clientId));
+      const lay = ids.length ? layoutDays(ids, pk, ptOk) : DIAS.map((_,i)=>pick[i]===2 && ptOk ? { workoutId:'', pt:true, ptHora:'' } : { workoutId:'' });
       sem.dias = lay.map((d,i)=>{
         if(old[i] && old[i].aulaId){ d.aulaId = old[i].aulaId; d.aulaHora = old[i].aulaHora||''; }
         if(d.pt && old[i] && old[i].ptHora) d.ptHora = old[i].ptHora;
@@ -3679,7 +3691,7 @@ function ptItems(filterId){
   const items = [];
   DATA.cycles.forEach(cy=>{
     if(filterId && cy.clientId!==filterId) return;
-    if(!cy.inicio) return;
+    if(!cy.inicio || !isPtClient(DATA.clients.find(c=>c.id===cy.clientId))) return;
     const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
     cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
       if(!d.pt) return;
@@ -3743,7 +3755,7 @@ function nameCombos2(nome){
   return [...c];
 }
 function matchClientByTitle(title){
-  const norm = normCal(title), cl = DATA.clients;
+  const norm = normCal(title), cl = DATA.clients.filter(isPtClient);
   const full = cl.filter(c=>c.nome && norm.includes(normCal(c.nome)));
   if(full.length===1) return full[0]; if(full.length>1) return null;
   const combo = cl.filter(c=>nameCombos2(c.nome).some(k=>norm.includes(k)));
@@ -3858,7 +3870,7 @@ function renderPtAgenda(){
   const items = [];
   DATA.cycles.forEach(cy=>{
     if(filterId && cy.clientId!==filterId) return;
-    if(!cy.inicio) return;
+    if(!cy.inicio || !isPtClient(DATA.clients.find(c=>c.id===cy.clientId))) return;
     const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
     cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
       if(!d.pt) return;
@@ -3902,7 +3914,7 @@ function renderCycles(){
           <div class="day-assign" style="flex-wrap:wrap;">
             <select onchange="updateDayAssign('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">${opts}</select>
             <select onchange="updateDayAula('${cycle.id}', ${wIdx}, ${dIdx}, this.value)" title="Aula de grupo">${'<option value="">+ aula de grupo</option>' + (DATA.aulas||[]).map(a=>`<option value="${a.id}" ${sem.dias[dIdx].aulaId===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>
-            <label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>
+            ${isPtClient(DATA.clients.find(c=>c.id===cycle.clientId)) ? '' : '<!--'}<label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>${isPtClient(DATA.clients.find(c=>c.id===cycle.clientId)) ? '' : '-->'}
             ${sem.dias[dIdx].pt ? `<input type="time" value="${esc(sem.dias[dIdx].ptHora||'')}" style="max-width:110px;" title="Hora do treino de PT" onchange="updateDayPTHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].aulaId ? `<input type="time" value="${esc(sem.dias[dIdx].aulaHora||'')}" style="max-width:110px;" title="Hora da aula" onchange="updateDayAulaHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].workoutId ? wExListHtml(sem.dias[dIdx].workoutId) : ''}
@@ -5179,8 +5191,25 @@ function openProtoModal(id){
   document.getElementById('proto-prova').value = '';
   patPickerSet('proto-extra', []);
   dayPickInit('proto-dayspick');
+  document.getElementById('proto-nsem').value = '';
   protoModalChange();
   openModal('modal-proto');
+}
+// ajusta a lista de sessões de uma fase ao número de treinos por semana pedido (a última sessão, normalmente a mais longa, fica sempre)
+function protoFitSessions(ids, N){
+  const m = ids.length;
+  if(!N || N===m || m===0) return ids;
+  if(m===1) return Array(N).fill(ids[0]);
+  const last = ids[m-1], rest = ids.slice(0, m-1);
+  if(N===1) return [last];
+  if(N < m){
+    const k = N-1, out = [];
+    for(let i=0;i<k;i++) out.push(rest[k===1 ? 0 : Math.round(i*(rest.length-1)/(k-1))]);
+    return [...out, last];
+  }
+  const out = rest.slice(); let j = 0;
+  while(out.length < N-1){ out.push(rest[j % rest.length]); j++; }
+  return [...out, last];
 }
 function protoCreateCycle(){
   const p = protoById(document.getElementById('proto-id').value);
@@ -5203,14 +5232,21 @@ function protoCreateCycle(){
     if(plan.short && !confirm(plan.notes.join('\n') + '\n\nCriar o plano mesmo assim?')) return;
     inicio = plan.inicio; sems = plan.weeks;
   }
-  const dayPick = dayPickGet('proto-dayspick');
+  let dayPick = dayPickGet('proto-dayspick');
+  const nSel = parseInt(document.getElementById('proto-nsem').value) || 0;
+  const nDias = dayPick.filter(x=>x>0).length;
+  const nFit = nDias || nSel || 0;
+  if(!nDias && nSel) dayPick = DIAS.map((_,i)=>(AI_SLOTS[nSel]||[]).includes(i) ? 1 : 0);
+  const usedW = new Set(), allW = [];
   const semanas = [];
   p.fases.forEach((fa, i)=>{
     if(i < fi0) return;
     const nSem = sems[i - fi0];
     const ws = protoMakeWorkouts(p, i, opt);
+    ws.forEach(w=>allW.push(w.id));
     for(let s=1; s<=nSem; s++){
-      const dias = layoutDays(ws.map(w=>w.id), dayPick);
+      const dias = layoutDays(protoFitSessions(ws.map(w=>w.id), nFit), dayPick, isPtClient(DATA.clients.find(x=>x.id===clientId)));
+      dias.forEach(d=>{ if(d.workoutId) usedW.add(d.workoutId); });
       let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '');
       if(s===nSem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
       semanas.push({ numero: semanas.length+1, progressao: prog, dias });
@@ -5221,6 +5257,7 @@ function protoCreateCycle(){
     last.progressao += ' — SEMANA DA PROVA (' + formatDate(provaISO) + ')';
     last.dias.forEach((d, k)=>{ if(k >= Math.max(0, plan.provaDay-1)){ d.workoutId = ''; d.pt = false; d.ptHora = ''; } });
   }
+  if(nFit){ const drop = allW.filter(id=>!usedW.has(id)); if(drop.length) DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id)); }
   const nome = p.nome.split(' (')[0] + (provaISO ? ' — prova a ' + formatDate(provaISO) : ' (protocolo)');
   DATA.cycles.push({ id: uid(), nome, clientId, inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '' });
   closeModal('modal-proto');
