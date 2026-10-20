@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
 <head>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#171614">
@@ -315,6 +316,9 @@
   .proto-t2{ width:100%; border-collapse:collapse; margin:10px 0; font-size:13px; }
   .proto-t2 td{ padding:5px 6px; border-top:1px solid var(--line); }
   .proto-t2 td:nth-child(2), .proto-t2 td:nth-child(3){ white-space:nowrap; opacity:.8; }
+  .patpick-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .patchip{ display:inline-flex; align-items:center; gap:6px; background:var(--surface-raised); border:1px solid var(--line); border-radius:999px; padding:3px 4px 3px 10px; font-size:13px; }
+  .patchip button{ background:none; border:0; color:inherit; cursor:pointer; font-size:16px; line-height:1; padding:0 6px; opacity:.7; }
   .proto-sn{ font-weight:600; font-size:13px; margin-top:10px; opacity:.85; }
   .proto-aviso{ font-size:12.5px; opacity:.7; margin:12px 0; }
   @media (max-width:780px){ .proto-cols{ grid-template-columns:1fr; } }
@@ -385,7 +389,8 @@
   <div class="rail">
     <div class="rail-brand">CICLO<span>.</span></div>
     <div class="rail-nav">
-      <button class="rail-btn active" data-view="clientes">Clientes</button>
+      <button class="rail-btn active" data-view="hoje">Hoje</button>
+      <button class="rail-btn" data-view="clientes">Clientes</button>
       <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
       <button class="rail-btn" data-view="protocolos"><span class="long">Protocolos</span><span class="short">Protoc.</span></button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
@@ -398,7 +403,14 @@
   <div class="main">
 
     <!-- CLIENTES -->
-    <div class="view active" id="view-clientes">
+    <div class="view active" id="view-hoje">
+      <div class="view-head"><div><h1 class="view-title">Hoje</h1><div class="view-sub" id="hoje-sub"></div></div>
+        <div style="display:flex; gap:8px;"><button class="btn btn-sm" onclick="hojeMove(-1)">‹ Dia anterior</button><button class="btn btn-sm" onclick="hojeMove(0)">Hoje</button><button class="btn btn-sm" onclick="hojeMove(1)">Dia seguinte ›</button></div></div>
+      <div id="hoje-gcal" style="margin-bottom:14px;"></div>
+      <div id="hoje-list"></div>
+    </div>
+
+    <div class="view" id="view-clientes">
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
@@ -445,6 +457,7 @@
           <h1 class="view-title">Protocolos de treino</h1>
           <div class="view-sub">Reabilitação, patologias e preparação de provas, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
         </div>
+        <div style="display:flex; gap:8px;"><button class="btn" onclick="openPatModal()">+ Patologia</button></div>
       </div>
       <div class="select-line"><select id="proto-grupo" onchange="renderProtocolos()"></select></div>
       <div id="protocolos-list"></div>
@@ -486,6 +499,7 @@
         </select>
       </div>
 
+      <div id="pt-agenda"></div>
       <div id="ciclos-list"></div>
     </div>
 
@@ -583,9 +597,10 @@
       </div>
       <div class="field"><label>Semanas do ciclo</label><input id="plan-semanas" type="number" min="2" max="12" value="4"></div>
     </div>
+    <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, ignora «Treinos por semana»)</label><div id="plan-dayspick" data-v="0000000"></div></div>
     <div class="field">
-      <label>Patologia / condição (o plano segue as recomendações do ACSM)</label>
-      <select id="plan-patologia"><option value="">Nenhuma</option></select>
+      <label>Patologias / condições (podes escolher várias; o plano segue as recomendações do ACSM)</label>
+      <div class="patpick" id="plan-patologia" data-keys="[]" data-cb=""></div>
     </div>
     <div class="field">
       <label>Limitações ou lesões (opcional)</label>
@@ -874,8 +889,8 @@
       <input id="treino-nome" type="text" placeholder="Ex: Treino A — Pernas/Ombros">
     </div>
     <div class="field">
-      <label>Verificar contraindicações para (patologia do cliente, opcional)</label>
-      <select id="treino-pat" onchange="checkAllExlines(false)"><option value="">Nenhuma</option></select>
+      <label>Verificar contraindicações para (patologias do cliente, podes escolher várias)</label>
+      <div class="patpick" id="treino-pat" data-keys="[]" data-cb="checkAllExlines"></div>
     </div>
     <div class="field">
       <label>Exercícios</label>
@@ -890,19 +905,57 @@
 </div>
 
 <!-- MODAL: ciclo -->
+<div class="modal-backdrop" id="modal-pat">
+  <div class="modal">
+    <h3>Nova patologia ou condicionante</h3>
+    <div class="field"><label>Nome</label><input id="pat-nome" type="text" placeholder="Ex: Bursite trocantérica, Pós-operatório do ombro"></div>
+    <div class="field"><label>Área</label><select id="pat-grp"><option>Outras</option><option>Cardiometabólicas</option><option>Neurológicas</option><option>Coluna</option><option>Ombro e joelho</option><option>Cotovelo</option><option>Tornozelo</option><option>Músculo-esqueléticas</option></select></div>
+    <div class="field"><label>Exercícios ou movimentos a evitar (separados por vírgula)</label><input id="pat-palavras" type="text" placeholder="Ex: agachamento profundo, salto, corrida, supino"><div class="view-sub" style="margin-top:4px;">A app retira ou substitui os exercícios do protocolo cujo nome contenha estas palavras.</div></div>
+    <div class="field"><label>Porque se evita (aparece nos alertas)</label><input id="pat-contra" type="text" placeholder="Ex: carga e impacto na anca"></div>
+    <div class="field"><label>Cuidados e avisos (um por linha)</label><textarea id="pat-avisos" rows="3" placeholder="Ex: Parar se a dor passar de 4/10."></textarea></div>
+    <div id="pat-lista"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-pat')">Fechar</button>
+      <button class="btn btn-primary" onclick="savePatCustom()">Guardar patologia</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-adj">
+  <div class="modal">
+    <h3>Ajustar plano</h3>
+    <div class="view-sub" id="adj-title" style="margin-bottom:12px;"></div>
+    <input type="hidden" id="adj-id">
+    <div class="field"><label>Patologias / condicionantes deste plano (podes escolher várias)</label><div class="patpick" id="adj-pat" data-keys="[]" data-cb=""></div>
+      <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
+    <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT</label><div id="adj-days" data-v="0000000"></div></div>
+    <div class="field"><label>Aplicar dias a partir da semana</label><select id="adj-from"></select></div>
+    <div class="view-sub">Os treinos de cada semana mantêm a ordem e passam para os dias escolhidos (o último fica no último dia). As aulas de grupo não mudam. Se escolheres menos dias do que treinos, os treinos do meio ficam de fora.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-adj')">Cancelar</button>
+      <button class="btn btn-primary" onclick="applyAdjust()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="modal-proto">
   <div class="modal">
     <h3>Ciclo de protocolo</h3>
     <div class="view-sub" id="proto-title" style="margin-bottom:12px;"></div>
     <input type="hidden" id="proto-id">
-    <div class="field"><label>Cliente</label><select id="proto-cliente" onchange="protoPatCheck()"></select></div>
+    <div class="field"><label>Cliente</label><select id="proto-cliente" onchange="protoModalChange()"></select></div>
     <div class="row-2">
-      <div class="field"><label>Data de início</label><input id="proto-inicio" type="date"></div>
-      <div class="field"><label>Começar na fase</label><select id="proto-fase"></select></div>
+      <div class="field"><label>Data de início</label><input id="proto-inicio" type="date" onchange="protoModalChange()"></div>
+      <div class="field"><label>Começar na fase</label><select id="proto-fase" onchange="protoModalChange()"></select></div>
     </div>
+    <div class="field" id="proto-prova-field" style="display:none;"><label>Data da prova (a app planeia as semanas até lá)</label><input id="proto-prova" type="date" onchange="protoModalChange()"></div>
+    <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
+    <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT (opcional; sem escolha, a app distribui)</label><div id="proto-dayspick" data-v="0000000"></div></div>
+    <div class="field"><label>Outras patologias ou condicionantes (opcional, podes escolher várias)</label><div class="patpick" id="proto-extra" data-keys="[]" data-cb="protoModalChange"></div>
+      <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
     <div id="proto-pat-box" style="display:none; border-left:3px solid #c0533a; background:rgba(192,83,58,.1); padding:10px 12px; border-radius:4px; margin:10px 0; font-size:13.5px; line-height:1.5;">
       <div id="proto-pat-txt"></div>
-      <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; cursor:pointer;"><input type="checkbox" id="proto-adapt" checked style="margin-top:3px;"><span>Adaptar o protocolo à patologia (sem intervalos duros, ritmos de prova, saltos e estações pesadas)</span></label>
+      <label style="display:flex; gap:8px; align-items:flex-start; margin-top:8px; cursor:pointer;"><input type="checkbox" id="proto-adapt" checked style="margin-top:3px;"><span id="proto-adapt-label"></span></label>
     </div>
     <div class="view-sub">Cria um treino por fase e um ciclo com todas as semanas. Podes editar tudo depois.</div>
     <div class="modal-actions">
@@ -979,8 +1032,8 @@ function migrateAulas(d){
 }
 function loadData(){
   const raw = localStorage.getItem(STORE_KEY);
-  if(raw){ const d = JSON.parse(raw); if(!Array.isArray(d.aulas)) d.aulas = []; return migrateAulas(d); }
-  return { clients: [], exercises: [], workouts: [], cycles: [], aulas: defaultAulas(), aulasV: 4 };
+  if(raw){ const d = JSON.parse(raw); if(!Array.isArray(d.aulas)) d.aulas = []; if(!Array.isArray(d.patCustom)) d.patCustom = []; return migrateAulas(d); }
+  return { clients: [], exercises: [], workouts: [], cycles: [], aulas: defaultAulas(), aulasV: 4, patCustom: [] };
 }
 function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); if(typeof syncCfg==='function' && syncCfg()){ setSyncMeta({dirty:true}); scheduleSync(); } renderAll(); }
 let DATA = loadData();
@@ -2086,7 +2139,7 @@ function openWorkoutModal(workoutId){
   document.getElementById('treino-modal-title').textContent = w ? 'Editar treino' : 'Novo treino';
   document.getElementById('treino-nome').value = w ? w.nome : '';
   document.getElementById('treino-exlines').innerHTML = '';
-  document.getElementById('treino-pat').innerHTML = '<option value="">Nenhuma</option>' + patOptions(w ? (w.patologia||'') : '');
+  patPickerSet('treino-pat', w ? wPats(w) : []);
   if(DATA.exercises.length===0){
     alert('Adiciona pelo menos um exercício à biblioteca antes de criar um treino.');
     return;
@@ -2132,13 +2185,13 @@ function fillVariants(row, selected){
 function exChanged(row){ fillVariants(row,''); checkExline(row,true); }
 function checkExline(row, userChange){
   const warn = row.querySelector('.exwarn'); if(!warn) return false;
-  const key = document.getElementById('treino-pat').value;
+  const keys = patPickerGet('treino-pat');
   const e = DATA.exercises.find(x=>x.id===row.querySelector('.exl-ex').value);
-  const why = key ? contraAlert(e, key) : null;
-  if(!why){ warn.style.display='none'; warn.textContent=''; return false; }
-  const msg = `⚠ Contraindicado em ${PATOLOGIAS[key].nome}: evitar ${why}. Escolhe outro exercício ou confirma só com indicação do profissional de saúde.`;
-  warn.textContent = msg; warn.style.display='block';
-  if(userChange) alert(`Atenção: "${e.nome}" está contraindicado em ${PATOLOGIAS[key].nome}.\n\nEvitar: ${why}.`);
+  const hits = e ? keys.map(k=>[k, contraAlert(e, k)]).filter(h=>h[1]) : [];
+  if(!hits.length){ warn.style.display='none'; warn.textContent=''; return false; }
+  const txt = hits.map(h=>`${PATOLOGIAS[h[0]].nome} (evitar ${h[1]})`).join('; ');
+  warn.textContent = `⚠ Contraindicado em ${txt}. Escolhe outro exercício ou confirma só com indicação do profissional de saúde.`; warn.style.display='block';
+  if(userChange) alert(`Atenção: "${e.nome}" está contraindicado em:\n\n• ${hits.map(h=>PATOLOGIAS[h[0]].nome+': '+h[1]).join('\n• ')}`);
   return true;
 }
 function checkAllExlines(){
@@ -2158,16 +2211,18 @@ function saveWorkout(){
     variante: row.querySelector('.exl-var').value,
     met: row.querySelector('.exl-met').value
   }));
-  const patKey = document.getElementById('treino-pat').value;
-  if(patKey){
-    const bad = lines.map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,patKey));
-    if(bad.length && !confirm(`Este treino tem ${bad.length} exercício(s) contraindicado(s) em ${PATOLOGIAS[patKey].nome}:\n\n• ${bad.map(e=>e.nome).join('\n• ')}\n\nGuardar mesmo assim?`)) return;
+  const patKeys = patPickerGet('treino-pat');
+  const patKey = patKeys[0] || '';
+  if(patKeys.length){
+    const msgs = [];
+    patKeys.forEach(k=>{ const bad = lines.map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,k)); if(bad.length) msgs.push(`${PATOLOGIAS[k].nome}:\n• ${bad.map(e=>e.nome).join('\n• ')}`); });
+    if(msgs.length && !confirm(`Este treino tem exercícios contraindicados:\n\n${msgs.join('\n\n')}\n\nGuardar mesmo assim?`)) return;
   }
   if(editingWorkoutId){
     const w = DATA.workouts.find(x=>x.id===editingWorkoutId);
-    w.nome = nome; w.exercicios = lines; w.patologia = patKey;
+    w.nome = nome; w.exercicios = lines; w.patologia = patKey; w.patologias = patKeys;
   } else {
-    DATA.workouts.push({ id: uid(), nome, exercicios: lines, patologia: patKey });
+    DATA.workouts.push({ id: uid(), nome, exercicios: lines, patologia: patKey, patologias: patKeys });
   }
   editingWorkoutId = null;
   closeModal('modal-treino');
@@ -2371,7 +2426,7 @@ function renderFicha(){
       <div class="field"><label>Treinos por semana</label><input id="f-dias" type="number" min="1" max="7" value="${esc(c.diasSemana||'')}"></div>
       <div class="field"><label>Duração do treino</label><select id="f-duracao">${optionsHtml(['30','45','60','75'], String(c.duracaoSessao||''), '—')}</select></div>
     </div>
-    <div class="field"><label>Patologia / condição (para os planos automáticos, segundo o ACSM)</label><select id="f-patologia"><option value="">Nenhuma</option>${patOptions(c.patologia)}</select></div>
+    <div class="field"><label>Patologias / condições (podes indicar várias; usadas nos planos automáticos e nos protocolos)</label>${patPickerHtml('f-patologia', clientPats(c))}</div>
     <div class="field"><label>Limitações, lesões ou cuidados</label><textarea id="f-limitacoes" rows="3" placeholder="Ex: desconforto no ombro direito, evitar impacto...">${esc(c.limitacoes||'')}</textarea></div>
 
     <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Outros dados</h2>
@@ -2409,7 +2464,7 @@ function saveFicha(){
   Object.assign(c, {
     nome, codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
     cadInicio: v('f-cadinicio'), cadFim: v('f-cadfim'),
-    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: v('f-patologia'), notas: v('f-notas'),
+    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: patPickerGet('f-patologia')[0] || '', patologias: patPickerGet('f-patologia'), notas: v('f-notas'),
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
   c.extras = Array.from(document.querySelectorAll('#f-extras .extra-row')).map(r=>({ k: r.querySelector('.ex-k').value.trim(), v: r.querySelector('.ex-v').value.trim() })).filter(e=>e.k||e.v);
@@ -2617,7 +2672,7 @@ async function ghPush(cfg, sha){
 function applyRemote(remote){
   try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
   const d = remote.payload.data;
-  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV });
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [] });
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
   setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
   renderAll();
@@ -2720,7 +2775,7 @@ function importBackup(input){
       if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
         status.textContent = 'Importação cancelada.'; return;
       }
-      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV });
+      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [] });
       saveData();
       status.textContent = 'Cópia importada: ' + resumo + '.';
     }catch(e){
@@ -2845,7 +2900,45 @@ function importAI(){
   aiResult = null;
   closeModal('modal-ai');
 }
-function importResult(r, clientId){
+// ---------- DIAS DE TREINO / DESCANSO / PT ----------
+const DP_LBL = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+function dayPickInit(id, arr){
+  const el = document.getElementById(id); if(!el) return;
+  el.dataset.v = (arr && arr.length===7 ? arr : [0,0,0,0,0,0,0]).join('');
+  dayPickDraw(id);
+}
+function dayPickGet(id){
+  const el = document.getElementById(id); if(!el) return null;
+  return String(el.dataset.v||'0000000').split('').map(Number);
+}
+function dayPickDraw(id){
+  const el = document.getElementById(id); const v = dayPickGet(id);
+  const st = [['Descanso','transparent','var(--chalk-dim)'],['Treino','var(--ochre, #c9a227)','#1a1612'],['PT','#3a7bd5','#fff']];
+  el.innerHTML = '<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px;">' + v.map((x,i)=>
+    `<button type="button" onclick="dayPickToggle('${id}',${i})" style="border:1px solid var(--line, #444); border-radius:6px; padding:7px 0; background:${st[x][1]}; color:${st[x][2]}; cursor:pointer; font-size:12px; line-height:1.3;"><b>${DP_LBL[i]}</b><br><span style="font-size:10.5px;">${st[x][0]}</span></button>`).join('') + '</div>';
+}
+function dayPickToggle(id, i){
+  const v = dayPickGet(id); v[i] = (v[i]+1)%3;
+  document.getElementById(id).dataset.v = v.join(''); dayPickDraw(id);
+}
+// distribui os treinos (ids, por ordem; o último costuma ser o mais longo) pelos dias escolhidos
+function layoutDays(ids, pick){
+  const out = DIAS.map(()=>({ workoutId: '' }));
+  const days = []; (pick||[]).forEach((x,i)=>{ if(x>0) days.push(i); });
+  if(!days.length){
+    const sl = AI_SLOTS[ids.length] || AI_SLOTS[3];
+    sl.forEach((k,j)=>{ if(ids[j]) out[k].workoutId = ids[j]; });
+    return out;
+  }
+  const n = days.length, m = ids.length;
+  days.forEach((d,j)=>{
+    const k = n>=m ? j%m : (j<n-1 ? j : m-1);
+    out[d].workoutId = ids[k] || '';
+    if(pick[d]===2){ out[d].pt = true; out[d].ptHora = ''; }
+  });
+  return out;
+}
+function importResult(r, clientId, pick){
   const cycleName = r.nome || 'Ciclo gerado por IA';
 
   const workoutIds = {};
@@ -2867,12 +2960,8 @@ function importResult(r, clientId){
   });
 
   const semanas = r.semanas.map((s, i)=>{
-    const dias = DIAS.map(()=>({ workoutId: '' }));
     const sessoes = s.sessoes || [];
-    const slots = AI_SLOTS[sessoes.length] || AI_SLOTS[3];
-    sessoes.forEach((nome, k)=>{
-      if(slots[k] !== undefined && workoutIds[nome]) dias[slots[k]].workoutId = workoutIds[nome];
-    });
+    const dias = layoutDays(sessoes.map(n=>workoutIds[n]).filter(Boolean), pick);
     return { numero: s.numero || (i+1), progressao: String(s.progressao||''), dias };
   });
 
@@ -2973,6 +3062,9 @@ const PATOLOGIAS = {
   ombro: { nome:'Dor/lesão no ombro', contra:'movimentos acima da cabeça e rotação interna forçada', dias:3, series:3, reps:['10-12','12-15'], rest:75, carga:'RPE 6, sem dor', cardio:0, maq:true, grp:'Ombro e joelho',
     ex:/press \((pe|sentado|barra|halteres)\)|kettlebell press|deltoide press|remada alta|upright|dips|mergulho|atras da nuca|atras|arnold|handstand|pike|desenvolvimento|shoulder press|press de ombro|overhead|acima da cabeca|supino declinado|flexoes|push up|pullover|crucifixo/,
     avisos:['Ombro doloroso: evitar movimentos acima da cabeça e posições de rotação interna forçada. Fortalecer a coifa dos rotadores e os estabilizadores da omoplata (face pull, remadas, rotação externa).','Respeitar a regra da dor. Dor persistente, perda de força ou limitação da amplitude requer avaliação por fisioterapeuta/médico.'] },
+  supra: { nome:'Tendinite do supraespinhoso', contra:'movimentos acima da cabeça, elevações laterais e remada alta (arco doloroso do ombro)', dias:3, series:3, reps:['10-12','12-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:0, maq:true, grp:'Ombro e joelho',
+    ex:/press \((pe|sentado|barra|halteres)\)|kettlebell press|deltoide press|remada alta|upright|dips|mergulho|atras da nuca|atras|arnold|handstand|pike|desenvolvimento|shoulder press|press de ombro|overhead|acima da cabeca|elevacao lateral|lateral raise|elevacao frontal|front raise|supino declinado|flexoes|push up|pullover|crucifixo/,
+    avisos:['Tendinite do supraespinhoso: evitar o arco doloroso (60°-120° de elevação lateral), elevações laterais e remada alta. Carregar o tendão com isométricos e depois força progressiva da coifa e da escápula.','Dor até 3-4/10 durante o exercício, sem agravar à noite nem no dia seguinte. Perda de força marcada, queda do braço ou dor noturna intensa requer avaliação médica.'] },
   joelho: { nome:'Dor/lesão no joelho', contra:'impacto, saltos e flexão profunda do joelho sob carga', dias:3, series:3, reps:['10-12','12-15'], rest:75, carga:'RPE 6, sem dor', cardio:0, maq:true, grp:'Ombro e joelho',
     ex:/salto|jump|burpee|pistol|bulgar|cossack|extensao de pernas|calcanhar ao|skipping|corda|box|step|lunge|afundo|agachamento.*profundo|wall sit|sprint|climber/,
     avisos:['Joelho doloroso: evitar impacto, flexão profunda sob carga e extensão de pernas em amplitude final. Priorizar glúteos, isquiotibiais e amplitudes sem dor.','Respeitar a regra da dor. Instabilidade, bloqueio ou derrame articular exigem avaliação médica.'] }
@@ -3031,7 +3123,7 @@ const PLAN_SPLIT = {
   5:['PUSH_A','PULL_A','LOW_A','UP_B','LOW_B'], 6:['PUSH_A','PULL_A','LOW_A','PUSH_B','PULL_B','LOW_B']
 };
 function patOptions(sel){
-  const order = ['Cardiometabólicas','Neurológicas','Coluna','Ombro e joelho','Cotovelo','Tornozelo','Músculo-esqueléticas'];
+  const order = ['Cardiometabólicas','Neurológicas','Coluna','Ombro e joelho','Cotovelo','Tornozelo','Músculo-esqueléticas','Outras'];
   return order.map(g=>{
     const items = Object.entries(PATOLOGIAS).filter(([k,v])=>v.grp===g);
     return items.length ? `<optgroup label="${g}">` + items.map(([k,v])=>`<option value="${k}" ${k===sel?'selected':''}>${esc(v.nome)}</option>`).join('') + '</optgroup>' : '';
@@ -3081,7 +3173,18 @@ function buildAutoPlan(p){
   const manualForca = comp.forca!=null;
   const avisos = ['Plano gerado automaticamente por regras gerais de treino. Ajusta-o ao cliente antes de aplicar.'];
   // limitações
-  const pat = PATOLOGIAS[p.patologia] || null;
+  const patBase = PATOLOGIAS[p.patologia] || null;
+  const patExtras = (p.patologiasExtra||[]).map(k=>PATOLOGIAS[k]).filter(Boolean);
+  const pat = patBase && patExtras.length ? Object.assign({}, patBase, {
+    nome: [patBase, ...patExtras].map(x=>x.nome).join(' + '),
+    ex: new RegExp([patBase, ...patExtras].map(x=>'(?:' + x.ex.source + ')').join('|')),
+    dias: Math.min(patBase.dias, ...patExtras.map(x=>x.dias)),
+    series: Math.min(patBase.series, ...patExtras.map(x=>x.series)),
+    rest: Math.max(patBase.rest, ...patExtras.map(x=>x.rest)),
+    cardio: Math.min(patBase.cardio, ...patExtras.map(x=>x.cardio)),
+    maq: [patBase, ...patExtras].some(x=>x.maq),
+    avisos: [...patBase.avisos, ...patExtras.flatMap(x=>x.avisos||[])]
+  }) : patBase;
   const limText = normText(p.limitacoes||'');
   const limitsOn = p.nivel==='Iniciante';  // Intermédio e Avançado: o texto livre não restringe exercícios
   const limits = (limText && limitsOn) ? PLAN_LIMITS.filter(l=>l.re.test(limText)) : [];
@@ -3162,7 +3265,7 @@ function buildAutoPlan(p){
     const lines = []; let total = 0;
     if(pat && rn>0){
       const okEq = ['', 'Peso corporal','Elástico','Mini band','Toalha','Step'];
-      const rAll = DATA.exercises.filter(e=>e.modalidade==='Reabilitação' && (e.patologias||[]).includes(p.patologia) && (!home || okEq.includes(e.equip||'')));
+      const rAll = DATA.exercises.filter(e=>e.modalidade==='Reabilitação' && [p.patologia, ...(p.patologiasExtra||[])].some(k=>(e.patologias||[]).includes(k)) && (!home || okEq.includes(e.equip||'')));
       const rFresh = rAll.filter(e=>!usedRehab.has(e.id));
       const rPick = [...rFresh, ...rAll.filter(e=>usedRehab.has(e.id))].slice(0, rn);
       rPick.forEach(e=>{
@@ -3251,22 +3354,24 @@ function prefillPlan(){
   document.getElementById('plan-duracao').value = String(d.duracao);
   if(![...document.getElementById('plan-duracao').options].some(o=>o.value===String(d.duracao))) document.getElementById('plan-duracao').value = '45';
   document.getElementById('plan-semanas').value = d.semanas;
-  document.getElementById('plan-patologia').innerHTML = '<option value="">Nenhuma</option>' + patOptions((c && c.patologia) || '');
+  patPickerSet('plan-patologia', clientPats(c));
   document.getElementById('plan-limitacoes').value = (c && c.limitacoes) || '';
   ['plan-met','plan-met-cardio','plan-met-cf','plan-met-reab','plan-met-hyrox'].forEach(id=>{ document.getElementById(id).innerHTML = '<option value="">Nenhuma</option>' + Object.keys(METODOLOGIAS).map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join(''); });
   ['plan-n-forca','plan-n-cardio','plan-cardio-min','plan-n-reab','plan-n-cf','plan-n-hyrox'].forEach(id=>{ document.getElementById(id).value=''; });
+  dayPickInit('plan-dayspick');
 }
 function generatePlan(){
   const status = document.getElementById('plan-status');
   const p = {
     objetivo: document.getElementById('plan-objetivo').value,
     nivel: document.getElementById('plan-nivel').value,
-    dias: Math.min(6, Math.max(1, parseInt(document.getElementById('plan-dias').value) || 3)),
+    dias: (()=>{ const pk = dayPickGet('plan-dayspick'); const n = pk ? pk.filter(x=>x>0).length : 0; return n ? Math.min(6, n) : Math.min(6, Math.max(1, parseInt(document.getElementById('plan-dias').value) || 3)); })(),
     duracao: parseInt(document.getElementById('plan-duracao').value) || 45,
     semanas: Math.min(12, Math.max(2, parseInt(document.getElementById('plan-semanas').value) || 4)),
     equipamento: document.getElementById('plan-equip').value,
     limitacoes: document.getElementById('plan-limitacoes').value.trim(),
-    patologia: document.getElementById('plan-patologia').value
+    patologia: patPickerGet('plan-patologia')[0] || '',
+    patologiasExtra: patPickerGet('plan-patologia').slice(1)
   };
   const gv = id=>{ const v = document.getElementById(id).value; return v==='' ? null : parseInt(v); };
   p.comp = { forca: gv('plan-n-forca'), cardio: gv('plan-n-cardio'), cardioMin: gv('plan-cardio-min'), reab: gv('plan-n-reab'), cf: gv('plan-n-cf'), hyrox: gv('plan-n-hyrox'), metHyrox: document.getElementById('plan-met-hyrox').value || null, met: document.getElementById('plan-met').value || null, metCardio: document.getElementById('plan-met-cardio').value || null, metCf: document.getElementById('plan-met-cf').value || null, metReab: document.getElementById('plan-met-reab').value || null };
@@ -3302,7 +3407,7 @@ function renderPlanPreview(r){
 }
 function importPlan(){
   if(!planResult) return;
-  importResult(planResult, document.getElementById('plan-cliente').value);
+  importResult(planResult, document.getElementById('plan-cliente').value, dayPickGet('plan-dayspick'));
   planResult = null;
   closeModal('modal-plano');
 }
@@ -3382,7 +3487,7 @@ function buildSharePayload(cy){
   const wIdx = {}, aIdx = {}, W = [], A = [], M = {};
   const dias = cy.semanas.map(w=>({ n: w.numero, p: w.progressao||'', d: w.dias.map(d=>{
     let wi = -1, ai = -1;
-    if(d.workoutId){
+    if(d.workoutId && !d.pt){
       if(!(d.workoutId in wIdx)){
         const w0 = DATA.workouts.find(x=>x.id===d.workoutId);
         if(w0){
@@ -3402,7 +3507,7 @@ function buildSharePayload(cy){
       const a = aulaById(d.aulaId);
       if(a){ if(!(a.id in aIdx)){ aIdx[a.id] = A.length; A.push({ n: a.nome, du: a.duracao, i: a.intensidade, ds: a.descricao||'' }); } ai = aIdx[a.id]; }
     }
-    return [wi, ai, d.aulaHora||''];
+    return d.pt ? [wi, ai, d.aulaHora||'', 1, d.ptHora||''] : [wi, ai, d.aulaHora||''];
   }) }));
   return { v:1, n: client ? client.nome.trim().split(/\s+/)[0] : '', c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
 }
@@ -3410,7 +3515,7 @@ let shareUrl = '', shareName = '', sharePayloadObj = null, shareTimer = null;
 async function shareCycle(cycleId){
   const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
   const payload = buildSharePayload(cy);
-  if(!payload.w.length && !payload.a.length){ alert('Este ciclo ainda não tem treinos nem aulas atribuídos.'); return; }
+  if(!payload.w.length && !payload.a.length && !payload.s.some(w=>w.d.some(x=>x[3]))){ alert('Este ciclo ainda não tem treinos nem aulas atribuídos.'); return; }
   sharePayloadObj = payload; shareName = payload.n;
   document.getElementById('share-pin').value = '';
   await refreshShareLink(true);
@@ -3481,6 +3586,60 @@ function updateDayAula(cycleId, weekIdx, dayIdx, aulaId){
   d.aulaId = aulaId; if(!aulaId) d.aulaHora = '';
   saveData();
 }
+// ---------- AJUSTAR PLANO (patologias + dias) ----------
+function openAdjust(cycleId){
+  const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
+  document.getElementById('adj-id').value = cycleId;
+  document.getElementById('adj-title').textContent = cy.nome + ' · ' + clientName(cy.clientId);
+  const client = DATA.clients.find(c=>c.id===cy.clientId);
+  const own = (cy.patologias||[]);
+  patPickerSet('adj-pat', own);
+  const w0 = cy.semanas[0];
+  dayPickInit('adj-days', w0.dias.map(d=>d.pt ? 2 : (d.workoutId ? 1 : 0)));
+  document.getElementById('adj-from').innerHTML = cy.semanas.map((w,i)=>`<option value="${i}">Semana ${w.numero}${i===0?' (todas)':''}</option>`).join('');
+  openModal('modal-adj');
+}
+function applyAdjust(){
+  const cy = DATA.cycles.find(c=>c.id===document.getElementById('adj-id').value); if(!cy) return;
+  cy.patologias = patPickerGet('adj-pat');
+  const pick = dayPickGet('adj-days'); const from = parseInt(document.getElementById('adj-from').value)||0;
+  const nPick = pick.filter(x=>x>0).length;
+  if(nPick){
+    for(let wi=from; wi<cy.semanas.length; wi++){
+      const sem = cy.semanas[wi];
+      const ids = sem.dias.map(d=>d.workoutId).filter(Boolean);
+      const old = sem.dias;
+      let pk = pick.slice();
+      if(ids.length && ids.length < nPick){ let keep = ids.length; pk = pk.map(x=>{ if(x>0){ if(keep>0){ keep--; return x; } return 0; } return 0; }); }
+      const lay = ids.length ? layoutDays(ids, pk) : DIAS.map((_,i)=>pick[i]===2 ? { workoutId:'', pt:true, ptHora:'' } : { workoutId:'' });
+      sem.dias = lay.map((d,i)=>{
+        if(old[i] && old[i].aulaId){ d.aulaId = old[i].aulaId; d.aulaHora = old[i].aulaHora||''; }
+        if(d.pt && old[i] && old[i].ptHora) d.ptHora = old[i].ptHora;
+        return d;
+      });
+    }
+  }
+  // avisos de contraindicações
+  const client = DATA.clients.find(c=>c.id===cy.clientId);
+  const keys = [...new Set([...clientPats(client), ...(cy.patologias||[])])];
+  const msgs = [];
+  const seen = new Set();
+  cy.semanas.forEach(sem=>sem.dias.forEach(d=>{ if(!d.workoutId || seen.has(d.workoutId)) return; seen.add(d.workoutId);
+    const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w) return;
+    keys.forEach(k=>{ const bad = (w.exercicios||[]).map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,k));
+      if(bad.length) msgs.push(`• ${w.nome} (${PATOLOGIAS[k].nome}): ${bad.map(e=>e.nome).join(', ')}`); }); }));
+  closeModal('modal-adj');
+  saveData();
+  if(msgs.length) alert('Atenção: há exercícios contraindicados para as patologias deste plano:\n\n' + msgs.slice(0,12).join('\n') + (msgs.length>12 ? '\n…' : '') + '\n\nRevê estes treinos.');
+}
+function updateDayPT(cycleId, weekIdx, dayIdx, on){
+  const cycle = DATA.cycles.find(c=>c.id===cycleId); const d = cycle.semanas[weekIdx].dias[dayIdx];
+  d.pt = !!on; if(!on) d.ptHora = '';
+  saveData(); const el = document.getElementById(`week-${cycleId}-${weekIdx}`); if(el) el.classList.add('open');
+}
+function updateDayPTHora(cycleId, weekIdx, dayIdx, v){
+  const cycle = DATA.cycles.find(c=>c.id===cycleId); cycle.semanas[weekIdx].dias[dayIdx].ptHora = v; saveData();
+}
 function updateDayAulaHora(cycleId, weekIdx, dayIdx, v){
   const cycle = DATA.cycles.find(c=>c.id===cycleId); cycle.semanas[weekIdx].dias[dayIdx].aulaHora = v; saveData();
 }
@@ -3488,7 +3647,7 @@ function updateDayAssign(cycleId, weekIdx, dayIdx, workoutId){
   const cycle = DATA.cycles.find(c=>c.id===cycleId);
   const w = DATA.workouts.find(x=>x.id===workoutId);
   const client = DATA.clients.find(c=>c.id===cycle.clientId);
-  const keys = [...new Set([client && client.patologia, w && w.patologia].filter(Boolean))];
+  const keys = [...new Set([...clientPats(client), ...wPats(w), ...(cycle.patologias||[]).filter(k=>PATOLOGIAS[k])])];
   if(w){
     for(const key of keys){
       const bad = (w.exercicios||[]).map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,key));
@@ -3509,7 +3668,219 @@ function populateClientFilter(){
   sel.innerHTML = `<option value="">Todos os clientes</option>` + DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   sel.value = current;
 }
+function wExListHtml(workoutId){
+  const w = DATA.workouts.find(x=>x.id===workoutId); if(!w) return '';
+  const rows = (w.exercicios||[]).map(l=>{ const e = DATA.exercises.find(x=>x.id===l.exId); if(!e) return '';
+    return `<div style="font-size:12.5px; padding:2px 0;"><b>${esc(e.nome)}</b> · ${esc(l.series)}×${esc(l.reps)}${l.carga ? ' · '+esc(l.carga) : ''}${l.descanso ? ' · desc. '+esc(l.descanso) : ''}${l.met ? ' · '+esc(l.met) : ''}</div>`; }).join('');
+  return `<details style="flex-basis:100%; margin-top:2px;"><summary style="cursor:pointer; font-size:12px; color:var(--chalk-dim);">Ver treino (${(w.exercicios||[]).length} exercícios)</summary>${rows}</details>`;
+}
+function isoOf(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+function ptItems(filterId){
+  const items = [];
+  DATA.cycles.forEach(cy=>{
+    if(filterId && cy.clientId!==filterId) return;
+    if(!cy.inicio) return;
+    const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
+    cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
+      if(!d.pt) return;
+      const dt = new Date(d0); dt.setDate(dt.getDate() + wi*7 + di);
+      items.push({ dt, cy, sem, d, di });
+    }));
+  });
+  return items;
+}
+// ---------- CALENDÁRIO (ficheiro .ics e Google Calendar) ----------
+function ptEventInfo(x){
+  const w = DATA.workouts.find(v=>v.id===x.d.workoutId);
+  const ex = w ? (w.exercicios||[]).map((l,i)=>{ const e = DATA.exercises.find(v=>v.id===l.exId); return e ? `${i+1}. ${e.nome} — ${l.series}x${l.reps}${l.carga ? ' ('+l.carga+')' : ''}` : ''; }).filter(Boolean) : [];
+  const dateK = isoOf(x.dt).replace(/-/g,'');
+  const hm = String(x.d.ptHora||'').replace(':','');
+  let endHm = '';
+  if(hm.length===4){ const t = (parseInt(hm.slice(0,2))*60 + parseInt(hm.slice(2)) + 60) % 1440; endHm = String(Math.floor(t/60)).padStart(2,'0') + String(t%60).padStart(2,'0'); }
+  return {
+    titulo: 'PT — ' + clientName(x.cy.clientId),
+    desc: (w ? w.nome + '\n' : '') + (x.sem.progressao ? x.sem.progressao + '\n' : '') + ex.join('\n'),
+    dateK, hm, endHm
+  };
+}
+function icsEsc(t){ return String(t||'').replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsFold(line){ const out = []; let l = line; while(l.length > 74){ out.push(l.slice(0,74)); l = ' ' + l.slice(74); } out.push(l); return out.join('\r\n'); }
+function exportPtIcs(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = ptItems('').filter(x=>x.dt>=today).sort((a,b)=>a.dt-b.dt);
+  if(!items.length){ alert('Não há treinos de PT futuros para exportar. Marca dias como PT dentro de um ciclo.'); return; }
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//CICLO//PT//PT','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:Treinos de PT'];
+  items.forEach(x=>{
+    const e = ptEventInfo(x);
+    L.push('BEGIN:VEVENT','UID:ciclo-'+x.cy.id+'-'+x.sem.numero+'-'+x.di+'@ciclo','DTSTAMP:'+stamp);
+    if(e.hm.length===4){ L.push('DTSTART;TZID=Europe/Lisbon:'+e.dateK+'T'+e.hm+'00','DTEND;TZID=Europe/Lisbon:'+e.dateK+'T'+e.endHm+'00'); }
+    else { L.push('DTSTART;VALUE=DATE:'+e.dateK); }
+    L.push(icsFold('SUMMARY:'+icsEsc(e.titulo)), icsFold('DESCRIPTION:'+icsEsc(e.desc)), 'END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  const blob = new Blob([L.join('\r\n')], { type:'text/calendar;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'treinos-pt.ics';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+}
+function gcalUrl(x){
+  const e = ptEventInfo(x);
+  let dates;
+  if(e.hm.length===4) dates = e.dateK+'T'+e.hm+'00/'+e.dateK+'T'+e.endHm+'00';
+  else { const n = new Date(x.dt); n.setDate(n.getDate()+1); dates = e.dateK+'/'+isoOf(n).replace(/-/g,''); }
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(e.titulo)+'&dates='+dates+'&ctz=Europe/Lisbon&details='+encodeURIComponent(e.desc);
+}
+let hojeOff = 0;
+function hojeMove(n){ hojeOff = n===0 ? 0 : hojeOff + n; renderHoje(); }
+// ----- Google Calendar (só leitura; usa o mesmo Client ID da app de gestão, guardado no mesmo domínio) -----
+const GC = { token:null, tc:null, cache:{}, status:'', busy:false };
+function gcLs(k){ try{ return localStorage.getItem(k)||''; }catch(e){ return ''; } }
+function gcClientId(){ return gcLs('google_client_id'); }
+function normCal(h){ return String(h||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
+function nameCombos2(nome){
+  const w = (nome||'').trim().split(/\s+/).filter(Boolean); const c = new Set();
+  if(w.length>=2){ c.add(normCal(w[0]+' '+w[1])); c.add(normCal(w[0]+' '+w[w.length-1])); }
+  return [...c];
+}
+function matchClientByTitle(title){
+  const norm = normCal(title), cl = DATA.clients;
+  const full = cl.filter(c=>c.nome && norm.includes(normCal(c.nome)));
+  if(full.length===1) return full[0]; if(full.length>1) return null;
+  const combo = cl.filter(c=>nameCombos2(c.nome).some(k=>norm.includes(k)));
+  if(combo.length===1) return combo[0]; if(combo.length>1) return null;
+  const first = cl.filter(c=>{ const fn = normCal((c.nome||'').split(' ')[0]); return fn && new RegExp('\\b'+fn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(norm); });
+  return first.length===1 ? first[0] : null;
+}
+function gcSetup(){
+  if(GC.tc) return true;
+  if(typeof google==='undefined' || !google.accounts || !google.accounts.oauth2 || !gcClientId()) return false;
+  GC.tc = google.accounts.oauth2.initTokenClient({ client_id: gcClientId(), scope: 'https://www.googleapis.com/auth/calendar.events',
+    callback: r=>{ const silent = GC._silent; GC._silent = false;
+      if(r.error){ if(!silent) GC.status = 'Erro ao ligar: '+r.error; renderHojeGcal(); return; }
+      GC.token = r.access_token; GC.cache = {}; GC.status = ''; try{ localStorage.setItem('ciclo_gcal_on','1'); }catch(e){}
+      renderHoje(); } });
+  return true;
+}
+function gcConnect(silent){
+  if(!gcSetup()){ if(!silent){ GC.status = 'A biblioteca do Google ainda não carregou. Tenta outra vez em alguns segundos.'; renderHojeGcal(); } return; }
+  GC._silent = !!silent; GC.tc.requestAccessToken(silent ? { prompt:'none' } : {});
+}
+function gcDisconnect(){ GC.token = null; GC.cache = {}; try{ localStorage.removeItem('ciclo_gcal_on'); }catch(e){} renderHoje(); }
+function gcSaveClientId(){
+  const v = (document.getElementById('gc-cid').value||'').trim(); if(!v) return;
+  try{ localStorage.setItem('google_client_id', v); }catch(e){} GC.tc = null; renderHojeGcal();
+}
+function renderHojeGcal(){
+  const box = document.getElementById('hoje-gcal'); if(!box) return;
+  const bar = 'border:1px solid var(--line, #444); border-radius:8px; padding:10px 12px; font-size:13px;';
+  if(!gcClientId()){
+    box.innerHTML = `<div style="${bar}"><b>Google Calendar</b> — para ver as sessões do calendário aqui, cola o mesmo Client ID OAuth que usas na app de gestão (se esta app estiver no mesmo site que a de gestão, ele aparece sozinho).<div style="display:flex; gap:8px; margin-top:8px;"><input id="gc-cid" type="text" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" style="flex:1;"><button class="btn btn-sm" onclick="gcSaveClientId()">Guardar</button></div></div>`;
+  } else if(!GC.token){
+    box.innerHTML = `<div style="${bar} display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;"><span>Google Calendar não ligado. ${esc(GC.status)}</span><button class="btn btn-sm btn-primary" onclick="gcConnect(false)">Ligar ao Google Calendar</button></div>`;
+  } else {
+    box.innerHTML = `<div style="${bar} display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;"><span>✓ Ligado ao Google Calendar (só leitura) ${esc(GC.status)}</span><button class="btn btn-ghost btn-sm" onclick="gcDisconnect()">Desligar</button></div>`;
+  }
+}
+async function gcLoadDay(key, dt){
+  if(!GC.token) return null;
+  const c = GC.cache[key]; if(c && Date.now()-c.t < 60000) return c.list;
+  const t0 = new Date(dt); t0.setHours(0,0,0,0); const t1 = new Date(t0); t1.setDate(t1.getDate()+1);
+  const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin='+encodeURIComponent(t0.toISOString())+'&timeMax='+encodeURIComponent(t1.toISOString());
+  try{
+    const r = await fetch(url, { headers:{ Authorization:'Bearer '+GC.token } });
+    if(r.status===401){ GC.token = null; GC.status = '(sessão expirou, liga de novo)'; renderHojeGcal(); return null; }
+    if(!r.ok){ GC.status = '(erro a ler o calendário)'; renderHojeGcal(); return null; }
+    const d = await r.json(); const col = gcLs('google_training_color_id');
+    const list = (d.items||[]).filter(e=>e.start && e.start.dateTime && e.status!=='cancelled' && (!col || String(e.colorId||'')===col));
+    GC.cache[key] = { t: Date.now(), list }; return list;
+  }catch(e){ GC.status = '(sem ligação ao Google)'; renderHojeGcal(); return null; }
+}
+function cycleDayFor(clientId, key){
+  const t = new Date(key+'T00:00:00'); let best = null;
+  DATA.cycles.forEach(cy=>{
+    if(cy.clientId!==clientId || !cy.inicio) return;
+    const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
+    const off = Math.round((t-d0)/86400000); const w = Math.floor(off/7), di = ((off%7)+7)%7;
+    if(off<0 || w>=cy.semanas.length) return;
+    const d = cy.semanas[w].dias[di]; const cand = { cy, sem: cy.semanas[w], d };
+    if(!best || (d.workoutId && !best.d.workoutId)) best = cand;
+  });
+  return best;
+}
+let hojeSeq = 0;
+async function renderHoje(){
+  const box = document.getElementById('hoje-list'); if(!box) return;
+  renderHojeGcal();
+  const seq = ++hojeSeq;
+  const dt = new Date(); dt.setHours(0,0,0,0); dt.setDate(dt.getDate() + hojeOff);
+  const key = isoOf(dt);
+  const items = {}; const loose = [];
+  ptItems('').filter(x=>isoOf(x.dt)===key).forEach(x=>{ items[x.cy.clientId+'|'+x.cy.id] = { clientId:x.cy.clientId, hora:x.d.ptHora||'', wid:x.d.workoutId, cy:x.cy, sem:x.sem, cal:false }; });
+  let calOk = false;
+  const evs = await gcLoadDay(key, dt);
+  if(seq!==hojeSeq) return;
+  if(evs){
+    calOk = true;
+    evs.forEach(ev=>{
+      const c = matchClientByTitle(ev.summary||'');
+      const d0 = new Date(ev.start.dateTime); const hora = String(d0.getHours()).padStart(2,'0')+':'+String(d0.getMinutes()).padStart(2,'0');
+      if(!c){ loose.push({ hora, titulo: ev.summary||'(sem título)' }); return; }
+      const cd = cycleDayFor(c.id, key);
+      const k = cd ? c.id+'|'+cd.cy.id : c.id+'|'+ev.id;
+      const prev = items[k];
+      items[k] = { clientId:c.id, hora, wid: cd ? cd.d.workoutId : '', cy: cd?cd.cy:null, sem: cd?cd.sem:null, cal:true, titulo: ev.summary||'', pt: prev ? true : false };
+    });
+  }
+  const todo = Object.values(items).sort((a,b)=>String(a.hora||'99:99').localeCompare(String(b.hora||'99:99')));
+  const DN = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+  document.getElementById('hoje-sub').textContent = DN[dt.getDay()] + ', ' + formatDate(key) + (hojeOff===0 ? ' (hoje)' : '') + ' · ' + todo.length + (todo.length===1 ? ' sessão' : ' sessões') + (calOk ? ' (calendário + ciclos)' : ' (ciclos)');
+  const looseHtml = loose.length ? `<details style="margin-top:6px;"><summary class="view-sub" style="cursor:pointer;">${loose.length} evento(s) do calendário sem cliente reconhecido</summary>${loose.map(l=>`<div class="view-sub">${esc(l.hora)} · ${esc(l.titulo)}</div>`).join('')}</details>` : '';
+  if(!todo.length){ box.innerHTML = '<div class="empty"><strong>Sem sessões neste dia</strong>'+(GC.token ? 'Não há eventos no calendário que correspondam a clientes, nem dias de PT marcados nos ciclos.' : 'Liga o Google Calendar ou marca um dia como PT num ciclo (caixa «PT») para aparecer aqui.')+'</div>'+looseHtml; return; }
+  box.innerHTML = todo.map(x=>{
+    const w = DATA.workouts.find(v=>v.id===x.wid);
+    const c = DATA.clients.find(v=>v.id===x.clientId);
+    const pats = c ? clientPats(c).map(k=>PATOLOGIAS[k]&&PATOLOGIAS[k].nome).filter(Boolean) : [];
+    const rows = w ? (w.exercicios||[]).map((l,i)=>{ const e = DATA.exercises.find(v=>v.id===l.exId); if(!e) return '';
+      return `<div style="padding:5px 0; border-top:1px solid var(--line, #3335);"><b>${i+1}. ${esc(e.nome)}</b><div class="view-sub" style="margin:0;">${esc(l.series)} séries × ${esc(l.reps)} reps${l.carga ? ' · '+esc(l.carga) : ''}${l.descanso ? ' · descanso '+esc(l.descanso) : ''}${l.met ? ' · '+esc(l.met) : ''}${l.variante ? ' · variante: '+esc(l.variante) : ''}</div>${e.notas ? `<div class="view-sub" style="margin:0;">${esc(e.notas)}</div>` : ''}</div>`; }).join('') : '<div class="view-sub">Sem treino atribuído neste dia no ciclo do cliente.</div>';
+    return `<div style="border:1px solid #3a7bd5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+      <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline;">
+        <span class="tag" style="background:#3a7bd5;color:#fff;">${x.hora ? esc(x.hora) : 'sem hora'}</span>
+        <b style="font-size:16px;">${esc(clientName(x.clientId))}</b>
+        <span class="view-sub" style="margin:0;">${w ? esc(w.nome) : ''}${x.cy ? ' · '+esc(x.cy.nome)+' · S'+x.sem.numero : ''}${x.cal ? ' · do calendário' : ''}</span></div>
+      ${pats.length ? `<div style="margin-top:4px; font-size:12.5px; color:#c0533a;">Atenção: ${esc(pats.join(', '))}</div>` : ''}
+      ${x.sem && x.sem.progressao ? `<div class="view-sub" style="margin:4px 0;">${esc(x.sem.progressao)}</div>` : ''}
+      <div style="margin-top:6px;">${rows}</div></div>`; }).join('') + looseHtml;
+}
+function renderPtAgenda(){
+  const box = document.getElementById('pt-agenda'); if(!box) return;
+  const filterId = document.getElementById('cycle-client-filter').value;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = [];
+  DATA.cycles.forEach(cy=>{
+    if(filterId && cy.clientId!==filterId) return;
+    if(!cy.inicio) return;
+    const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
+    cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
+      if(!d.pt) return;
+      const dt = new Date(d0); dt.setDate(dt.getDate() + wi*7 + di);
+      items.push({ dt, cy, sem, d, di });
+    }));
+  });
+  if(!items.length){ box.innerHTML = ''; return; }
+  items.sort((a,b)=>a.dt-b.dt || String(a.d.ptHora||'').localeCompare(String(b.d.ptHora||'')));
+  const up = items.filter(x=>x.dt>=today).slice(0,30);
+  const iso = dt => dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  box.innerHTML = `<div style="border:1px solid #3a7bd5; border-radius:8px; padding:12px 14px; margin-bottom:22px;">
+    <div style="font-weight:600; margin-bottom:6px;">Agenda de treinos de PT <span class="view-sub">(próximos ${up.length})</span></div>` +
+    (up.length ? up.map(x=>{
+      const w = DATA.workouts.find(v=>v.id===x.d.workoutId);
+      return `<div style="padding:7px 0; border-top:1px solid var(--line, #3335); display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline;">
+        <b>${esc(DIAS[x.di].slice(0,3))} ${formatDate(iso(x.dt))}</b>${x.d.ptHora ? `<span class="tag" style="background:#3a7bd5;color:#fff;">${esc(x.d.ptHora)}</span>` : ''}
+        <span>${esc(clientName(x.cy.clientId))}</span><span class="view-sub" style="margin:0;">${w ? esc(w.nome) : 'sem treino atribuído'} · S${x.sem.numero}</span>
+        ${x.d.workoutId ? wExListHtml(x.d.workoutId) : ''}</div>`; }).join('') : '<div class="view-sub">Sem treinos de PT futuros.</div>') + '</div>';
+}
 function renderCycles(){
+  renderPtAgenda();
   document.getElementById('btn-ai').style.display = aiEndpoint() ? '' : 'none';
   populateClientFilter();
   const filterId = document.getElementById('cycle-client-filter').value;
@@ -3527,11 +3898,14 @@ function renderCycles(){
       const daysHtml = DIAS.map((diaNome, dIdx)=>{
         const opts = `<option value="">— descanso —</option>` + DATA.workouts.map(w=>`<option value="${w.id}" ${sem.dias[dIdx].workoutId===w.id?'selected':''}>${esc(w.nome)}</option>`).join('');
         return `<div class="day-slot">
-          <div class="day-name">${diaNome}</div>
+          <div class="day-name">${diaNome}${sem.dias[dIdx].pt ? ' <span class="tag" style="background:#3a7bd5;color:#fff;">PT</span>' : ''}</div>
           <div class="day-assign" style="flex-wrap:wrap;">
             <select onchange="updateDayAssign('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">${opts}</select>
             <select onchange="updateDayAula('${cycle.id}', ${wIdx}, ${dIdx}, this.value)" title="Aula de grupo">${'<option value="">+ aula de grupo</option>' + (DATA.aulas||[]).map(a=>`<option value="${a.id}" ${sem.dias[dIdx].aulaId===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>
+            <label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>
+            ${sem.dias[dIdx].pt ? `<input type="time" value="${esc(sem.dias[dIdx].ptHora||'')}" style="max-width:110px;" title="Hora do treino de PT" onchange="updateDayPTHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].aulaId ? `<input type="time" value="${esc(sem.dias[dIdx].aulaHora||'')}" style="max-width:110px;" title="Hora da aula" onchange="updateDayAulaHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
+            ${sem.dias[dIdx].workoutId ? wExListHtml(sem.dias[dIdx].workoutId) : ''}
             ${(()=>{ const au = aulaById(sem.dias[dIdx].aulaId); return au ? `<div class="view-sub" style="flex-basis:100%; margin:0;">${esc(au.duracao)} min · ${esc(au.intensidade)}${au.descricao ? ' · '+esc(au.descricao) : ''}</div>` : ''; })()}
           </div>
         </div>`;
@@ -3540,7 +3914,7 @@ function renderCycles(){
         <div class="week-head" onclick="toggleWeek('${cycle.id}', ${wIdx})">
           <div class="week-head-left">
             <span class="week-num">S${sem.numero}</span>
-            <span class="tag">${cycle.semanas[wIdx].dias.filter(d=>d.workoutId).length} sessões</span>${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length ? `<span class="tag">${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length} ${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length===1?'aula':'aulas'}</span>` : ''}
+            <span class="tag">${cycle.semanas[wIdx].dias.filter(d=>d.workoutId||d.pt).length} sessões</span>${cycle.semanas[wIdx].dias.filter(d=>d.pt).length ? `<span class="tag" style="background:#3a7bd5;color:#fff;">${cycle.semanas[wIdx].dias.filter(d=>d.pt).length} PT</span>` : ''}${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length ? `<span class="tag">${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length} ${cycle.semanas[wIdx].dias.filter(d=>d.aulaId).length===1?'aula':'aulas'}</span>` : ''}
           </div>
           <input class="week-progress-input" onclick="event.stopPropagation()" value="${esc(sem.progressao)}" placeholder="progressão" onchange="updateProgress('${cycle.id}', ${wIdx}, this.value)">
         </div>
@@ -3552,9 +3926,10 @@ function renderCycles(){
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
         <div>
           <div style="font-weight:600; font-size:17px;">${esc(cycle.nome)}</div>
-          <div class="view-sub">${esc(clientName(cycle.clientId))}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
+          <div class="view-sub">${esc(clientName(cycle.clientId))}${(cycle.patologias||[]).filter(k=>PATOLOGIAS[k]).length ? ' · '+cycle.patologias.filter(k=>PATOLOGIAS[k]).map(k=>esc(PATOLOGIAS[k].nome)).join(' + ') : ''}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
         </div>
         <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm" onclick="openAdjust('${cycle.id}')">⚙ Ajustar plano</button>
           <button class="btn btn-sm" onclick="shareCycle('${cycle.id}')">🔗 Enviar ao cliente</button>
           <button class="btn btn-sm" onclick="exportCyclePDF('${cycle.id}')">📄 Exportar PDF</button>
           <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteCycle('${cycle.id}')">Remover ciclo</button>
@@ -3578,22 +3953,23 @@ function buildCyclePrintHtml(cycleId){
   const strip = n => String(n||'').replace(cy.nome + ' — ', '');
   const exById = id => DATA.exercises.find(e=>e.id===id);
   // treinos usados, por ordem de aparecimento
-  const ids = []; cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(d.workoutId && !ids.includes(d.workoutId)) ids.push(d.workoutId); }));
+  const ids = []; cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(d.workoutId && !d.pt && !ids.includes(d.workoutId)) ids.push(d.workoutId); }));
   const workouts = ids.map(id=>DATA.workouts.find(w=>w.id===id)).filter(Boolean);
   const wName = id => { const w = DATA.workouts.find(x=>x.id===id); return w ? strip(w.nome) : ''; };
   const meta = [];
   if(client){
     if(client.objetivo) meta.push(['Objetivo', client.objetivo]);
     if(client.nivel) meta.push(['Nível', client.nivel]);
-    if(client.patologia && PATOLOGIAS[client.patologia]) meta.push(['Condição', PATOLOGIAS[client.patologia].nome]);
+    const cp = clientPats(client);
+    if(cp.length) meta.push(['Condição', cp.map(k=>PATOLOGIAS[k].nome).join(', ')]);
   }
   meta.push(['Duração', cy.numSemanas + ' semanas']);
   if(cy.inicio) meta.push(['Início', formatDate(cy.inicio)]);
-  const sessTotal = cy.semanas.reduce((n,w)=>n+w.dias.filter(d=>d.workoutId).length,0);
+  const sessTotal = cy.semanas.reduce((n,w)=>n+w.dias.filter(d=>d.workoutId||d.pt).length,0);
   meta.push(['Sessões', String(sessTotal)]);
 
   const overview = `<table class="ov"><thead><tr><th></th>${DIAS.map(d=>`<th>${esc(d.slice(0,3))}</th>`).join('')}</tr></thead><tbody>` +
-    cy.semanas.map(w=>`<tr><th>S${w.numero}</th>${w.dias.map(d=>{ const au = aulaById(d.aulaId); return `<td>${d.workoutId ? esc(wName(d.workoutId)) : (au ? '' : '<span class="rest">—</span>')}${au ? `<div class="aula">${esc(au.nome)}${d.aulaHora ? ' '+esc(d.aulaHora) : ''}</div>` : ''}</td>`; }).join('')}</tr>`).join('') + '</tbody></table>';
+    cy.semanas.map(w=>`<tr><th>S${w.numero}</th>${w.dias.map(d=>{ const au = aulaById(d.aulaId); return `<td>${d.pt ? '<b>Treino de PT</b>'+(d.ptHora ? ' '+esc(d.ptHora) : '') : d.workoutId ? esc(wName(d.workoutId)) : (au ? '' : '<span class="rest">—</span>')}${au ? `<div class="aula">${esc(au.nome)}${d.aulaHora ? ' '+esc(d.aulaHora) : ''}</div>` : ''}</td>`; }).join('')}</tr>`).join('') + '</tbody></table>';
   const prog = cy.semanas.filter(w=>w.progressao).map(w=>`<li><b>S${w.numero}</b> ${esc(w.progressao)}</li>`).join('');
   const aulaIds = []; cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(d.aulaId && !aulaIds.includes(d.aulaId)) aulaIds.push(d.aulaId); }));
   const aulaGl = aulaIds.map(id=>aulaById(id)).filter(Boolean).map(a=>`<div class="gl"><b>${esc(a.nome)}</b> · ${esc(a.duracao)} min · intensidade ${esc(a.intensidade.toLowerCase())}${a.descricao ? `<div>${esc(a.descricao)}</div>` : ''}</div>`).join('');
@@ -4323,7 +4699,35 @@ const PROTOCOLOS = [
     criterios:['Cumpre o programa sem agravamentos.','Subir degraus e levantar da cadeira com mais autonomia.'],
     evitar:['Saltos e impacto.','Treinar durante um surto ou com infeção.'],
     ex:[['Caminhada em tapete (ritmo moderado)','1','20-30 min','—','Cardio','Ambiente fresco, pausas se necessário.'],['Leg press leve','3','12','90s'],['Step-up baixo','2','8','75s'],['Remada com elástico (postura)','3','12','75s'],['Marcha lateral com mini band','2','10','60s'],['Equilíbrio unipodal','3','20-30s','45s'],['Alongamento de isquiotibiais com toalha','2','30s','—']]}
+  ]},
+{ id:'supraespinhoso', nome:'Tendinite do supraespinhoso', grupo:'Ombro', pat:'supra', g:'Ombros',
+  resumo:'Tendinopatia do supraespinhoso (coifa dos rotadores), com dor ao elevar o braço e no arco entre 60° e 120°. Carga progressiva do tendão: isométricos, força da coifa e da escápula, depois trabalho acima da cabeça.',
+  quando:'Dor no ombro mecânica, sem trauma recente e sem suspeita de rotura total da coifa. Convém o diagnóstico de um médico ou fisioterapeuta.',
+  bandeiras:['Trauma recente (queda ou deslocamento do ombro).','Incapacidade de elevar o braço ou queda súbita do braço (suspeita de rotura da coifa).','Dor noturna intensa e persistente, que não melhora com a posição.','Dor irradiada ao braço com formigueiro, dormência ou fraqueza da mão.','Dor no peito, no braço esquerdo ou falta de ar: urgência.'],
+  notas:['O tendão responde a carga. Evitar repouso total, mas respeitar o limite: dor até 3-4/10 durante o exercício, sem pior à noite nem no dia seguinte.','Nas primeiras fases evitar o arco doloroso (60°-120° de elevação lateral), elevações laterais com o polegar para baixo, remada alta e trabalho atrás da nuca.','Dormir com uma almofada à frente, a apoiar o braço, e evitar deitar sobre o ombro dorido.'],
+  fases:[
+  { nome:'Fase 1 — Alívio com isométricos', sem:2, freq:5,
+    obj:['Reduzir a dor com isométricos.','Manter a mobilidade do ombro e da escápula.','Evitar movimentos que provocam dor.'],
+    criterios:['Dor em repouso ≤ 2/10.','Isométrico de 30-45 s tolerado sem agravar no dia seguinte.'],
+    evitar:['Elevação do braço acima do ombro com carga.','Remada alta e trabalho atrás da nuca.','Carregar o ombro durante várias horas seguidas.'],
+    ex:[['Isométrico de abdução do ombro','5','30-45s','60s','Ombros','Braço junto ao corpo, cotovelo a 90°, empurrar o lado de fora do braço contra a parede ou um elástico, sem mover. Esforço moderado, sem dor intensa.'],['Isométrico de rotação externa do ombro','4','30s','45s','Ombros','Cotovelo junto ao corpo a 90°, empurrar o dorso da mão contra a parede, sem mover.'],['Pendular de Codman','3','1 min','30s'],['Retração escapular com elástico','3','12','30s'],['Mobilidade torácica sentado','2','10','30s'],['Alongamento posterior do ombro (cross-body)','2','30s','—']]},
+  { nome:'Fase 2 — Força da coifa e da escápula', sem:4, freq:3,
+    obj:['Força dos rotadores externos e internos.','Controlo da escápula.','Elevação no plano da escápula até 60°-90°.'],
+    criterios:['Rotação externa com elástico 3×15 sem dor.','Elevação no plano da escápula até 90° sem compensações.'],
+    evitar:['Elevações laterais no plano frontal.','Cargas acima da altura do ombro.'],
+    ex:[['Rotação externa com elástico','3','12','45s'],['Rotação interna com elástico','3','12','45s'],['Elevação no plano da escápula (scaption)','3','10','45s'],['Remada com elástico (postura)','3','12','45s'],['Push-up plus na parede','3','10','45s'],['Remada em prono com haltere leve','3','10','45s']]},
+  { nome:'Fase 3 — Força e controlo', sem:6, freq:3,
+    obj:['Aumentar a carga progressivamente.','Força da coifa em posições mais exigentes.','Escápula forte e estável.'],
+    criterios:['Elevação completa sem dor.','Rotação externa a 45° de abdução com elástico, 3×15.','Sem dor noturna.'],
+    evitar:['Aumentar carga e volume em simultâneo.','Dor acima de 4/10 durante os exercícios.'],
+    ex:[['Rotação externa a 45° de abdução com elástico','3','12','45s','Ombros','Cotovelo afastado do corpo cerca de 45° (com apoio de toalha), rodar o antebraço para fora com o elástico.'],['Elevação no plano da escápula (scaption)','3','12','45s'],['Face pull com elástico','3','12','45s','Ombros','Elástico à altura do rosto, puxar em direção à testa com os cotovelos altos e rodar os ombros para fora.'],['Remada em prono com haltere leve','3','12','45s'],['Wall slide (deslizamento na parede)','3','10','45s'],['Abdução horizontal com elástico','3','12','45s']]},
+  { nome:'Fase 4 — Retorno ao treino e ao trabalho acima da cabeça', sem:4, freq:3,
+    obj:['Reintroduzir exercícios acima da cabeça.','Voltar ao treino habitual e ao desporto.'],
+    criterios:['Sem dor com cargas de treino.','Força simétrica em relação ao outro ombro.'],
+    evitar:['Aumentos de carga superiores a 10% por semana.','Remada alta com carga.'],
+    ex:[['Elevação no plano da escápula (scaption)','3','12','45s'],['Face pull com elástico','3','15','45s'],['Rotação externa a 45° de abdução com elástico','3','15','45s'],['Wall slide (deslizamento na parede)','3','12','45s'],['Push-up plus na parede','3','12','45s'],['Remada com elástico (postura)','3','15','45s']]}
   ]}
+
 
 ];
 
@@ -4507,23 +4911,178 @@ function protoEnsureEx(x, p){
   DATA.exercises.push(e);
   return e.id;
 }
-const PROTO_PAT_MUSC = ['lombar','hernia','cervical','escoliose','entorse','aquiles','fascite','epicondilite','epitrocleite','ombro','joelho','oa','osteop','fibro'];
+const PROTO_PAT_MUSC = ['lombar','hernia','cervical','escoliose','entorse','aquiles','fascite','epicondilite','epitrocleite','ombro','supra','joelho','oa','osteop','fibro'];
 const PROTO_ADAPT_DROP = /interval|limiar|strides|fartlek|subida|ritmo de|bounding|salto|pogo|hop\b|skater|skipping|quick feet|brick|sprint|burpee|sled|wall ball|simula|sandbag|farmers|skierg|remo\b|roxzone|comprometida/i;
-function protoPatInfo(clientId){
-  const c = DATA.clients.find(x=>x.id===clientId);
-  const key = c && c.patologia;
-  if(!key || !PATOLOGIAS[key]) return null;
-  const nome = PATOLOGIAS[key].nome;
-  if(PROTO_PAT_MUSC.includes(key)) return { key, tipo:'musc', txt:`Cliente com patologia músculo-esquelética (${nome}). Recomendação: concluir primeiro o protocolo de reabilitação respetivo e só depois iniciar a prova, com autorização do fisioterapeuta ou médico. Com a adaptação ativa, as sessões passam a corrida e caminhada alternadas, sem intervalos duros, ritmos de prova nem saltos, e o volume deve subir mais devagar (cerca de 5% por semana).` };
-  return { key, tipo:'sis', txt:`Cliente com condição cardiometabólica, respiratória ou neurológica (${nome}). Exige autorização médica e, se existir, a zona de esforço definida pelo médico. Com a adaptação ativa, tudo fica em esforço fácil (Z2), sem intervalos nem ritmos de prova. Uma prova longa pode não ser adequada: avaliar uma distância menor.` };
+
+// ---------- Patologias personalizadas ----------
+function applyPatCustom(){
+  DATA.exercises.forEach(e=>{ if(e.modalidade==='Reabilitação' && (e.patologias||[]).includes('ombro') && !e.patologias.includes('supra')) e.patologias.push('supra'); });
+  Object.keys(PATOLOGIAS).forEach(k=>{ if(PATOLOGIAS[k].custom) delete PATOLOGIAS[k]; });
+  (DATA.patCustom||[]).forEach(c=>{
+    let re = /$^/;
+    try{
+      const words = (c.palavras||[]).map(w=>normText(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).filter(Boolean);
+      if(words.length) re = new RegExp(words.join('|'));
+    }catch(e){}
+    PATOLOGIAS[c.key] = { custom:true, nome:c.nome, contra:c.contra||'movimentos que agravam a dor', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:10, maq:true, grp:c.grp||'Outras', ex:re, avisos:c.avisos||[] };
+  });
 }
-function protoPatCheck(){
-  const box = document.getElementById('proto-pat-box');
+function openPatModal(){
+  document.getElementById('pat-nome').value = '';
+  document.getElementById('pat-palavras').value = '';
+  document.getElementById('pat-contra').value = '';
+  document.getElementById('pat-avisos').value = '';
+  document.getElementById('pat-grp').value = 'Outras';
+  renderPatCustomList();
+  openModal('modal-pat');
+}
+function renderPatCustomList(){
+  const l = DATA.patCustom || [];
+  document.getElementById('pat-lista').innerHTML = l.length ? '<div class="view-sub" style="margin:12px 0 4px;">Patologias criadas por ti</div>' + l.map(c=>`<div class="list-row"><div class="list-row-main"><div class="list-row-title">${esc(c.nome)}</div><div class="list-row-meta">Evitar: ${esc((c.palavras||[]).join(', ') || '—')}</div></div><div class="list-row-actions"><button class="btn btn-ghost btn-sm btn-danger" onclick="removePatCustom('${c.key}')">Remover</button></div></div>`).join('') : '';
+}
+function savePatCustom(){
+  const nome = document.getElementById('pat-nome').value.trim();
+  if(!nome){ alert('Escreve o nome da patologia ou condicionante.'); return; }
+  DATA.patCustom = DATA.patCustom || [];
+  DATA.patCustom.push({
+    key: 'x_' + uid(), nome,
+    grp: document.getElementById('pat-grp').value,
+    contra: document.getElementById('pat-contra').value.trim(),
+    palavras: document.getElementById('pat-palavras').value.split(',').map(w=>w.trim()).filter(Boolean),
+    avisos: document.getElementById('pat-avisos').value.split('\n').map(w=>w.trim()).filter(Boolean)
+  });
+  saveData();
+  renderPatCustomList();
+  document.getElementById('pat-nome').value = '';
+  document.getElementById('pat-palavras').value = '';
+  document.getElementById('pat-contra').value = '';
+  document.getElementById('pat-avisos').value = '';
+  protoRefreshExtra();
+}
+function removePatCustom(key){
+  const c = (DATA.patCustom||[]).find(x=>x.key===key);
+  if(!c || !confirm('Remover a patologia «' + c.nome + '»? Os clientes que a tinham ficam sem patologia.')) return;
+  DATA.patCustom = DATA.patCustom.filter(x=>x.key!==key);
+  DATA.clients.forEach(cl=>{ if(cl.patologia===key) cl.patologia = ''; cl.patologias = (cl.patologias||[]).filter(k=>k!==key); });
+  DATA.workouts.forEach(w=>{ if(w.patologia===key) w.patologia = ''; w.patologias = (w.patologias||[]).filter(k=>k!==key); });
+  saveData();
+  renderPatCustomList();
+  protoRefreshExtra();
+}
+function protoRefreshExtra(){
+  if(!document.getElementById('proto-extra')) return;
+  patPickerSet('proto-extra', patPickerGet('proto-extra'));
+  if(document.getElementById('modal-proto').classList.contains('active')) protoModalChange();
+}
+
+// ---------- Seletor de várias patologias ----------
+function clientPats(c){ return c ? [...new Set([c.patologia, ...(c.patologias||[])].filter(k=>k && PATOLOGIAS[k]))] : []; }
+function wPats(w){ return w ? [...new Set([w.patologia, ...(w.patologias||[])].filter(k=>k && PATOLOGIAS[k]))] : []; }
+function patPickerInner(id, keys){
+  const chips = keys.map(k=>`<span class="patchip">${esc(PATOLOGIAS[k].nome)}<button type="button" aria-label="Remover" onclick="patPickerRemove('${id}','${k}')">×</button></span>`).join('');
+  return `<div class="patpick-chips">${chips}</div><select onchange="patPickerAdd('${id}', this)"><option value="">+ Adicionar patologia…</option>${patOptions('')}</select>`;
+}
+function patPickerHtml(id, keys, cb){
+  keys = (keys||[]).filter(k=>PATOLOGIAS[k]);
+  return `<div class="patpick" id="${id}" data-keys='${JSON.stringify(keys)}' data-cb="${cb||''}">${patPickerInner(id, keys)}</div>`;
+}
+function patPickerGet(id){ const el = document.getElementById(id); if(!el) return []; try{ return JSON.parse(el.dataset.keys||'[]'); }catch(e){ return []; } }
+function patPickerSet(id, keys){
+  const el = document.getElementById(id); if(!el) return;
+  keys = [...new Set((keys||[]).filter(k=>PATOLOGIAS[k]))];
+  el.dataset.keys = JSON.stringify(keys);
+  el.innerHTML = patPickerInner(id, keys);
+}
+function patPickerFire(id){ const cb = document.getElementById(id).dataset.cb; if(cb && typeof window[cb]==='function') window[cb](); }
+function patPickerAdd(id, sel){
+  const k = sel.value; if(!k) return;
+  const ks = patPickerGet(id); if(!ks.includes(k)) ks.push(k);
+  patPickerSet(id, ks); patPickerFire(id);
+}
+function patPickerRemove(id, k){ patPickerSet(id, patPickerGet(id).filter(x=>x!==k)); patPickerFire(id); }
+
+// ---------- Planeamento à retaguarda a partir da data da prova ----------
+function protoParseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function protoISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function protoMonday(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; }
+function protoPlanWeeks(p, fi0, inicioISO, provaISO){
+  const base = p.fases.slice(fi0).map(f=>f.sem);
+  const T = base.reduce((a,b)=>a+b, 0);
+  const prova = protoParseISO(provaISO);
+  const start = protoMonday(protoParseISO(inicioISO));
+  const rm = protoMonday(prova);
+  let W = Math.round((rm - start) / 604800000) + 1;
+  if(W < 1) return { error:'A data da prova é anterior ao início do plano.' };
+  const W0 = W;
+  const notes = [];
+  const weeks = base.slice();
+  let startUsed = new Date(start);
+  const n = weeks.length;
+  if(W > T){
+    let extra = W - T;
+    if(extra > 8){
+      const drop = extra - 8;
+      startUsed.setDate(startUsed.getDate() + 7*drop);
+      notes.push(`Faltam ${W0} semanas para a prova. O plano começa só a ${formatDate(protoISO(startUsed))}, para a base não ficar demasiado longa; até lá mantém treino geral.`);
+      extra = 8; W = T + 8;
+    }
+    if(extra > 0){ weeks[0] += extra; notes.push(`Há ${extra} semana(s) de folga: foram acrescentadas à primeira fase (base).`); }
+  } else if(W < T){
+    let d = T - W;
+    const mins = [base.map((s,i)=> i===n-1 ? s : Math.max(1, Math.ceil(s/2))), base.map((s,i)=> i===n-1 ? Math.max(1, Math.ceil(s/2)) : 1), base.map(()=>1)];
+    for(const mn of mins){
+      while(d > 0){
+        let best = -1;
+        weeks.forEach((w,i)=>{ if(w > mn[i] && (best<0 || w - mn[i] > weeks[best] - mn[best])) best = i; });
+        if(best < 0) break;
+        weeks[best]--; d--;
+      }
+      if(d === 0) break;
+    }
+    if(d > 0) return { error:`Só há ${W0} semanas até à prova e o protocolo tem ${n} fases. Escolhe uma data mais tardia ou uma prova mais curta.` };
+    notes.push(`Só há ${W0} semanas até à prova (o protocolo completo tem ${T}). As fases foram encurtadas e a afinação final mantém-se.`);
+  }
+  const provaDay = (prova.getDay()+6)%7;
+  if(provaDay <= 1) notes.push('A prova é no início da semana, por isso a última semana do plano quase não tem treino. A afinação faz-se sobretudo na semana anterior.');
+  return { inicio: protoISO(startUsed), weeks, W, W0, T, notes, short: W0 < 0.6*T, provaISO, provaDay };
+}
+function protoPlanCheck(){
+  const box = document.getElementById('proto-plan-box');
   const p = protoById(document.getElementById('proto-id').value);
-  const info = p && p.prova ? protoPatInfo(document.getElementById('proto-cliente').value) : null;
-  if(!info){ box.style.display = 'none'; return; }
-  document.getElementById('proto-pat-txt').textContent = info.txt;
+  const fld = document.getElementById('proto-prova-field');
+  if(!p || !p.prova){ fld.style.display = 'none'; box.style.display = 'none'; return; }
+  fld.style.display = 'block';
+  const prova = document.getElementById('proto-prova').value;
+  if(!prova){ box.style.display = 'none'; return; }
+  const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
+  const plan = protoPlanWeeks(p, fi0, document.getElementById('proto-inicio').value, prova);
   box.style.display = 'block';
+  if(plan.error){ box.innerHTML = `<div style="color:var(--danger);">${esc(plan.error)}</div>`; return; }
+  box.innerHTML = `<div><strong>Plano de ${plan.weeks.reduce((a,b)=>a+b,0)} semanas</strong> (de ${esc(formatDate(plan.inicio))} até à prova a ${esc(formatDate(plan.provaISO))}):</div><ul style="margin:4px 0 0; padding-left:18px;">${p.fases.slice(fi0).map((f,i)=>`<li>${esc(f.nome)} — ${plan.weeks[i]} semanas</li>`).join('')}</ul>` + plan.notes.map(t=>`<div style="margin-top:6px; ${plan.short?'color:var(--danger);':''}">${esc(t)}</div>`).join('');
+}
+function protoModalChange(){ protoPatCheck(); protoPlanCheck(); }
+
+// ---------- Ajuste do protocolo às patologias ----------
+function protoExObj(x, p){
+  const n = normName(x[0]);
+  const e = DATA.exercises.find(e=>normName(e.nome)===n);
+  if(e) return e;
+  const cd = CORRIDA_EXERCISES.find(c=>normName(c.nome)===n);
+  if(cd) return { nome:cd.nome, grupo:cd.grupo, modalidade:'Corrida', patologias:[] };
+  return { nome:x[0], grupo:x[4]||p.g, modalidade:p.mod||'Reabilitação', patologias:p.pat?[p.pat]:[] };
+}
+function protoKeys(clientId, extra){
+  const c = DATA.clients.find(x=>x.id===clientId);
+  const ks = [];
+  [...clientPats(c), ...(extra||[])].forEach(k=>{ if(k && PATOLOGIAS[k] && !ks.includes(k)) ks.push(k); });
+  return ks;
+}
+function protoBroadInfo(keys){
+  if(!keys.length) return null;
+  const musc = keys.some(k=>PROTO_PAT_MUSC.includes(k) || PATOLOGIAS[k].custom);
+  const nomes = keys.map(k=>PATOLOGIAS[k].nome).join(' + ');
+  if(musc) return { tipo:'musc', txt:`Patologia: ${nomes}. Recomendação: concluir primeiro o protocolo de reabilitação respetivo e só depois iniciar a prova, com autorização do fisioterapeuta ou médico. Com o ajuste ativo, as sessões passam a corrida e caminhada alternadas, sem intervalos duros, ritmos de prova nem saltos, e o volume deve subir mais devagar (cerca de 5% por semana).` };
+  return { tipo:'sis', txt:`Condição: ${nomes}. Exige autorização médica e, se existir, a zona de esforço definida pelo médico. Com o ajuste ativo, tudo fica em esforço fácil (Z2), sem intervalos nem ritmos de prova. Uma prova longa pode não ser adequada: avaliar uma distância menor.` };
 }
 function protoAdaptEx(se, p, info){
   const kept = [];
@@ -4539,14 +5098,62 @@ function protoAdaptEx(se, p, info){
   }
   return out;
 }
-function protoMakeWorkouts(p, fi, opt){
+function protoAdaptPhase(p, fi, keys, adapt, report){
   const fa = p.fases[fi];
-  const ses = protoSess(fa);
-  const info = opt && opt.adapt ? opt.info : null;
+  const act = adapt ? keys.filter(k=>k!==p.pat) : [];
+  const info = adapt && p.prova && keys.length ? protoBroadInfo(keys) : null;
+  const out = [];
+  protoSess(fa).forEach(se=>{
+    let ex = info ? protoAdaptEx(se, p, info) : se.ex.slice();
+    if(info && report) se.ex.forEach(x=>{ if(PROTO_ADAPT_DROP.test(x[0]) && !ex.some(y=>y[0]===x[0])) report.push({ fase:fa.nome, nome:x[0], acao:'retirado', motivo:'intensidade ou impacto não adequados à patologia' }); });
+    if(act.length){
+      const used = new Set(ex.map(x=>normName(x[0])));
+      const res = [];
+      ex.forEach(x=>{
+        const o = protoExObj(x, p);
+        let bad = null, badKey = null;
+        for(const k of act){ const a = contraAlert(o, k); if(a){ bad = a; badKey = k; break; } }
+        if(!bad){ res.push(x); return; }
+        const rep = DATA.exercises.find(e=>e.modalidade==='Reabilitação' && (e.patologias||[]).includes(badKey) && e.grupo===o.grupo && !used.has(normName(e.nome)) && !act.some(k=>contraAlert(e,k)));
+        if(rep){ used.add(normName(rep.nome)); res.push([rep.nome, x[1], x[2], x[3], rep.grupo]); }
+        if(report) report.push({ fase:fa.nome, nome:x[0], acao: rep ? 'substituído por ' + rep.nome : 'retirado', motivo: PATOLOGIAS[badKey].nome + ': ' + bad });
+      });
+      ex = res;
+    }
+    if(ex.length) out.push({ n:se.n, ex });
+  });
+  return out;
+}
+function protoPatCheck(){
+  const box = document.getElementById('proto-pat-box');
+  const p = protoById(document.getElementById('proto-id').value);
+  if(!p){ box.style.display = 'none'; return; }
+  const keys = protoKeys(document.getElementById('proto-cliente').value, patPickerGet('proto-extra'));
+  const act = keys.filter(k=>k!==p.pat);
+  if(!keys.length || (!p.prova && !act.length)){ box.style.display = 'none'; return; }
+  const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
+  const rep = [];
+  p.fases.forEach((f,i)=>{ if(i>=fi0) protoAdaptPhase(p, i, keys, true, rep); });
+  let h = '';
+  if(p.prova){ const info = protoBroadInfo(keys); h += `<div>${esc(info.txt)}</div>`; }
+  else h += `<div>Patologia: ${esc(act.map(k=>PATOLOGIAS[k].nome).join(' + '))}. O protocolo pode ser condicionado por ela.</div>`;
+  act.forEach(k=>{ (PATOLOGIAS[k].avisos||[]).slice(0,2).forEach(a=>{ h += `<div style="opacity:.85; margin-top:6px;">• ${esc(a)}</div>`; }); });
+  if(rep.length){
+    const seen = new Set();
+    const lista = rep.filter(r=>{ const t=r.nome+'|'+r.acao; if(seen.has(t)) return false; seen.add(t); return true; });
+    h += `<div style="margin-top:8px;"><strong>Alterações previstas (${lista.length}):</strong><ul style="margin:4px 0 0; padding-left:18px;">${lista.slice(0,10).map(r=>`<li>${esc(r.nome)} — ${esc(r.acao)} (${esc(r.motivo)})</li>`).join('')}${lista.length>10?`<li>… e mais ${lista.length-10}</li>`:''}</ul></div>`;
+  } else if(!p.prova) h += `<div style="margin-top:8px;">Nenhum exercício do protocolo está contraindicado para esta patologia.</div>`;
+  document.getElementById('proto-pat-txt').innerHTML = h;
+  document.getElementById('proto-adapt-label').textContent = p.prova ? 'Ajustar o protocolo à patologia (sem intervalos duros, ritmos de prova, saltos e estações pesadas) e retirar exercícios contraindicados' : 'Ajustar o protocolo à patologia: retirar ou substituir os exercícios contraindicados';
+  box.style.display = 'block';
+}
+function protoMakeWorkouts(p, fi, opt){
+  const keys = opt && opt.keys ? opt.keys : [];
+  const ses = protoAdaptPhase(p, fi, keys, !!(opt && opt.adapt), null);
+  const fa = p.fases[fi];
   return ses.map(se=>{
-    const lines = info ? protoAdaptEx(se, p, info) : se.ex;
-    const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: (opt && opt.info ? opt.info.key : '') || p.pat || '', protocolo: p.id,
-      exercicios: lines.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+    const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: keys[0] || p.pat || '', patologias: [...new Set([...keys, p.pat].filter(Boolean))], protocolo: p.id,
+      exercicios: se.ex.map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
     DATA.workouts.push(w);
     return w;
   });
@@ -4569,31 +5176,53 @@ function openProtoModal(id){
   document.getElementById('proto-fase').innerHTML = p.fases.map((f,i)=>`<option value="${i}">${esc(f.nome)}</option>`).join('');
   document.getElementById('proto-fase').value = '0';
   document.getElementById('proto-adapt').checked = true;
-  protoPatCheck();
+  document.getElementById('proto-prova').value = '';
+  patPickerSet('proto-extra', []);
+  dayPickInit('proto-dayspick');
+  protoModalChange();
   openModal('modal-proto');
 }
 function protoCreateCycle(){
   const p = protoById(document.getElementById('proto-id').value);
   const clientId = document.getElementById('proto-cliente').value;
-  const inicio = document.getElementById('proto-inicio').value;
+  const inicio0 = document.getElementById('proto-inicio').value;
   const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
-  const info = p.prova ? protoPatInfo(clientId) : null;
-  const opt = info ? { adapt: document.getElementById('proto-adapt').checked, info } : null;
-  if(info && !opt.adapt && !confirm('Este cliente tem patologia (' + PATOLOGIAS[info.key].nome + ') e o protocolo vai ser criado sem adaptação. Continuar mesmo assim?')) return;
+  const keys = protoKeys(clientId, patPickerGet('proto-extra'));
+  const act = keys.filter(k=>k!==p.pat);
+  const hasAdapt = p.prova ? keys.length>0 : act.length>0;
+  const adapt = hasAdapt ? document.getElementById('proto-adapt').checked : false;
+  if(hasAdapt && !adapt && !confirm('Há patologia associada (' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') + ') e o protocolo vai ser criado sem ajuste. Continuar mesmo assim?')) return;
+  const opt = keys.length ? { keys, adapt } : null;
+  let inicio = inicio0;
+  let sems = p.fases.slice(fi0).map(f=>f.sem);
+  const provaISO = p.prova ? document.getElementById('proto-prova').value : '';
+  let plan = null;
+  if(provaISO){
+    plan = protoPlanWeeks(p, fi0, inicio0, provaISO);
+    if(plan.error){ alert(plan.error); return; }
+    if(plan.short && !confirm(plan.notes.join('\n') + '\n\nCriar o plano mesmo assim?')) return;
+    inicio = plan.inicio; sems = plan.weeks;
+  }
+  const dayPick = dayPickGet('proto-dayspick');
   const semanas = [];
   p.fases.forEach((fa, i)=>{
     if(i < fi0) return;
+    const nSem = sems[i - fi0];
     const ws = protoMakeWorkouts(p, i, opt);
-    const slots = AI_SLOTS[ws.length] || AI_SLOTS[3];
-    for(let s=1; s<=fa.sem; s++){
-      const dias = DIAS.map(()=>({ workoutId: '' }));
-      slots.forEach((k, j)=>{ if(ws[j]) dias[k].workoutId = ws[j].id; });
-      let prog = `${fa.nome} (semana ${s}/${fa.sem})` + (opt && opt.adapt ? ' — adaptado à patologia' : '');
-      if(s===fa.sem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
+    for(let s=1; s<=nSem; s++){
+      const dias = layoutDays(ws.map(w=>w.id), dayPick);
+      let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '');
+      if(s===nSem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
       semanas.push({ numero: semanas.length+1, progressao: prog, dias });
     }
   });
-  DATA.cycles.push({ id: uid(), nome: p.nome.split(' (')[0] + ' (protocolo)', clientId, inicio, numSemanas: semanas.length, semanas });
+  if(plan && semanas.length){
+    const last = semanas[semanas.length-1];
+    last.progressao += ' — SEMANA DA PROVA (' + formatDate(provaISO) + ')';
+    last.dias.forEach((d, k)=>{ if(k >= Math.max(0, plan.provaDay-1)){ d.workoutId = ''; d.pt = false; d.ptHora = ''; } });
+  }
+  const nome = p.nome.split(' (')[0] + (provaISO ? ' — prova a ' + formatDate(provaISO) : ' (protocolo)');
+  DATA.cycles.push({ id: uid(), nome, clientId, inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '' });
   closeModal('modal-proto');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
@@ -4606,6 +5235,7 @@ function esc(str){
 }
 
 function renderAll(){
+  applyPatCustom();
   renderFicha();
   renderBackup();
   renderSyncForm();
@@ -4614,8 +5244,10 @@ function renderAll(){
   renderWorkouts();
   renderProtocolos();
   renderCycles();
+  renderHoje();
 }
 renderAll();
+if(gcLs('ciclo_gcal_on')){ let _n=0; const _t=setInterval(()=>{ if(GC.token||++_n>20){ clearInterval(_t); return; } if(gcSetup()){ clearInterval(_t); gcConnect(true); } },500); }
 if(syncCfg()) setTimeout(()=>syncNow(false), 800);
 // Instalação como app e uso offline (ficheiros manifest.json e sw.js na mesma pasta)
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
