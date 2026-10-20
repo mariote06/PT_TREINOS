@@ -571,7 +571,9 @@
     <h3>Gerar plano automático</h3>
     <div class="field">
       <label>Cliente</label>
-      <select id="plan-cliente" onchange="prefillPlan()"></select>
+      <select id="plan-cliente" onchange="prefillPlan(); fillClient2('plan-cliente2', this.value)"></select>
+    </div>
+    <div class="field"><label>2.º cliente — PT Grupo (opcional; o plano serve os dois)</label><select id="plan-cliente2" onchange="plan2Change()"></select>
     </div>
     <div class="row-3">
       <div class="field">
@@ -927,6 +929,7 @@
     <h3>Ajustar plano</h3>
     <div class="view-sub" id="adj-title" style="margin-bottom:12px;"></div>
     <input type="hidden" id="adj-id">
+    <div class="field"><label>2.º cliente — PT Grupo (opcional)</label><select id="adj-cliente2"></select></div>
     <div class="field"><label>Patologias / condicionantes deste plano (podes escolher várias)</label><div class="patpick" id="adj-pat" data-keys="[]" data-cb=""></div>
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
     <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT</label><div id="adj-days" data-v="0000000"></div></div>
@@ -944,7 +947,8 @@
     <h3>Ciclo de protocolo</h3>
     <div class="view-sub" id="proto-title" style="margin-bottom:12px;"></div>
     <input type="hidden" id="proto-id">
-    <div class="field"><label>Cliente</label><select id="proto-cliente" onchange="protoModalChange()"></select></div>
+    <div class="field"><label>Cliente</label><select id="proto-cliente" onchange="fillClient2('proto-cliente2', this.value); protoModalChange()"></select></div>
+    <div class="field"><label>2.º cliente — PT Grupo (opcional; o protocolo serve os dois)</label><select id="proto-cliente2" onchange="protoModalChange()"></select></div>
     <div class="row-2">
       <div class="field"><label>Data de início</label><input id="proto-inicio" type="date" onchange="protoModalChange()"></div>
       <div class="field"><label>Começar na fase</label><select id="proto-fase" onchange="protoModalChange()"></select></div>
@@ -973,7 +977,11 @@
     <h3>Novo ciclo</h3>
     <div class="field">
       <label>Cliente</label>
-      <select id="ciclo-cliente" onchange="prefillCycleStart()"></select>
+      <select id="ciclo-cliente" onchange="prefillCycleStart(); fillClient2('ciclo-cliente2', this.value)"></select>
+    </div>
+    <div class="field">
+      <label>2.º cliente — PT Grupo (opcional)</label>
+      <select id="ciclo-cliente2"></select>
     </div>
     <div class="field">
       <label>Nome do ciclo</label>
@@ -1072,8 +1080,20 @@ function saveClient(){
 function deleteClient(id){
   if(!confirm('Remover este cliente? Os ciclos associados também serão removidos.')) return;
   DATA.clients = DATA.clients.filter(c=>c.id!==id);
+  DATA.cycles.forEach(cy=>{ if(cy.clientId2===id) cy.clientId2 = ''; if(cy.clientId===id && cy.clientId2){ cy.clientId = cy.clientId2; cy.clientId2 = ''; } });
   DATA.cycles = DATA.cycles.filter(c=>c.clientId!==id);
   saveData();
+}
+function cycleClientIds(cy){ return [cy.clientId, cy.clientId2].filter(Boolean); }
+function cycleHas(cy, id){ return cycleClientIds(cy).includes(id); }
+function cycleClients(cy){ return cycleClientIds(cy).map(id=>DATA.clients.find(c=>c.id===id)).filter(Boolean); }
+function cycleNames(cy, sep){ return cycleClients(cy).map(c=>c.nome).join(sep||' + '); }
+function cyclePats(cy){ return [...new Set(cycleClients(cy).flatMap(c=>clientPats(c)))]; }
+function cycleIsPt(cy){ return cycleClients(cy).some(isPtClient); }
+function fillClient2(selId, cid, cur){
+  const el = document.getElementById(selId); if(!el) return;
+  el.innerHTML = '<option value="">— sem 2.º cliente —</option>' + DATA.clients.filter(c=>c.id!==cid).map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  el.value = (cur && cur!==cid) ? cur : '';
 }
 function isPtClient(c){ return !c || c.cat !== 'normal'; }
 let clientesFiltro = '';
@@ -1087,7 +1107,7 @@ function renderClients(){
   const nPt = DATA.clients.filter(isPtClient).length, nNo = DATA.clients.length - nPt;
   const fb = (v, l)=>`<button class="btn btn-sm ${clientesFiltro===v?'btn-primary':''}" onclick="setClientesFiltro('${v}')">${l}</button>`;
   list.innerHTML = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">${fb('', 'Todos ('+DATA.clients.length+')')}${fb('pt', 'Clientes PT ('+nPt+')')}${fb('normal', 'Clientes normais ('+nNo+')')}</div><div class="list">` + [...DATA.clients].filter(c=>!clientesFiltro || (clientesFiltro==='pt') === isPtClient(c)).sort((x,y)=>x.nome.localeCompare(y.nome,'pt')).map(c=>{
-    const numCycles = DATA.cycles.filter(cy=>cy.clientId===c.id).length;
+    const numCycles = DATA.cycles.filter(cy=>cycleHas(cy,c.id)).length;
     return `<div class="list-row">
       <div class="list-row-main" style="cursor:pointer; flex:1;" onclick="openFicha('${c.id}')">
         <div class="list-row-title">${esc(c.nome)} ${isPtClient(c) ? '<span class="tag" style="background:#3a7bd5;color:#fff;">PT</span>' : '<span class="tag">Normal</span>'}</div>
@@ -2376,7 +2396,7 @@ function renderFicha(){
   if(!fichaId) return;
   const c = DATA.clients.find(x=>x.id===fichaId);
   if(!c){ closeFicha(); return; }
-  const cycles = DATA.cycles.filter(cy=>cy.clientId===c.id).sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
+  const cycles = DATA.cycles.filter(cy=>cycleHas(cy,c.id)).sort((a,b)=>(b.inicio||'').localeCompare(a.inicio||''));
   const stat = (num, lbl)=>`<div class="cycle-stat"><div class="num" style="font-size:22px;">${num}</div><div class="lbl">${lbl}</div></div>`;
   const status = cadernetaStatus(c);
   const imc = calcIMC(c);
@@ -2949,7 +2969,7 @@ function layoutDays(ids, pick, allowPT){
   });
   return out;
 }
-function importResult(r, clientId, pick){
+function importResult(r, clientId, pick, clientId2){
   const cycleName = r.nome || 'Ciclo gerado por IA';
 
   const workoutIds = {};
@@ -2972,12 +2992,12 @@ function importResult(r, clientId, pick){
 
   const semanas = r.semanas.map((s, i)=>{
     const sessoes = s.sessoes || [];
-    const dias = layoutDays(sessoes.map(n=>workoutIds[n]).filter(Boolean), pick, isPtClient(DATA.clients.find(x=>x.id===clientId)));
+    const dias = layoutDays(sessoes.map(n=>workoutIds[n]).filter(Boolean), pick, [clientId, clientId2].some(i=>i && isPtClient(DATA.clients.find(x=>x.id===i))));
     return { numero: s.numero || (i+1), progressao: String(s.progressao||''), dias };
   });
 
   DATA.cycles.push({
-    id: uid(), nome: cycleName, clientId,
+    id: uid(), nome: cycleName, clientId, clientId2: clientId2 || '',
     inicio: new Date().toISOString().slice(0,10),
     numSemanas: semanas.length, semanas
   });
@@ -3349,12 +3369,17 @@ function openPlanModal(clientId){
   const sel = document.getElementById('plan-cliente');
   sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   if(clientId) sel.value = clientId;
+  fillClient2('plan-cliente2', sel.value);
   prefillPlan();
   document.getElementById('plan-status').textContent = '';
   document.getElementById('plan-preview').innerHTML = '';
   document.getElementById('plan-import-btn').style.display = 'none';
   planResult = null;
   openModal('modal-plano');
+}
+function plan2Change(){
+  const c2 = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente2').value);
+  if(c2) patPickerSet('plan-patologia', [...patPickerGet('plan-patologia'), ...clientPats(c2)]);
 }
 function prefillPlan(){
   const c = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente').value);
@@ -3418,7 +3443,7 @@ function renderPlanPreview(r){
 }
 function importPlan(){
   if(!planResult) return;
-  importResult(planResult, document.getElementById('plan-cliente').value, dayPickGet('plan-dayspick'));
+  importResult(planResult, document.getElementById('plan-cliente').value, dayPickGet('plan-dayspick'), document.getElementById('plan-cliente2').value);
   planResult = null;
   closeModal('modal-plano');
 }
@@ -3429,6 +3454,7 @@ function openCycleModal(clientId){
   const sel = document.getElementById('ciclo-cliente');
   sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   if(clientId) sel.value = clientId;
+  fillClient2('ciclo-cliente2', sel.value);
   document.getElementById('ciclo-nome').value = '';
   document.getElementById('ciclo-inicio').value = new Date().toISOString().slice(0,10);
   document.getElementById('ciclo-semanas').value = 4;
@@ -3452,7 +3478,7 @@ function saveCycle(){
       dias: DIAS.map(()=>({ workoutId: '' }))
     });
   }
-  DATA.cycles.push({ id: uid(), nome, clientId, inicio, numSemanas, semanas });
+  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: document.getElementById('ciclo-cliente2').value || '', inicio, numSemanas, semanas });
   closeModal('modal-ciclo');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
@@ -3520,7 +3546,7 @@ function buildSharePayload(cy){
     }
     return d.pt ? [wi, ai, d.aulaHora||'', 1, d.ptHora||''] : [wi, ai, d.aulaHora||''];
   }) }));
-  return { v:1, n: client ? client.nome.trim().split(/\s+/)[0] : '', c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
+  return { v:1, n: cycleClients(cy).map(c=>c.nome.trim().split(/\s+/)[0]).join(' e '), c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
 }
 let shareUrl = '', shareName = '', sharePayloadObj = null, shareTimer = null;
 async function shareCycle(cycleId){
@@ -3601,7 +3627,8 @@ function updateDayAula(cycleId, weekIdx, dayIdx, aulaId){
 function openAdjust(cycleId){
   const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return;
   document.getElementById('adj-id').value = cycleId;
-  document.getElementById('adj-title').textContent = cy.nome + ' · ' + clientName(cy.clientId);
+  document.getElementById('adj-title').textContent = cy.nome + ' · ' + cycleNames(cy);
+  fillClient2('adj-cliente2', cy.clientId, cy.clientId2);
   const client = DATA.clients.find(c=>c.id===cy.clientId);
   const own = (cy.patologias||[]);
   patPickerSet('adj-pat', own);
@@ -3613,6 +3640,7 @@ function openAdjust(cycleId){
 function applyAdjust(){
   const cy = DATA.cycles.find(c=>c.id===document.getElementById('adj-id').value); if(!cy) return;
   cy.patologias = patPickerGet('adj-pat');
+  cy.clientId2 = document.getElementById('adj-cliente2').value || '';
   const pick = dayPickGet('adj-days'); const from = parseInt(document.getElementById('adj-from').value)||0;
   const nPick = pick.filter(x=>x>0).length;
   if(nPick){
@@ -3622,7 +3650,7 @@ function applyAdjust(){
       const old = sem.dias;
       let pk = pick.slice();
       if(ids.length && ids.length < nPick){ let keep = ids.length; pk = pk.map(x=>{ if(x>0){ if(keep>0){ keep--; return x; } return 0; } return 0; }); }
-      const ptOk = isPtClient(DATA.clients.find(x=>x.id===cy.clientId));
+      const ptOk = cycleIsPt(cy);
       const lay = ids.length ? layoutDays(ids, pk, ptOk) : DIAS.map((_,i)=>pick[i]===2 && ptOk ? { workoutId:'', pt:true, ptHora:'' } : { workoutId:'' });
       sem.dias = lay.map((d,i)=>{
         if(old[i] && old[i].aulaId){ d.aulaId = old[i].aulaId; d.aulaHora = old[i].aulaHora||''; }
@@ -3633,7 +3661,7 @@ function applyAdjust(){
   }
   // avisos de contraindicações
   const client = DATA.clients.find(c=>c.id===cy.clientId);
-  const keys = [...new Set([...clientPats(client), ...(cy.patologias||[])])];
+  const keys = [...new Set([...cyclePats(cy), ...(cy.patologias||[])])];
   const msgs = [];
   const seen = new Set();
   cy.semanas.forEach(sem=>sem.dias.forEach(d=>{ if(!d.workoutId || seen.has(d.workoutId)) return; seen.add(d.workoutId);
@@ -3659,7 +3687,7 @@ function updateDayAssign(cycleId, weekIdx, dayIdx, workoutId){
   const cycle = DATA.cycles.find(c=>c.id===cycleId);
   const w = DATA.workouts.find(x=>x.id===workoutId);
   const client = DATA.clients.find(c=>c.id===cycle.clientId);
-  const keys = [...new Set([...clientPats(client), ...wPats(w), ...(cycle.patologias||[]).filter(k=>PATOLOGIAS[k])])];
+  const keys = [...new Set([...cyclePats(cycle), ...wPats(w), ...(cycle.patologias||[]).filter(k=>PATOLOGIAS[k])])];
   if(w){
     for(const key of keys){
       const bad = (w.exercicios||[]).map(l=>DATA.exercises.find(x=>x.id===l.exId)).filter(e=>e && contraAlert(e,key));
@@ -3690,8 +3718,8 @@ function isoOf(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart
 function ptItems(filterId){
   const items = [];
   DATA.cycles.forEach(cy=>{
-    if(filterId && cy.clientId!==filterId) return;
-    if(!cy.inicio || !isPtClient(DATA.clients.find(c=>c.id===cy.clientId))) return;
+    if(filterId && !cycleHas(cy, filterId)) return;
+    if(!cy.inicio || !cycleIsPt(cy)) return;
     const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
     cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
       if(!d.pt) return;
@@ -3710,7 +3738,7 @@ function ptEventInfo(x){
   let endHm = '';
   if(hm.length===4){ const t = (parseInt(hm.slice(0,2))*60 + parseInt(hm.slice(2)) + 60) % 1440; endHm = String(Math.floor(t/60)).padStart(2,'0') + String(t%60).padStart(2,'0'); }
   return {
-    titulo: 'PT — ' + clientName(x.cy.clientId),
+    titulo: 'PT — ' + cycleNames(x.cy),
     desc: (w ? w.nome + '\n' : '') + (x.sem.progressao ? x.sem.progressao + '\n' : '') + ex.join('\n'),
     dateK, hm, endHm
   };
@@ -3810,7 +3838,7 @@ async function gcLoadDay(key, dt){
 function cycleDayFor(clientId, key){
   const t = new Date(key+'T00:00:00'); let best = null;
   DATA.cycles.forEach(cy=>{
-    if(cy.clientId!==clientId || !cy.inicio) return;
+    if(!cycleHas(cy, clientId) || !cy.inicio) return;
     const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
     const off = Math.round((t-d0)/86400000); const w = Math.floor(off/7), di = ((off%7)+7)%7;
     if(off<0 || w>=cy.semanas.length) return;
@@ -3827,18 +3855,23 @@ async function renderHoje(){
   const dt = new Date(); dt.setHours(0,0,0,0); dt.setDate(dt.getDate() + hojeOff);
   const key = isoOf(dt);
   const items = {}; const loose = [];
-  ptItems('').filter(x=>isoOf(x.dt)===key).forEach(x=>{ items[x.cy.clientId+'|'+x.cy.id] = { clientId:x.cy.clientId, hora:x.d.ptHora||'', wid:x.d.workoutId, cy:x.cy, sem:x.sem, cal:false }; });
+  ptItems('').filter(x=>isoOf(x.dt)===key).forEach(x=>{ items['cy|'+x.cy.id] = { clientId:x.cy.clientId, hora:x.d.ptHora||'', wid:x.d.workoutId, cy:x.cy, sem:x.sem, cal:false }; });
   let calOk = false;
   const evs = await gcLoadDay(key, dt);
   if(seq!==hojeSeq) return;
   if(evs){
     calOk = true;
     evs.forEach(ev=>{
-      const c = matchClientByTitle(ev.summary||'');
+      let c = matchClientByTitle(ev.summary||''); let cdG = c ? cycleDayFor(c.id, key) : null;
+      if(!c || !cdG){
+        const nt = normCal(ev.summary||'');
+        const all = DATA.clients.filter(isPtClient).filter(x=>{ const fn = normCal((x.nome||'').split(' ')[0]); return nt.includes(normCal(x.nome||'~')) || nameCombos2(x.nome).some(k=>nt.includes(k)) || (fn && new RegExp('\\b'+fn.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b').test(nt)); });
+        for(const x of all){ const d2 = cycleDayFor(x.id, key); if(d2 && d2.cy.clientId2 && cycleClientIds(d2.cy).filter(i=>all.some(a=>a.id===i)).length>=2){ c = x; cdG = d2; break; } }
+      }
       const d0 = new Date(ev.start.dateTime); const hora = String(d0.getHours()).padStart(2,'0')+':'+String(d0.getMinutes()).padStart(2,'0');
       if(!c){ loose.push({ hora, titulo: ev.summary||'(sem título)' }); return; }
-      const cd = cycleDayFor(c.id, key);
-      const k = cd ? c.id+'|'+cd.cy.id : c.id+'|'+ev.id;
+      const cd = cdG || cycleDayFor(c.id, key);
+      const k = cd ? 'cy|'+cd.cy.id : c.id+'|'+ev.id;
       const prev = items[k];
       items[k] = { clientId:c.id, hora, wid: cd ? cd.d.workoutId : '', cy: cd?cd.cy:null, sem: cd?cd.sem:null, cal:true, titulo: ev.summary||'', pt: prev ? true : false };
     });
@@ -3851,13 +3884,13 @@ async function renderHoje(){
   box.innerHTML = todo.map(x=>{
     const w = DATA.workouts.find(v=>v.id===x.wid);
     const c = DATA.clients.find(v=>v.id===x.clientId);
-    const pats = c ? clientPats(c).map(k=>PATOLOGIAS[k]&&PATOLOGIAS[k].nome).filter(Boolean) : [];
+    const pats = (x.cy ? cyclePats(x.cy) : clientPats(c)).map(k=>PATOLOGIAS[k]&&PATOLOGIAS[k].nome).filter(Boolean);
     const rows = w ? (w.exercicios||[]).map((l,i)=>{ const e = DATA.exercises.find(v=>v.id===l.exId); if(!e) return '';
       return `<div style="padding:5px 0; border-top:1px solid var(--line, #3335);"><b>${i+1}. ${esc(e.nome)}</b><div class="view-sub" style="margin:0;">${esc(l.series)} séries × ${esc(l.reps)} reps${l.carga ? ' · '+esc(l.carga) : ''}${l.descanso ? ' · descanso '+esc(l.descanso) : ''}${l.met ? ' · '+esc(l.met) : ''}${l.variante ? ' · variante: '+esc(l.variante) : ''}</div>${e.notas ? `<div class="view-sub" style="margin:0;">${esc(e.notas)}</div>` : ''}</div>`; }).join('') : '<div class="view-sub">Sem treino atribuído neste dia no ciclo do cliente.</div>';
     return `<div style="border:1px solid #3a7bd5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
       <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline;">
         <span class="tag" style="background:#3a7bd5;color:#fff;">${x.hora ? esc(x.hora) : 'sem hora'}</span>
-        <b style="font-size:16px;">${esc(clientName(x.clientId))}</b>
+        <b style="font-size:16px;">${esc(x.cy ? cycleNames(x.cy) : clientName(x.clientId))}</b>${x.cy && x.cy.clientId2 ? ' <span class="tag">PT Grupo</span>' : ''}
         <span class="view-sub" style="margin:0;">${w ? esc(w.nome) : ''}${x.cy ? ' · '+esc(x.cy.nome)+' · S'+x.sem.numero : ''}${x.cal ? ' · do calendário' : ''}</span></div>
       ${pats.length ? `<div style="margin-top:4px; font-size:12.5px; color:#c0533a;">Atenção: ${esc(pats.join(', '))}</div>` : ''}
       ${x.sem && x.sem.progressao ? `<div class="view-sub" style="margin:4px 0;">${esc(x.sem.progressao)}</div>` : ''}
@@ -3869,8 +3902,8 @@ function renderPtAgenda(){
   const today = new Date(); today.setHours(0,0,0,0);
   const items = [];
   DATA.cycles.forEach(cy=>{
-    if(filterId && cy.clientId!==filterId) return;
-    if(!cy.inicio || !isPtClient(DATA.clients.find(c=>c.id===cy.clientId))) return;
+    if(filterId && !cycleHas(cy, filterId)) return;
+    if(!cy.inicio || !cycleIsPt(cy)) return;
     const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
     cy.semanas.forEach((sem, wi)=>sem.dias.forEach((d, di)=>{
       if(!d.pt) return;
@@ -3888,7 +3921,7 @@ function renderPtAgenda(){
       const w = DATA.workouts.find(v=>v.id===x.d.workoutId);
       return `<div style="padding:7px 0; border-top:1px solid var(--line, #3335); display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline;">
         <b>${esc(DIAS[x.di].slice(0,3))} ${formatDate(iso(x.dt))}</b>${x.d.ptHora ? `<span class="tag" style="background:#3a7bd5;color:#fff;">${esc(x.d.ptHora)}</span>` : ''}
-        <span>${esc(clientName(x.cy.clientId))}</span><span class="view-sub" style="margin:0;">${w ? esc(w.nome) : 'sem treino atribuído'} · S${x.sem.numero}</span>
+        <span>${esc(cycleNames(x.cy))}</span><span class="view-sub" style="margin:0;">${w ? esc(w.nome) : 'sem treino atribuído'} · S${x.sem.numero}</span>
         ${x.d.workoutId ? wExListHtml(x.d.workoutId) : ''}</div>`; }).join('') : '<div class="view-sub">Sem treinos de PT futuros.</div>') + '</div>';
 }
 function renderCycles(){
@@ -3898,7 +3931,7 @@ function renderCycles(){
   const filterId = document.getElementById('cycle-client-filter').value;
   const list = document.getElementById('ciclos-list');
   let cycles = DATA.cycles;
-  if(filterId) cycles = cycles.filter(c=>c.clientId===filterId);
+  if(filterId) cycles = cycles.filter(c=>cycleHas(c, filterId));
 
   if(cycles.length===0){
     list.innerHTML = `<div class="empty"><strong>${DATA.cycles.length===0 ? 'Ainda não há ciclos' : 'Nenhum ciclo para este cliente'}</strong>Cria um ciclo para começar a planear as semanas de treino.</div>`;
@@ -3914,7 +3947,7 @@ function renderCycles(){
           <div class="day-assign" style="flex-wrap:wrap;">
             <select onchange="updateDayAssign('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">${opts}</select>
             <select onchange="updateDayAula('${cycle.id}', ${wIdx}, ${dIdx}, this.value)" title="Aula de grupo">${'<option value="">+ aula de grupo</option>' + (DATA.aulas||[]).map(a=>`<option value="${a.id}" ${sem.dias[dIdx].aulaId===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>
-            ${isPtClient(DATA.clients.find(c=>c.id===cycle.clientId)) ? '' : '<!--'}<label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>${isPtClient(DATA.clients.find(c=>c.id===cycle.clientId)) ? '' : '-->'}
+            ${cycleIsPt(cycle) ? '' : '<!--'}<label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>${cycleIsPt(cycle) ? '' : '-->'}
             ${sem.dias[dIdx].pt ? `<input type="time" value="${esc(sem.dias[dIdx].ptHora||'')}" style="max-width:110px;" title="Hora do treino de PT" onchange="updateDayPTHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].aulaId ? `<input type="time" value="${esc(sem.dias[dIdx].aulaHora||'')}" style="max-width:110px;" title="Hora da aula" onchange="updateDayAulaHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].workoutId ? wExListHtml(sem.dias[dIdx].workoutId) : ''}
@@ -3938,7 +3971,7 @@ function renderCycles(){
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
         <div>
           <div style="font-weight:600; font-size:17px;">${esc(cycle.nome)}</div>
-          <div class="view-sub">${esc(clientName(cycle.clientId))}${(cycle.patologias||[]).filter(k=>PATOLOGIAS[k]).length ? ' · '+cycle.patologias.filter(k=>PATOLOGIAS[k]).map(k=>esc(PATOLOGIAS[k].nome)).join(' + ') : ''}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
+          <div class="view-sub">${esc(cycleNames(cycle))}${cycle.clientId2 ? ' (PT Grupo)' : ''}${(cycle.patologias||[]).filter(k=>PATOLOGIAS[k]).length ? ' · '+cycle.patologias.filter(k=>PATOLOGIAS[k]).map(k=>esc(PATOLOGIAS[k].nome)).join(' + ') : ''}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-sm" onclick="openAdjust('${cycle.id}')">⚙ Ajustar plano</button>
@@ -3961,7 +3994,7 @@ function renderCycles(){
 function buildCyclePrintHtml(cycleId){
   const cy = DATA.cycles.find(c=>c.id===cycleId); if(!cy) return '';
   const client = DATA.clients.find(c=>c.id===cy.clientId);
-  const cname = client ? client.nome : '';
+  const cname = cycleNames(cy);
   const strip = n => String(n||'').replace(cy.nome + ' — ', '');
   const exById = id => DATA.exercises.find(e=>e.id===id);
   // treinos usados, por ordem de aparecimento
@@ -3972,7 +4005,7 @@ function buildCyclePrintHtml(cycleId){
   if(client){
     if(client.objetivo) meta.push(['Objetivo', client.objetivo]);
     if(client.nivel) meta.push(['Nível', client.nivel]);
-    const cp = clientPats(client);
+    const cp = cyclePats(cy);
     if(cp.length) meta.push(['Condição', cp.map(k=>PATOLOGIAS[k].nome).join(', ')]);
   }
   meta.push(['Duração', cy.numSemanas + ' semanas']);
@@ -5083,10 +5116,10 @@ function protoExObj(x, p){
   if(cd) return { nome:cd.nome, grupo:cd.grupo, modalidade:'Corrida', patologias:[] };
   return { nome:x[0], grupo:x[4]||p.g, modalidade:p.mod||'Reabilitação', patologias:p.pat?[p.pat]:[] };
 }
-function protoKeys(clientId, extra){
-  const c = DATA.clients.find(x=>x.id===clientId);
+function protoKeys(clientId, extra, clientId2){
+  const c = DATA.clients.find(x=>x.id===clientId); const c2 = DATA.clients.find(x=>x.id===clientId2);
   const ks = [];
-  [...clientPats(c), ...(extra||[])].forEach(k=>{ if(k && PATOLOGIAS[k] && !ks.includes(k)) ks.push(k); });
+  [...clientPats(c), ...clientPats(c2), ...(extra||[])].forEach(k=>{ if(k && PATOLOGIAS[k] && !ks.includes(k)) ks.push(k); });
   return ks;
 }
 function protoBroadInfo(keys){
@@ -5140,7 +5173,7 @@ function protoPatCheck(){
   const box = document.getElementById('proto-pat-box');
   const p = protoById(document.getElementById('proto-id').value);
   if(!p){ box.style.display = 'none'; return; }
-  const keys = protoKeys(document.getElementById('proto-cliente').value, patPickerGet('proto-extra'));
+  const keys = protoKeys(document.getElementById('proto-cliente').value, patPickerGet('proto-extra'), document.getElementById('proto-cliente2').value);
   const act = keys.filter(k=>k!==p.pat);
   if(!keys.length || (!p.prova && !act.length)){ box.style.display = 'none'; return; }
   const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
@@ -5184,6 +5217,7 @@ function openProtoModal(id){
   document.getElementById('proto-id').value = id;
   document.getElementById('proto-title').textContent = p.nome;
   document.getElementById('proto-cliente').innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  fillClient2('proto-cliente2', document.getElementById('proto-cliente').value);
   document.getElementById('proto-inicio').value = new Date().toISOString().slice(0,10);
   document.getElementById('proto-fase').innerHTML = p.fases.map((f,i)=>`<option value="${i}">${esc(f.nome)}</option>`).join('');
   document.getElementById('proto-fase').value = '0';
@@ -5216,7 +5250,8 @@ function protoCreateCycle(){
   const clientId = document.getElementById('proto-cliente').value;
   const inicio0 = document.getElementById('proto-inicio').value;
   const fi0 = parseInt(document.getElementById('proto-fase').value) || 0;
-  const keys = protoKeys(clientId, patPickerGet('proto-extra'));
+  const clientId2 = document.getElementById('proto-cliente2').value;
+  const keys = protoKeys(clientId, patPickerGet('proto-extra'), clientId2);
   const act = keys.filter(k=>k!==p.pat);
   const hasAdapt = p.prova ? keys.length>0 : act.length>0;
   const adapt = hasAdapt ? document.getElementById('proto-adapt').checked : false;
@@ -5245,7 +5280,7 @@ function protoCreateCycle(){
     const ws = protoMakeWorkouts(p, i, opt);
     ws.forEach(w=>allW.push(w.id));
     for(let s=1; s<=nSem; s++){
-      const dias = layoutDays(protoFitSessions(ws.map(w=>w.id), nFit), dayPick, isPtClient(DATA.clients.find(x=>x.id===clientId)));
+      const dias = layoutDays(protoFitSessions(ws.map(w=>w.id), nFit), dayPick, [clientId, clientId2].some(i=>i && isPtClient(DATA.clients.find(x=>x.id===i))));
       dias.forEach(d=>{ if(d.workoutId) usedW.add(d.workoutId); });
       let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '');
       if(s===nSem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
@@ -5259,7 +5294,7 @@ function protoCreateCycle(){
   }
   if(nFit){ const drop = allW.filter(id=>!usedW.has(id)); if(drop.length) DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id)); }
   const nome = p.nome.split(' (')[0] + (provaISO ? ' — prova a ' + formatDate(provaISO) : ' (protocolo)');
-  DATA.cycles.push({ id: uid(), nome, clientId, inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '' });
+  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: clientId2 || '', inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '' });
   closeModal('modal-proto');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
