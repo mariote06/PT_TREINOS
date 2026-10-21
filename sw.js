@@ -1,6 +1,6 @@
 // Service worker da app CICLO. — permite abrir sem rede.
-// Quando atualizares a app no GitHub, muda a versão abaixo (ex.: ciclo-v39) para forçar a atualização.
-const CACHE = 'ciclo-v39';
+// Quando atualizares a app no GitHub, muda a versão abaixo (ex.: ciclo-v42) para forçar a atualização.
+const CACHE = 'ciclo-v42';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 const XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 

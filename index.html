@@ -578,8 +578,8 @@
     <div class="row-3">
       <div class="field">
         <label>Objetivo</label>
-        <select id="plan-objetivo">
-          <option>Hipertrofia</option><option>Força</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option>
+        <select id="plan-objetivo" onchange="planObjChange()">
+          <option>Hipertrofia</option><option>Força</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option><option>Performance</option><option>Reabilitação</option>
         </select>
       </div>
       <div class="field">
@@ -599,7 +599,10 @@
       </div>
       <div class="field"><label>Semanas do ciclo</label><input id="plan-semanas" type="number" min="2" max="12" value="4"></div>
     </div>
+    <div class="field" id="plan-perf-field" style="display:none;"><label>Performance para (a app define os treinos de força de apoio à modalidade)</label><select id="plan-perf"><option value="">Força e potência (geral)</option><option value="corrida10k">Corrida — 10 km</option><option value="meia">Corrida — meia-maratona</option><option value="maratona">Corrida — maratona</option><option value="ciclismo">Ciclismo</option><option value="trail">Trail</option></select></div>
     <div class="field"><label>Equipamento disponível (o plano só usa exercícios com este equipamento)</label><div id="plan-equiplist"></div></div>
+    <div class="field"><label>Local dos treinos de PT (a app gera os treinos para este local)</label><select id="plan-local"><option value="ginasio">No ginásio</option><option value="casa">Em casa</option></select>
+      <div style="margin-top:6px;"><div class="view-sub">Equipamento disponível em casa:</div><div id="plan-equipcasa"></div></div></div>
     <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, ignora «Treinos por semana»)</label><div id="plan-dayspick" data-v="0000000"></div></div>
     <div class="field">
       <label>Patologias / condições (podes escolher várias; o plano segue as recomendações do ACSM)</label>
@@ -931,6 +934,9 @@
     <div class="view-sub" id="adj-title" style="margin-bottom:12px;"></div>
     <input type="hidden" id="adj-id">
     <div class="field"><label>2.º cliente — PT Grupo (opcional)</label><select id="adj-cliente2"></select></div>
+    <div class="field"><label>Local dos treinos de PT (a app gera os treinos para este local)</label><select id="adj-local"><option value="ginasio">No ginásio</option><option value="casa">Em casa</option></select>
+      <div style="margin-top:6px;"><div class="view-sub">Equipamento disponível em casa:</div><div id="adj-equipcasa"></div></div></div>
+    
     <div class="field"><label>Patologias / condicionantes deste plano (podes escolher várias)</label><div class="patpick" id="adj-pat" data-keys="[]" data-cb=""></div>
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
     <div class="field"><label>Dias da semana: toca para alternar descanso → treino → treino de PT</label><div id="adj-days" data-v="0000000"></div></div>
@@ -958,8 +964,10 @@
     <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
     <div class="field"><label>Treinos por semana</label><select id="proto-nsem"><option value="">Automático (como vem no protocolo)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
       <div class="view-sub" style="margin-top:4px;">A app ajusta cada fase a este número e distribui os dias. Mantém sempre o treino mais longo (ex.: corrida longa) no último dia.</div></div>
-    <div class="field"><label>Objetivo (ajusta os blocos de força dos protocolos de prova)</label><select id="proto-obj"><option value="">Automático (objetivo da ficha)</option><option>Força</option><option>Hipertrofia</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option></select></div>
+    <div class="field"><label>Objetivo (ajusta os blocos de força dos protocolos de prova)</label><select id="proto-obj"><option value="">Automático (objetivo da ficha)</option><option>Força</option><option>Hipertrofia</option><option>Perda de gordura</option><option>Condição física geral</option><option>Tonificação</option><option>Performance</option></select></div>
     <div class="field"><label>Equipamento disponível (a app troca os exercícios que precisem de equipamento que não tens)</label><div id="proto-equiplist"></div></div>
+    <div class="field"><label>Local dos treinos de PT (a app gera os treinos para este local)</label><select id="proto-local"><option value="ginasio">No ginásio</option><option value="casa">Em casa</option></select>
+      <div style="margin-top:6px;"><div class="view-sub">Equipamento disponível em casa:</div><div id="proto-equipcasa"></div></div></div>
     <div class="field"><label>Condição física (a app ajusta volume e séries)</label><select id="proto-nivel"><option value="">Automático (nível da ficha do cliente)</option><option>Iniciante</option><option>Intermédio</option><option>Avançado</option></select>
       <div class="view-sub" style="margin-top:4px;">Intermédio = protocolo como está. Iniciante reduz cerca de 25% o volume das corridas e uma série nos exercícios de força. Avançado aumenta cerca de 10%. Com dois clientes, vale o nível mais baixo.</div></div>
     <div class="field"><label>Ou escolhe tu os dias: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, o número acima é ignorado)</label><div id="proto-dayspick" data-v="0000000"></div></div>
@@ -2271,14 +2279,37 @@ function exerciseName(id){
   const e = DATA.exercises.find(x=>x.id===id);
   return e ? e.nome : '(exercício removido)';
 }
+let treinosSelMode = false; const treinosSel = new Set();
+function treinoUsed(id){ return DATA.cycles.some(cy=>cy.semanas.some(w=>w.dias.some(d=>d.workoutId===id))); }
+function toggleTreinosSel(){ treinosSelMode = !treinosSelMode; treinosSel.clear(); renderWorkouts(); }
+function treinoSelToggle(id, on){ if(on) treinosSel.add(id); else treinosSel.delete(id); renderWorkouts(); }
+function treinosSelAll(mode){
+  treinosSel.clear();
+  DATA.workouts.forEach(w=>{ if(mode==='all' || (mode==='unused' && !treinoUsed(w.id))) treinosSel.add(w.id); });
+  renderWorkouts();
+}
+function deleteSelectedWorkouts(){
+  const ids = [...treinosSel].filter(id=>DATA.workouts.some(w=>w.id===id));
+  if(!ids.length) return;
+  const usados = ids.filter(treinoUsed).length;
+  if(!confirm('Eliminar ' + ids.length + ' treino(s)?' + (usados ? '\n\n' + usados + ' deles estão em ciclos; esses dias ficam sem treino atribuído.' : '') + '\n\nNão dá para desfazer.')) return;
+  DATA.workouts = DATA.workouts.filter(w=>!ids.includes(w.id));
+  DATA.cycles.forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(ids.includes(d.workoutId)) d.workoutId = ''; })));
+  treinosSel.clear(); treinosSelMode = false;
+  saveData();
+}
 function renderWorkouts(){
   const list = document.getElementById('treinos-list');
   if(DATA.workouts.length===0){
     list.innerHTML = `<div class="empty"><strong>Ainda não há treinos</strong>Cria um treino combinando exercícios da biblioteca, ou usa «⚡ Gerar plano automático» para criar vários de uma vez.</div>`;
     return;
   }
-  list.innerHTML = `<div class="list">` + DATA.workouts.map(w=>`
+  const bar = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">` + (treinosSelMode
+    ? `<button class="btn btn-sm" onclick="treinosSelAll('all')">Selecionar todos</button><button class="btn btn-sm" onclick="treinosSelAll('unused')">Selecionar os que não estão em ciclos</button><button class="btn btn-sm" onclick="treinosSelAll('none')">Limpar</button><button class="btn btn-sm btn-danger" ${treinosSel.size?'':'disabled'} onclick="deleteSelectedWorkouts()">Eliminar selecionados (${treinosSel.size})</button><button class="btn btn-ghost btn-sm" onclick="toggleTreinosSel()">Cancelar</button>`
+    : `<button class="btn btn-sm" onclick="toggleTreinosSel()">☑ Selecionar para eliminar</button>`) + `</div>`;
+  list.innerHTML = bar + `<div class="list">` + DATA.workouts.map(w=>`
     <div class="list-row" style="align-items:flex-start;">
+      ${treinosSelMode ? `<label style="padding:4px 10px 0 0; cursor:pointer;"><input type="checkbox" ${treinosSel.has(w.id)?'checked':''} onchange="treinoSelToggle('${w.id}', this.checked)" style="width:20px; height:20px;"></label>` : ''}
       <div class="list-row-main">
         <div class="list-row-title">${esc(w.nome)}</div>
         <div class="list-row-meta">${w.exercicios.map(l=>`${esc(exerciseName(l.exId))}${l.variante?' ('+esc(l.variante)+')':''} — ${l.series}x${l.reps}${l.carga?' @ '+esc(l.carga):''}${l.met?' ['+esc(l.met)+']':''}`).join(' · ')}</div>
@@ -2291,7 +2322,7 @@ function renderWorkouts(){
 }
 
 // ---------- FICHA DO CLIENTE ----------
-const OBJETIVOS = ['Hipertrofia','Força','Perda de gordura','Condição física geral','Tonificação'];
+const OBJETIVOS = ['Hipertrofia','Força','Perda de gordura','Condição física geral','Tonificação','Performance','Reabilitação'];
 const NIVEIS = ['Iniciante','Intermédio','Avançado'];
 let fichaId = null;
 function openFicha(id){
@@ -2457,6 +2488,7 @@ function renderFicha(){
     <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Perfil de treino</h2>
     <div class="row-4">
       <div class="field"><label>Objetivo</label><select id="f-objetivo">${optionsHtml(OBJETIVOS, c.objetivo, '—')}</select></div>
+      <div class="field"><label>Performance para</label><select id="f-perf"><option value="" ${!c.perf?'selected':''}>—</option><option value="forca" ${c.perf==='forca'?'selected':''}>Força e potência (geral)</option><option value="corrida10k" ${c.perf==='corrida10k'?'selected':''}>Corrida — 10 km</option><option value="meia" ${c.perf==='meia'?'selected':''}>Corrida — meia-maratona</option><option value="maratona" ${c.perf==='maratona'?'selected':''}>Corrida — maratona</option><option value="ciclismo" ${c.perf==='ciclismo'?'selected':''}>Ciclismo</option><option value="trail" ${c.perf==='trail'?'selected':''}>Trail</option></select></div>
       <div class="field"><label>Nível</label><select id="f-nivel">${optionsHtml(NIVEIS, c.nivel, '—')}</select></div>
       <div class="field"><label>Treinos por semana</label><input id="f-dias" type="number" min="1" max="7" value="${esc(c.diasSemana||'')}"></div>
       <div class="field"><label>Duração do treino</label><select id="f-duracao">${optionsHtml(['30','45','60','75'], String(c.duracaoSessao||''), '—')}</select></div>
@@ -2500,7 +2532,7 @@ function saveFicha(){
   Object.assign(c, {
     nome, cat: v('f-cat') || 'pt', codigo: v('f-codigo'), tipo: v('f-tipo'), servico: v('f-servico'), atividade: v('f-atividade'),
     cadInicio: v('f-cadinicio'), cadFim: v('f-cadfim'),
-    objetivo: v('f-objetivo'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: patPickerGet('f-patologia')[0] || '', patologias: patPickerGet('f-patologia'), notas: v('f-notas'),
+    objetivo: v('f-objetivo'), perf: v('f-perf'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: patPickerGet('f-patologia')[0] || '', patologias: patPickerGet('f-patologia'), notas: v('f-notas'),
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
   c.extras = Array.from(document.querySelectorAll('#f-extras .extra-row')).map(r=>({ k: r.querySelector('.ex-k').value.trim(), v: r.querySelector('.ex-v').value.trim() })).filter(e=>e.k||e.v);
@@ -2979,8 +3011,9 @@ function equipPreset(id, name){
   if(!(name in EQ_PRESETS)) return;
   const el = document.getElementById(id); el.dataset.open = '1'; equipPickerInit(id, EQ_PRESETS[name]);
 }
+function homeEquipDefault(){ return DATA.equipCasa === undefined ? EQ_PRESETS['Casa, com elásticos'] : DATA.equipCasa; }
 function equipSaveDefault(id){
-  DATA.equip = equipPickerGet(id);
+  if(id.indexOf('casa')>=0) DATA.equipCasa = equipPickerGet(id) || equipAll(); else DATA.equip = equipPickerGet(id);
   const el = document.getElementById(id); el.dataset.open = '1';
   saveData();
   alert('Equipamento guardado como padrão.');
@@ -3029,7 +3062,7 @@ function layoutDays(ids, pick, allowPT){
   });
   return out;
 }
-function importResult(r, clientId, pick, clientId2){
+function importResult(r, clientId, pick, clientId2, meta){
   const cycleName = r.nome || 'Ciclo gerado por IA';
 
   const workoutIds = {};
@@ -3059,8 +3092,11 @@ function importResult(r, clientId, pick, clientId2){
   DATA.cycles.push({
     id: uid(), nome: cycleName, clientId, clientId2: clientId2 || '',
     inicio: new Date().toISOString().slice(0,10),
-    numSemanas: semanas.length, semanas
+    numSemanas: semanas.length, semanas, meta: meta || null, localPT: (meta && meta.local) || 'ginasio'
   });
+  { const cyN = DATA.cycles[DATA.cycles.length-1]; if(cyN.localPT==='casa') ptApplyLocal(cyN, true); else ptApplyLocal(cyN, false);
+    const used = new Set(); DATA.cycles.forEach(c=>c.semanas.forEach(w=>w.dias.forEach(d=>d.workoutId&&used.add(d.workoutId))));
+    Object.values(workoutIds).forEach(id=>{ if(!used.has(id)) DATA.workouts = DATA.workouts.filter(w=>w.id!==id); }); }
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();
 }
@@ -3071,14 +3107,41 @@ const PLAN_OBJ = {
   'Hipertrofia':           { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[4,3]}, reps:['8-10','10-12'], rest:[90,60], tempo:45, carga:'RPE 7-8', cardio:0 },
   'Perda de gordura':      { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[4,3]}, reps:['10-12','12-15'], rest:[60,45], tempo:40, carga:'RPE 7', cardio:10 },
   'Condição física geral': { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[3,3]}, reps:['8-12','12-15'], rest:[60,45], tempo:40, carga:'RPE 6-7', cardio:8 },
-  'Tonificação':           { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[3,3]}, reps:['12-15','15'], rest:[60,45], tempo:40, carga:'RPE 7', cardio:8 }
+  'Tonificação':           { series:{Iniciante:[3,2],Intermédio:[3,3],Avançado:[3,3]}, reps:['12-15','15'], rest:[60,45], tempo:40, carga:'RPE 7', cardio:8 },
+  'Performance':           { series:{Iniciante:[3,2],Intermédio:[4,3],Avançado:[5,3]}, reps:['3-5','6-8'], rest:[150,90], tempo:35, carga:'RPE 8 (≈80-90% 1RM), com intenção de velocidade máxima', cardio:0 },
+  'Reabilitação':          { series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[3,3]}, reps:['10-12','12-15'], rest:[60,45], tempo:50, carga:'RPE 5-6, dor ≤ 3/10', cardio:8 }
 };
 const PLAN_WEEK = {
   'Força': ['Adaptação: cargas leves (RPE 6), técnica perfeita','Subir a carga 2,5–5% (RPE 7)','Subir a carga 2,5–5% (RPE 8, sem chegar à falha)','Deload: 2 séries por exercício, cargas da S1, RPE 6'],
   'Hipertrofia': ['Começar no fundo da gama de reps, RPE 7','Mais 1 rep por série (ou +2,5% de carga)','Chegar ao topo da gama de reps, RPE 8–9 na última série','Deload: menos 1 série por exercício, RPE 6'],
   'Perda de gordura': ['Ritmo constante, descansos curtos, RPE 7','Reduzir o descanso em 10 s','Reduzir o descanso mais 10 s ou +2,5% de carga','Deload: menos 1 série, cardio leve'],
   'Condição física geral': ['RPE 6: aprender e fixar os movimentos','Mais 1 rep por série','+2,5% de carga mantendo as reps','Deload: menos 1 série, RPE 6'],
-  'Tonificação': ['RPE 7, controlo do movimento','Mais 1–2 reps por série','+2,5% de carga mantendo as reps','Deload: menos 1 série, RPE 6']
+  'Tonificação': ['RPE 7, controlo do movimento','Mais 1–2 reps por série','+2,5% de carga mantendo as reps','Deload: menos 1 série, RPE 6'],
+  'Performance': ['Acumulação: 4-5 reps a cerca de 80% 1RM (RPE 7), com intenção de velocidade máxima; saltos e balísticos 3×5 com repouso completo','Intensificação: subir a carga 2,5–5% (RPE 8), mantendo a velocidade de execução; parar a série se a velocidade cair','Pico: 3 reps a cerca de 87% 1RM (RPE 8-9), repouso de 3 min nos exercícios principais','Deload: cerca de 40% menos volume e mesma intensidade (RPE 6-7) para dissipar a fadiga e manter a adaptação neural'],
+  'Reabilitação': ['Proteção: isométricos e ativação, dor ≤ 3/10 durante e nas 24 h seguintes; sem aumentar a carga','Carga lenta e progressiva (3 s a subir, 3 s a descer): +1 série ou +1 rep se a dor se mantiver ≤ 3/10','Força: subir a carga 5–10% e descer as reps (15 → 12); dor até 4/10 aceitável se voltar ao nível basal em 24 h','Consolidação: menos 1 série e reavaliar os critérios funcionais antes de avançar de fase']
+};
+const PERF = {
+  forca: { nome:'Força e potência' },
+  corrida10k: { nome:'Corrida — 10 km', dias:3, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[4,2]}, reps:['4-6','8-10'], rest:[150,75], carga:'RPE 8 (≈85% 1RM), técnica perfeita', plyo:true,
+    tpl:[{nome:'Força de pernas e pliometria', slots:['PW_JUMP','SQ','HIP','UNI','CALF','CORE']},{nome:'Unilateral, glúteos e core', slots:['PW_SWING','UNI','GLU','HAM','CALF','CORE','ROW']},{nome:'Força geral de apoio', slots:['SQ','HIP','UNI','CALF','CORE','LAT','PUSH_H']}],
+    semana:['Acumulação: 3 séries de 6 reps (≈80% 1RM, RPE 7). Saltos 3×5. Fazer a força nos dias de corrida dura ou com pelo menos 6 h de intervalo','Subir 2,5–5% (RPE 8). Manter a corrida de qualidade intacta','Pico: 4-5 reps a ≈85% 1RM (RPE 8-9). Priorizar a qualidade, sem falha','Deload: menos 40% de volume e mesma carga (RPE 6-7); semana de teste de ritmo na corrida'],
+    av:['Fundamentação (corrida 10 km): o treino de força pesado e a pliometria melhoram a economia de corrida e o desempenho em corredores, sem aumentar a massa muscular de forma relevante (Balsalobre-Fernández et al., 2016, JSCR; Blagrove et al., 2018, Sports Med; Saunders et al., 2006, JSCR).','Estrutura: 2 sessões por semana, cargas de 80-90% 1RM em 3-6 reps, trabalho unilateral (a corrida é uma sucessão de apoios unipodais), rigidez do tendão de Aquiles e potência de extensão da anca. A força não substitui o treino de corrida: deve ser feita nos dias de corrida dura ou com pelo menos 6 h de intervalo (Wilson et al., 2012, JSCR).'] },
+  meia: { nome:'Corrida — meia-maratona', dias:2, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[3,2]}, reps:['5-6','8-10'], rest:[150,75], carga:'RPE 7-8 (≈80-85% 1RM)', plyo:true,
+    tpl:[{nome:'Força de pernas e pliometria', slots:['PW_JUMP','SQ','HIP','UNI','CALF','CORE']},{nome:'Unilateral, glúteos e core', slots:['UNI','GLU','HAM','CALF','CORE','ROW']}],
+    semana:['Acumulação: 3 séries de 6 reps (≈80% 1RM, RPE 7), saltos 2×5','Subir 2,5–5% (RPE 7-8) mantendo a corrida longa intacta','Manutenção: mesma carga, menos 1 série; a prioridade é a corrida específica','Deload: menos 40% de volume (RPE 6); nas últimas 2-3 semanas antes da prova, só 1 sessão curta'],
+    av:['Fundamentação (meia-maratona): a força melhora a economia de corrida e o tempo em provas de média e longa distância (Balsalobre-Fernández et al., 2016, JSCR; Blagrove et al., 2018, Sports Med). Com volume de corrida elevado, bastam 2 sessões curtas por semana, com poucas séries pesadas para limitar a fadiga (Wilson et al., 2012, JSCR).','Biomecânica: priorizar glúteos, isquiotibiais e gémeos, que absorvem e devolvem energia em cada apoio, e trabalho unilateral. Na afinação, reduzir o volume e manter a intensidade (Mujika & Padilla, 2003, MSSE).'] },
+  maratona: { nome:'Corrida — maratona', dias:2, series:{Iniciante:[2,2],Intermédio:[2,2],Avançado:[3,2]}, reps:['5-6','8-10'], rest:[120,60], carga:'RPE 7 (≈80% 1RM), sem falha', plyo:false,
+    tpl:[{nome:'Força de manutenção A', slots:['SQ','HIP','UNI','CALF','CORE']},{nome:'Força de manutenção B', slots:['UNI','GLU','HAM','CALF','CORE','ROW']}],
+    semana:['Acumulação: 2-3 séries de 6 reps (≈80% 1RM, RPE 7), técnica perfeita','Manter a carga (RPE 7); sem sessões novas ou exercícios desconhecidos','Manutenção: mesma carga e menos 1 série; a corrida longa tem prioridade','Deload e afinação: 1 sessão curta, 1-2 séries por exercício, sem falha'],
+    av:['Fundamentação (maratona): o treino de força melhora a economia de corrida e a resistência à fadiga em corredores de fundo (Blagrove et al., 2018, Sports Med; Balsalobre-Fernández et al., 2016, JSCR). Na maratona o volume de corrida é muito alto, por isso a força é de manutenção: poucas séries, cargas elevadas, sem falha e sem dor muscular que prejudique as corridas.','Evitar exercícios novos ou excêntricos pesados nas 3 últimas semanas. A afinação reduz o volume e mantém a intensidade (Mujika & Padilla, 2003, MSSE). Pliometria só em volume baixo e se o corredor já a tolera.'] },
+  ciclismo: { nome:'Ciclismo', dias:2, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[4,2]}, reps:['4-6','8-10'], rest:[150,75], carga:'RPE 8 (≈85% 1RM), velocidade de execução controlada', plyo:false,
+    tpl:[{nome:'Força de pernas', slots:['SQ','HIP','UNI','CALF','CORE']},{nome:'Corpo todo e core', slots:['HIP','SQ','ROW','PUSH_H','LAT','CORE']}],
+    semana:['Acumulação: 3 séries de 6 reps (≈80% 1RM, RPE 7), 2 sessões','Subir 2,5–5% (RPE 8), 4-5 reps nos exercícios de pernas','Pico: 4 séries de 4 reps (≈87% 1RM); evitar força pesada antes de pedaladas-chave','Deload: menos 40% de volume e mesma carga; 1 sessão de manutenção'],
+    av:['Fundamentação (ciclismo): força máxima com cargas altas e poucas repetições (4 séries de 4-5RM) melhora a economia, a potência no limiar e o desempenho em contrarrelógio sem aumento relevante de massa corporal (Rønnestad & Mujika, 2014, Scand J Med Sci Sports).','Estrutura: 2 sessões por semana na fase de preparação, 1 de manutenção na época competitiva. Prioridade a agachamento, peso morto e trabalho unilateral (extensão de anca e joelho no pedal), core e dorsais para a estabilidade na bicicleta. Evitar sessões pesadas de pernas nas 24-48 h antes de saídas de qualidade.'] },
+  trail: { nome:'Trail', dias:3, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[4,2]}, reps:['5-8','8-10'], rest:[120,75], carga:'RPE 7-8; descidas lentas (3-4 s) nos exercícios unilaterais', plyo:true,
+    tpl:[{nome:'Força de pernas e pliometria', slots:['PW_JUMP','SQ','UNI','CALF','CORE']},{nome:'Unilateral, glúteos e estabilidade', slots:['UNI','HIP','GLU','HAM','CALF','CORE']},{nome:'Força geral e core', slots:['SQ','HIP','UNI','ROW','LAT','CORE']}],
+    semana:['Acumulação: 3 séries de 6-8 reps, descida de 3-4 s nos unilaterais (RPE 7)','Subir 2,5–5% e manter as descidas lentas (RPE 7-8)','Pico: 5-6 reps, saltos 3×5; trabalhar degraus altos e controlo de aterragem','Deload: menos 40% de volume; evitar muita carga excêntrica antes da corrida longa'],
+    av:['Fundamentação (trail): subir exige potência concêntrica de glúteos, quadríceps e gémeos; descer exige força excêntrica dos quadríceps e controlo do joelho e tornozelo, o que provoca mais dano muscular e fadiga (Vernillo et al., 2017, Sports Med). Por isso o plano combina força pesada, unilaterais com fase excêntrica lenta e pliometria controlada.','Também trabalha o core e a estabilidade do tornozelo em terreno irregular. Acrescenta as descidas em trilho gradualmente na corrida (adaptação ao efeito da carga repetida) e evita carga excêntrica forte na semana da prova. Evidência de força e economia: Blagrove et al., 2018, Sports Med.'] }
 };
 const PLAN_COMPLEX = /snatch|clean|jerk|cluster|pistol|muscle up|argolas|handstand|turkish|devil|thruster|man ?makers|box jump|double under|toes to|knees to|\bl.?sit|stone|monkey|dive bomber|scorpion/;
 const PLAN_BEGINNER_EXCL = /bulgar|barra fixa|pull ?up|elevacao na barra|elavacao|dips|mergulho|unilateral|deficit|release|pike|inch ?worm|crab|bear|canguru/;
@@ -3194,6 +3257,9 @@ const PLAN_SLOTS = {
   BI:   { p:['isolamento'], g:['Bíceps'], kw:/curl|rosca|martelo/, not:/\+|insist/ },
   TRI:  { p:['isolamento','empurrar_h'], g:['Tríceps'], kw:/tricep|tricip|extens|testa|corda|coice|kick/, not:/\+|insist|alonga/ },
   CORE: { p:['core'], g:['Core'], kw:/prancha|plank|crunch|abdominal|hollow|bird|russian|elevacao de pernas/, not:/climber|jump|salto|\+|v-?ups?|vela|toes|knees|rig|barra fixa|trx|spiderman|insist|ab-?roll|polia|corda|obliquo|banco lombar/ },
+  PW_JUMP:  { p:['agachamento'], g:['Pernas'], kw:/squat jump|jumping squat|agachamento com salto|jumping lunge/, not:/lateral|\+|trx|mais/, pw:true, reps:'5', plyo:true },
+  PW_SWING: { p:['dobradica'], g:['Corpo inteiro'], kw:/swing/, not:/maquina|garrafao|saco|unilateral|rotation|\+/, pw:true, reps:'8' },
+  PW_PRESS: { p:['empurrar_v'], g:['Ombros','Corpo inteiro'], kw:/push press/, not:/fitbag|\+/, pw:true, reps:'5' },
   CARDIO:{ p:['cardio'], g:['Cardio'], kw:/bicicleta|eliptica|passadeira|remo|skierg|air bike|escadas|jumping jacks|skipping|star jump/, not:/\+|salto|burpee|bear|canguru/ }
 };
 const PLAN_TPL = {
@@ -3232,8 +3298,8 @@ function planDefaults(c){
   d.dias = Math.min(6, Math.max(1, d.dias));
   return d;
 }
-function planWeekText(i, n, obj){
-  const texts = PLAN_WEEK[obj];
+function planWeekText(i, n, obj, perf){
+  const texts = (obj==='Performance' && perf && PERF[perf] && PERF[perf].semana) ? PERF[perf].semana : PLAN_WEEK[obj];
   const pos = n>=4 ? ((i-1)%4)+1 : i;
   if(n>=4 && pos===1 && i>1) return 'Nova onda: parte das cargas da S1 e sobe 2,5–5%';
   return texts[Math.min(pos,4)-1];
@@ -3259,6 +3325,8 @@ function planPickExercise(slot, ctx, usedPlan, usedSession){
 }
 function buildAutoPlan(p){
   let cfg = PLAN_OBJ[p.objetivo];
+  const PF = (p.objetivo==='Performance' && p.perf && PERF[p.perf] && PERF[p.perf].tpl) ? PERF[p.perf] : null;
+  if(PF){ cfg = { ...cfg, series: PF.series, reps: PF.reps, rest: PF.rest, carga: PF.carga }; p = { ...p, dias: Math.min(p.dias, PF.dias) }; }
   p = { ...p, _diasPedidos: p.dias };
   const comp = Object.assign({hyrox:null,metHyrox:null,met:null,metCardio:null,metCf:null,metReab:null,forca:null,cardio:null,cardioMin:null,reab:null,cf:null}, p.comp||{});
   const manualForca = comp.forca!=null;
@@ -3288,7 +3356,7 @@ function buildAutoPlan(p){
   }
   const HOME_OK = /squat|lunge|afundo|ponte|bacia|push|flexo|prancha|plank|crunch|abdominal|hollow|bird|climber|burpee|skipping|jumping|abdu|abductor|adductor|monster|calcanhar|gemeo|flexao plantar|wall sit|step|dead bug|superman/;
   const home = p.equipamento.startsWith('Casa') || (Array.isArray(p.equipList) && !p.equipList.some(q=>['Máquina','Polia','Barra','Multipower','Passadeira','Bicicleta'].includes(q)));
-  const cfAllowed = p.nivel!=='Iniciante' && !pat;
+  const cfAllowed = p.nivel!=='Iniciante' && !pat && !['Performance','Reabilitação'].includes(p.objetivo);
   const useCF = cfAllowed && comp.cf!==0;
   const nHyrox = cfAllowed ? (comp.hyrox||0) : 0;
   if(comp.hyrox>0 && !cfAllowed) avisos.push('HYROX ignorado: só entra em planos Intermédio/Avançado sem patologia.');
@@ -3313,6 +3381,8 @@ function buildAutoPlan(p){
   let [sMain, sAcc] = cfg.series[p.nivel];
   let carga = p.nivel==='Iniciante' ? 'RPE 6-7' : cfg.carga;
   let cardioMin = p.duracao >= 45 ? cfg.cardio : 0;
+  if(p.objetivo==='Performance' && p.nivel==='Iniciante') cfg = { ...cfg, reps:['6-8','8-10'], rest:[120,75] };
+  if(p.objetivo==='Reabilitação' && !pat) throw new Error('O objetivo Reabilitação exige escolher pelo menos uma patologia.');
   if(pat){
     sMain = Math.min(sMain, pat.series); sAcc = Math.min(sAcc, pat.series);
     cfg = { ...cfg, reps: pat.reps, rest: [Math.max(cfg.rest[0], pat.rest), Math.max(cfg.rest[1], pat.rest)] };
@@ -3324,18 +3394,33 @@ function buildAutoPlan(p){
     avisos.push('Progressão (ACSM): subir a carga 2-10% só quando o cliente cumprir 1-2 repetições acima do alvo em 2 sessões seguidas.');
     if(p.dias < p._diasPedidos) avisos.push('Reduzi os treinos por semana para ' + p.dias + ' (máximo recomendado para esta condição).');
   }
+  if(p.objetivo==='Performance'){
+    if(PF){ avisos.push('Performance — ' + PF.nome + '.'); PF.av.forEach(a=>avisos.push(a)); if(PF.dias < p._diasPedidos) avisos.push('Reduzi os treinos de força por semana para ' + p.dias + ': nas modalidades de resistência, mais sessões de força aumentam a fadiga e prejudicam o treino específico.'); }
+    else {
+    avisos.push('Fundamentação (Performance): a força máxima é a base da potência e da velocidade (Suchomel et al., 2016, Sports Med). Estrutura de cada sessão: primeiro potência (saltos ou balísticos, com o sistema nervoso descansado), depois força com cargas de 80-90% 1RM em 3-5 reps e repouso de 2-3 min, e no fim acessórios (ACSM, 2009, MSSE 41:687; Kraemer & Ratamess, 2004).');
+    avisos.push('Biomecânica e fisiologia: o ciclo alongamento-encurtamento (Komi, 2000) e a extensão tripla de anca, joelho e tornozelo são trabalhados com saltos e swings; a carga ótima de potência é baixa a moderada (30-60% 1RM) com intenção de velocidade máxima. Pliometria melhora o salto vertical (Markovic, 2007, Br J Sports Med). Perfil força-velocidade: se o atleta é lento com carga leve, falta velocidade; se é lento com carga pesada, falta força (Morin & Samozino, 2016).');
+    avisos.push('Periodização: ondas de 4 semanas (acumulação, intensificação, pico, deload) com carga progressiva, que superam o treino sem periodização para a força (Williams et al., 2017, Sports Med). Treino concorrente: o cardio de alta quantidade interfere com a força e a potência, por isso este plano não inclui cardio e deve ser feito em sessões separadas dos treinos aeróbios (Wilson et al., 2012, JSCR).');
+    }
+    if(p.nivel==='Iniciante') avisos.push('Nível iniciante: cargas mais baixas (reps 6-8), repouso de 2 min e apenas 2 séries de saltos de baixa intensidade. A pliometria de impacto só deve subir de volume depois de o cliente dominar o agachamento e a aterragem.');
+  }
+  if(p.objetivo==='Reabilitação'){
+    avisos.push('Fundamentação (Reabilitação): carga progressiva e específica do tecido, sem dor limitante. Regra de dor: aceitável até 3/10 durante o exercício e a voltar ao nível basal em 24 h (modelo de monitorização da dor, Silbernagel et al., 2007, Am J Sports Med).');
+    avisos.push('Fisiologia e biomecânica: isométricos de 30-45 s a cerca de 70% do máximo reduzem a dor em tendinopatias e servem de ponto de partida (Rio et al., 2015, Br J Sports Med). Depois, carga lenta e pesada (3 s a subir e 3 s a descer, 15 → 6 reps ao longo de semanas) promove adaptação do tendão (Beyer et al., 2015, Am J Sports Med). Mantém-se o treino do resto do corpo e o controlo da cadeia cinética (anca, tronco, pé).');
+    avisos.push('Critérios para progredir: sem dor em repouso, amplitude completa, força simétrica (diferença < 10% entre lados) e dor ≤ 3/10 no dia seguinte. Este plano não substitui a avaliação e as indicações do fisioterapeuta ou médico.');
+  }
   const nCardio = comp.cardio!=null ? comp.cardio : (cardioMin>0 ? 1 : 0);
   const minEach = comp.cardioMin || cardioMin || 10;
   const cardioTotal = nCardio * minEach;
-  const rn = pat ? (comp.reab!=null ? comp.reab : (p.duracao>=60 ? 3 : 2)) : 0;
+  const rn = pat ? (comp.reab!=null ? comp.reab : (p.objetivo==='Reabilitação' ? (p.duracao>=60 ? 5 : 4) : (p.duracao>=60 ? 3 : 2))) : 0;
   if(pat && rn===0){ const i = avisos.findIndex(a=>a.startsWith('Cada treino começa com exercícios de reabilitação')); if(i>=0) avisos.splice(i,1); }
   const budget = p.duracao - 5 - cardioTotal;
   if(useCF) avisos.push('Inclui exercícios de CrossFit (nível '+p.nivel.toLowerCase()+'). Ensina e valida a técnica com carga leve nas primeiras semanas.');
   if(p.nivel==='Iniciante' && p.dias>=5) avisos.push('Para um iniciante, 5 a 6 treinos por semana é muito. Considera 3 a 4.');
   const usedPlan = new Set(), usedRehab = new Set();
   const treinos = [], est = {};
-  PLAN_SPLIT[p.dias].forEach(key=>{
-    const tpl = PLAN_TPL[key];
+  const keysList = PF ? PF.tpl.slice(0, p.dias).map((t,i)=>'PF'+i) : PLAN_SPLIT[p.dias];
+  keysList.forEach(key=>{
+    const tpl = PF ? { nome: PF.tpl[+key.slice(2)].nome, slots: PF.tpl[+key.slice(2)].slots, fill: [] } : PLAN_TPL[key];
     let slots = [...tpl.slots, ...tpl.fill];
     if((p.objetivo==='Tonificação' || p.objetivo==='Perda de gordura') && slots.includes('HIP') && !slots.includes('GLU')) slots.splice(slots.indexOf('HIP')+1, 0, 'GLU');
     if(manualForca){
@@ -3351,6 +3436,11 @@ function buildAutoPlan(p){
         slots.splice(Math.min(2,slots.length),0,cf[0]);
         if(p.nivel==='Avançado') slots.splice(Math.min(5,slots.length),0,cf[1]);
       }
+    }
+    if(p.objetivo==='Performance' && !PF){
+      const k0 = key.split('_')[0];
+      const pw = k0==='LOW' ? ['PW_JUMP'] : (k0==='UP' || k0==='PUSH' || k0==='PULL') ? ['PW_PRESS'] : (key==='FB_B' ? ['PW_SWING'] : ['PW_JUMP']);
+      slots = [...pw, ...slots];
     }
     const usedSession = new Set();
     const lines = []; let total = 0;
@@ -3374,14 +3464,22 @@ function buildAutoPlan(p){
       const slot = PLAN_SLOTS[sl];
       const ex = planPickExercise(slot, ctx, usedPlan, usedSession);
       if(!ex) continue;
+      if(slot.pw){
+        const sp = p.nivel==='Iniciante' ? 2 : (p.nivel==='Avançado' ? 4 : 3);
+        const rp = slot.plyo ? (p.nivel==='Iniciante' ? '4' : slot.reps) : slot.reps;
+        total += sp * (25 + 120) / 60 + 1; usedSession.add(ex.id); usedPlan.add(ex.id);
+        lines.push({ exercicio: ex.nome, series: sp, reps: rp, carga: slot.plyo ? 'Esforço máximo, aterragem silenciosa e controlada' : 'Carga leve (30-60% 1RM), máxima velocidade', descanso: '120s', tipo: 'pot' });
+        continue;
+      }
       const isCF = !!slot.mod;
-      const s = isCF ? Math.min(4, slot.cond ? sAcc+1 : sAcc) : (slot.main ? sMain : sAcc);
-      const rest = isCF ? (slot.cond ? 40 : 60) : (slot.main ? cfg.rest[0] : cfg.rest[1]);
+      const isMain = slot.main || (PF && sl==='UNI');
+      const s = isCF ? Math.min(4, slot.cond ? sAcc+1 : sAcc) : (isMain ? sMain : sAcc);
+      const rest = isCF ? (slot.cond ? 40 : 60) : (isMain ? cfg.rest[0] : cfg.rest[1]);
       const t = s * (cfg.tempo + rest) / 60 + 1;
       if(!manualForca && lines.length >= 3 && total + t > budget + 1.5) break;
       total += t; usedSession.add(ex.id); usedPlan.add(ex.id);
       const cfReps = isCF ? (PLAN_CF_HOLD.test(normText(ex.nome)) ? '20-40s' : slot.reps) : null;
-      lines.push({ exercicio: ex.nome, series: s, reps: isCF ? cfReps : (slot.main ? cfg.reps[0] : cfg.reps[1]), carga: isCF ? 'RPE 7 (técnica primeiro)' : carga, descanso: rest+'s', tipo: isCF ? 'cf' : 'forca' });
+      lines.push({ exercicio: ex.nome, series: s, reps: isCF ? cfReps : (isMain ? cfg.reps[0] : cfg.reps[1]), carga: isCF ? 'RPE 7 (técnica primeiro)' : carga, descanso: rest+'s', tipo: isCF ? 'cf' : 'forca' });
     }
     if(nHyrox>0){
       const hAll = DATA.exercises.filter(e=>e.modalidade==='HYROX');
@@ -3417,12 +3515,12 @@ function buildAutoPlan(p){
   });
   const nomes = treinos.map(t=>t.nome);
   const semanas = [];
-  for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo), sessoes: nomes });
+  for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo, p.perf), sessoes: nomes });
   if(p.semanas>=4) avisos.push('A semana 4 (e a 8, a 12) é de deload: reduz o volume para recuperar.');
   return { nome: `${p.objetivo} · ${p.dias}x/semana · ${p.duracao} min`, avisos, treinos, semanas, estimativas: est };
 }
 
-let planResult = null;
+let planResult = null, planResultP = null;
 function openPlanModal(clientId){
   if(DATA.clients.length===0){ alert('Adiciona pelo menos um cliente antes de gerar um plano.'); return; }
   if(DATA.exercises.length===0){ alert('A biblioteca de exercícios está vazia. Carrega a biblioteca base primeiro.'); return; }
@@ -3441,10 +3539,13 @@ function plan2Change(){
   const c2 = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente2').value);
   if(c2) patPickerSet('plan-patologia', [...patPickerGet('plan-patologia'), ...clientPats(c2)]);
 }
+function planObjChange(){ const f = document.getElementById('plan-perf-field'); if(f) f.style.display = document.getElementById('plan-objetivo').value==='Performance' ? '' : 'none'; }
 function prefillPlan(){
   const c = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente').value);
   const d = planDefaults(c);
   document.getElementById('plan-objetivo').value = d.objetivo;
+  document.getElementById('plan-perf').value = (c && c.perf) || '';
+  planObjChange();
   document.getElementById('plan-nivel').value = d.nivel;
   document.getElementById('plan-dias').value = d.dias;
   document.getElementById('plan-duracao').value = String(d.duracao);
@@ -3457,6 +3558,7 @@ function prefillPlan(){
   dayPickInit('plan-dayspick');
   const _pe = document.getElementById('plan-equiplist'); if(_pe) _pe.dataset.open = '';
   equipPickerInit('plan-equiplist', DATA.equip===undefined ? null : DATA.equip);
+  document.getElementById('plan-local').value = 'ginasio'; document.getElementById('plan-equipcasa').dataset.open = ''; equipPickerInit('plan-equipcasa', homeEquipDefault());
 }
 function generatePlan(){
   const status = document.getElementById('plan-status');
@@ -3468,15 +3570,18 @@ function generatePlan(){
     semanas: Math.min(12, Math.max(2, parseInt(document.getElementById('plan-semanas').value) || 4)),
     equipamento: document.getElementById('plan-equip').value,
     equipList: equipPickerGet('plan-equiplist'),
+    perf: document.getElementById('plan-objetivo').value==='Performance' ? document.getElementById('plan-perf').value : '',
     limitacoes: document.getElementById('plan-limitacoes').value.trim(),
     patologia: patPickerGet('plan-patologia')[0] || '',
     patologiasExtra: patPickerGet('plan-patologia').slice(1)
   };
   const gv = id=>{ const v = document.getElementById(id).value; return v==='' ? null : parseInt(v); };
   p.comp = { forca: gv('plan-n-forca'), cardio: gv('plan-n-cardio'), cardioMin: gv('plan-cardio-min'), reab: gv('plan-n-reab'), cf: gv('plan-n-cf'), hyrox: gv('plan-n-hyrox'), metHyrox: document.getElementById('plan-met-hyrox').value || null, met: document.getElementById('plan-met').value || null, metCardio: document.getElementById('plan-met-cardio').value || null, metCf: document.getElementById('plan-met-cf').value || null, metReab: document.getElementById('plan-met-reab').value || null };
+  if(p.objetivo==='Reabilitação' && !p.patologia){ status.textContent = 'O objetivo Reabilitação exige escolher uma patologia.'; return; }
   if(p.comp.reab>0 && !p.patologia){ status.textContent = 'Escolhe uma patologia para incluir exercícios de reabilitação.'; return; }
   try{
     planResult = buildAutoPlan(p);
+    planResultP = { objetivo:p.objetivo, perf:p.perf, nivel:p.nivel, duracao:p.duracao, equipamento:p.equipamento, equipList:p.equipList, patologia:p.patologia, patologiasExtra:p.patologiasExtra };
     status.textContent = '';
     renderPlanPreview(planResult);
     document.getElementById('plan-import-btn').style.display = 'inline-block';
@@ -3506,7 +3611,7 @@ function renderPlanPreview(r){
 }
 function importPlan(){
   if(!planResult) return;
-  importResult(planResult, document.getElementById('plan-cliente').value, dayPickGet('plan-dayspick'), document.getElementById('plan-cliente2').value);
+  importResult(planResult, document.getElementById('plan-cliente').value, dayPickGet('plan-dayspick'), document.getElementById('plan-cliente2').value, planResultP ? { tipo:'plano', p:planResultP, equipCasa: equipPickerGet('plan-equipcasa'), local: document.getElementById('plan-local').value } : null);
   planResult = null;
   closeModal('modal-plano');
 }
@@ -3607,7 +3712,7 @@ function buildSharePayload(cy){
       const a = aulaById(d.aulaId);
       if(a){ if(!(a.id in aIdx)){ aIdx[a.id] = A.length; A.push({ n: a.nome, du: a.duracao, i: a.intensidade, ds: a.descricao||'' }); } ai = aIdx[a.id]; }
     }
-    return d.pt ? [wi, ai, d.aulaHora||'', 1, d.ptHora||''] : [wi, ai, d.aulaHora||''];
+    return d.pt ? [wi, ai, d.aulaHora||'', 1, d.ptHora||'', d.local||''] : [wi, ai, d.aulaHora||''];
   }) }));
   return { v:1, n: cycleClients(cy).map(c=>c.nome.trim().split(/\s+/)[0]).join(' e '), c: cy.nome, i: cy.inicio||'', s: dias, w: W, a: A, m: M };
 }
@@ -3736,6 +3841,7 @@ function openAdjust(cycleId){
   const client = DATA.clients.find(c=>c.id===cy.clientId);
   const own = (cy.patologias||[]);
   patPickerSet('adj-pat', own);
+  document.getElementById('adj-local').value = cy.localPT || 'ginasio'; document.getElementById('adj-equipcasa').dataset.open = ''; equipPickerInit('adj-equipcasa', (cy.meta && cy.meta.equipCasa !== undefined) ? cy.meta.equipCasa : homeEquipDefault());
   const w0 = cy.semanas[0];
   dayPickInit('adj-days', w0.dias.map(d=>d.pt ? 2 : (d.workoutId ? 1 : 0)));
   document.getElementById('adj-from').innerHTML = cy.semanas.map((w,i)=>`<option value="${i}">Semana ${w.numero}${i===0?' (todas)':''}</option>`).join('');
@@ -3745,6 +3851,14 @@ function applyAdjust(){
   const cy = DATA.cycles.find(c=>c.id===document.getElementById('adj-id').value); if(!cy) return;
   cy.patologias = patPickerGet('adj-pat');
   cy.clientId2 = document.getElementById('adj-cliente2').value || '';
+  const newLocal = document.getElementById('adj-local').value;
+  cy.meta = cy.meta || {}; cy.meta.equipCasa = equipPickerGet('adj-equipcasa');
+  const hasPt = cy.semanas.some(w=>w.dias.some(d=>d.pt));
+  if(newLocal !== (cy.localPT || 'ginasio') || (hasPt && newLocal==='casa' && false)){
+    cy.localPT = newLocal;
+    if(hasPt && confirm('Mudaste o local dos treinos de PT para ' + (newLocal==='casa' ? 'casa' : 'o ginásio') + '. Gerar de novo os treinos de PT de todas as semanas para este local?')) ptApplyLocal(cy, true);
+    else ptApplyLocal(cy, false);
+  }
   const pick = dayPickGet('adj-days'); const from = parseInt(document.getElementById('adj-from').value)||0;
   const nPick = pick.filter(x=>x>0).length;
   if(nPick){
@@ -3768,9 +3882,79 @@ function applyAdjust(){
   saveData();
   if(rel.length){ const u = [...new Set(rel)]; alert('Plano ajustado automaticamente às patologias (' + u.length + ' alteração(ões)):\n\n' + u.slice(0,14).map(x=>'• '+x).join('\n') + (u.length>14 ? '\n…' : '') + '\n\nOs treinos originais continuam na lista de Treinos.'); }
 }
+// ---------- TREINO DE PT AUTOMÁTICO ----------
+function genPtWorkout(cy, wi, local){
+  local = local || cy.localPT || 'ginasio';
+  const casa = local==='casa';
+  const home = (cy.meta && cy.meta.equipCasa !== undefined && cy.meta.equipCasa !== null) ? cy.meta.equipCasa : (cy.meta && cy.meta.equipCasa === null ? null : homeEquipDefault());
+  const sem = cy.semanas[wi];
+  const clients = cycleClients(cy); const c = clients[0] || {};
+  const keys = [...new Set([...cyclePats(cy), ...(cy.patologias||[]).filter(k=>PATOLOGIAS[k])])];
+  const nDia = sem.dias.filter(d=>d.workoutId).length;
+  const meta = cy.meta;
+  const lab = casa ? 'casa' : 'ginásio';
+  if(meta && meta.tipo==='proto'){
+    const p = protoById(meta.id);
+    if(p){
+      const fase = Math.min(sem.fase!==undefined ? sem.fase : 0, p.fases.length-1);
+      const opt = { ...meta.opt, keys: [...new Set([...(meta.opt.keys||[]), ...keys])], report: null };
+      if(casa) opt.equip = home;
+      const ws = protoMakeWorkouts(p, fase, opt);
+      if(ws.length){
+        const keep = ws[nDia % ws.length];
+        const drop = ws.filter(w=>w!==keep).map(w=>w.id);
+        DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id));
+        keep.nome = keep.nome + ' (PT ' + lab + ')';
+        return keep.id;
+      }
+    }
+  }
+  const base = (meta && meta.tipo==='plano' && meta.p) ? meta.p : {
+    objetivo: c.objetivo || 'Condição física geral', perf: c.perf||'', nivel: c.nivel || 'Intermédio', duracao: parseInt(c.duracaoSessao)||45,
+    equipamento: 'Ginásio completo', equipList: DATA.equip===undefined ? null : DATA.equip, patologia: keys[0] || '', patologiasExtra: keys.slice(1) };
+  const pp = { ...base, dias: 1, semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
+  if(casa){ pp.equipamento = (home && home.length) ? 'Casa, com elásticos' : 'Casa, sem material'; pp.equipList = home; }
+  if(keys.length){ pp.patologia = keys[0]; pp.patologiasExtra = keys.slice(1); }
+  const r = buildAutoPlan(pp);
+  const sw = r.semanas[Math.min(wi, r.semanas.length-1)];
+  const nome = (sw.sessoes||[])[0]; const t = r.treinos.find(x=>x.nome===nome) || r.treinos[0];
+  if(!t) return '';
+  const id = uid();
+  DATA.workouts.push({ id, nome: `${cy.nome} — PT S${sem.numero} (${lab})`, patologias: keys, patologia: keys[0]||'',
+    exercicios: (t.exercicios||[]).map(x=>({ exId: findOrCreateExercise(x.exercicio), series: String(x.series||3), reps: String(x.reps||'10'), carga: String(x.carga||''), descanso: String(x.descanso||'60s'), met: String(x.met||'') })).filter(l=>l.exId) });
+  return id;
+}
+function workoutUsedAnywhere(id){ return DATA.cycles.some(cy=>cy.semanas.some(w=>w.dias.some(d=>d.workoutId===id))); }
+// aplica o local (casa/ginásio) a todos os dias de PT do ciclo e gera de novo os treinos de casa
+function ptApplyLocal(cy, regen){
+  cy.semanas.forEach((sem, wi)=>sem.dias.forEach(d=>{
+    if(!d.pt) return;
+    d.local = cy.localPT || 'ginasio';
+    if(regen){
+      const old = d.workoutId;
+      try{ d.workoutId = genPtWorkout(cy, wi, d.local) || old; }catch(e){ d.workoutId = old; }
+      if(old && old!==d.workoutId && !workoutUsedAnywhere(old)) DATA.workouts = DATA.workouts.filter(w=>w.id!==old);
+    }
+  }));
+}
+function updateDayLocal(cycleId, weekIdx, dayIdx, val){
+  const cycle = DATA.cycles.find(c=>c.id===cycleId); const d = cycle.semanas[weekIdx].dias[dayIdx];
+  d.local = val;
+  if(d.pt && confirm('Gerar de novo o treino de PT deste dia para ' + (val==='casa' ? 'casa' : 'o ginásio') + '? (O treino atual é substituído.)')){
+    const old = d.workoutId;
+    try{ d.workoutId = genPtWorkout(cycle, weekIdx, val) || old; }catch(e){ alert('Não consegui gerar o treino: ' + e.message); }
+    const ow = DATA.workouts.find(w=>w.id===old);
+    if(old && old!==d.workoutId && ow && /PT/.test(ow.nome) && !workoutUsedAnywhere(old)) DATA.workouts = DATA.workouts.filter(w=>w.id!==old);
+  }
+  saveData(); const el = document.getElementById(`week-${cycleId}-${weekIdx}`); if(el) el.classList.add('open');
+}
 function updateDayPT(cycleId, weekIdx, dayIdx, on){
   const cycle = DATA.cycles.find(c=>c.id===cycleId); const d = cycle.semanas[weekIdx].dias[dayIdx];
-  d.pt = !!on; if(!on) d.ptHora = '';
+  d.pt = !!on; if(!on){ d.ptHora = ''; d.local = ''; } else d.local = cycle.localPT || 'ginasio';
+  if(on && !d.workoutId){
+    try{ d.workoutId = genPtWorkout(cycle, weekIdx, d.local) || ''; if(d.workoutId) setTimeout(()=>alert('Foi criado automaticamente um treino de PT para este dia, ajustado ao objetivo, nível, patologias e equipamento do plano. Podes editá-lo em «Treinos».'), 50); }
+    catch(e){ alert('Não consegui criar o treino de PT automaticamente: ' + e.message); }
+  }
   saveData(); const el = document.getElementById(`week-${cycleId}-${weekIdx}`); if(el) el.classList.add('open');
 }
 function updateDayPTHora(cycleId, weekIdx, dayIdx, v){
@@ -3951,7 +4135,7 @@ async function renderHoje(){
   const dt = new Date(); dt.setHours(0,0,0,0); dt.setDate(dt.getDate() + hojeOff);
   const key = isoOf(dt);
   const items = {}; const loose = [];
-  ptItems('').filter(x=>isoOf(x.dt)===key).forEach(x=>{ items['cy|'+x.cy.id] = { clientId:x.cy.clientId, hora:x.d.ptHora||'', wid:x.d.workoutId, cy:x.cy, sem:x.sem, cal:false }; });
+  ptItems('').filter(x=>isoOf(x.dt)===key).forEach(x=>{ items['cy|'+x.cy.id] = { local:x.d.local||'', clientId:x.cy.clientId, hora:x.d.ptHora||'', wid:x.d.workoutId, cy:x.cy, sem:x.sem, cal:false }; });
   let calOk = false;
   const evs = await gcLoadDay(key, dt);
   if(seq!==hojeSeq) return;
@@ -3969,7 +4153,7 @@ async function renderHoje(){
       const cd = cdG || cycleDayFor(c.id, key);
       const k = cd ? 'cy|'+cd.cy.id : c.id+'|'+ev.id;
       const prev = items[k];
-      items[k] = { clientId:c.id, hora, wid: cd ? cd.d.workoutId : '', cy: cd?cd.cy:null, sem: cd?cd.sem:null, cal:true, titulo: ev.summary||'', pt: prev ? true : false };
+      items[k] = { local: cd ? (cd.d.local||'') : '', clientId:c.id, hora, wid: cd ? cd.d.workoutId : '', cy: cd?cd.cy:null, sem: cd?cd.sem:null, cal:true, titulo: ev.summary||'', pt: prev ? true : false };
     });
   }
   const todo = Object.values(items).sort((a,b)=>String(a.hora||'99:99').localeCompare(String(b.hora||'99:99')));
@@ -3986,7 +4170,7 @@ async function renderHoje(){
     return `<div style="border:1px solid #3a7bd5; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
       <div style="display:flex; flex-wrap:wrap; gap:6px 12px; align-items:baseline;">
         <span class="tag" style="background:#3a7bd5;color:#fff;">${x.hora ? esc(x.hora) : 'sem hora'}</span>
-        <b style="font-size:16px;">${esc(x.cy ? cycleNames(x.cy) : clientName(x.clientId))}</b>${x.cy && x.cy.clientId2 ? ' <span class="tag">PT Grupo</span>' : ''}
+        <b style="font-size:16px;">${esc(x.cy ? cycleNames(x.cy) : clientName(x.clientId))}</b>${x.cy && x.cy.clientId2 ? ' <span class="tag">PT Grupo</span>' : ''}${x.local ? ' <span class="tag">'+(x.local==='casa' ? '🏠 Casa' : '🏋 Ginásio')+'</span>' : ''}
         <span class="view-sub" style="margin:0;">${w ? esc(w.nome) : ''}${x.cy ? ' · '+esc(x.cy.nome)+' · S'+x.sem.numero : ''}${x.cal ? ' · do calendário' : ''}</span></div>
       ${pats.length ? `<div style="margin-top:4px; font-size:12.5px; color:#c0533a;">Atenção: ${esc(pats.join(', '))}</div>` : ''}
       ${x.sem && x.sem.progressao ? `<div class="view-sub" style="margin:4px 0;">${esc(x.sem.progressao)}</div>` : ''}
@@ -4044,6 +4228,7 @@ function renderCycles(){
             <select onchange="updateDayAssign('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">${opts}</select>
             <select onchange="updateDayAula('${cycle.id}', ${wIdx}, ${dIdx}, this.value)" title="Aula de grupo">${'<option value="">+ aula de grupo</option>' + (DATA.aulas||[]).map(a=>`<option value="${a.id}" ${sem.dias[dIdx].aulaId===a.id?'selected':''}>${esc(a.nome)}</option>`).join('')}</select>
             ${cycleIsPt(cycle) ? '' : '<!--'}<label style="display:flex; gap:4px; align-items:center; font-size:12px; cursor:pointer;" title="Treino de PT: o cliente só vê «Treino de PT» no link"><input type="checkbox" ${sem.dias[dIdx].pt?'checked':''} onchange="updateDayPT('${cycle.id}', ${wIdx}, ${dIdx}, this.checked)"> PT</label>${cycleIsPt(cycle) ? '' : '-->'}
+            ${sem.dias[dIdx].pt ? `<select style="max-width:105px;" title="Local do treino de PT" onchange="updateDayLocal('${cycle.id}', ${wIdx}, ${dIdx}, this.value)"><option value="ginasio" ${sem.dias[dIdx].local!=='casa'?'selected':''}>Ginásio</option><option value="casa" ${sem.dias[dIdx].local==='casa'?'selected':''}>Casa</option></select>` : ''}
             ${sem.dias[dIdx].pt ? `<input type="time" value="${esc(sem.dias[dIdx].ptHora||'')}" style="max-width:110px;" title="Hora do treino de PT" onchange="updateDayPTHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].aulaId ? `<input type="time" value="${esc(sem.dias[dIdx].aulaHora||'')}" style="max-width:110px;" title="Hora da aula" onchange="updateDayAulaHora('${cycle.id}', ${wIdx}, ${dIdx}, this.value)">` : ''}
             ${sem.dias[dIdx].workoutId ? wExListHtml(sem.dias[dIdx].workoutId) : ''}
@@ -5317,7 +5502,7 @@ function protoScaleEx(x, level){
   }
   return o;
 }
-const PROTO_OBJ = { 'Força': { reps:'5', desc:'120s' }, 'Hipertrofia': { reps:'8-12', desc:'75s' }, 'Perda de gordura': { reps:'12-15', desc:'45s' } };
+const PROTO_OBJ = { 'Performance': { reps:'3-5', desc:'150s' }, 'Força': { reps:'5', desc:'120s' }, 'Hipertrofia': { reps:'8-12', desc:'75s' }, 'Perda de gordura': { reps:'12-15', desc:'45s' } };
 function protoObjEx(x, obj){
   const o = PROTO_OBJ[obj]; if(!o || x[4]==='Cardio') return x;
   const m = String(x[2]).match(/^\d+(?:-\d+)?(.*)$/);
@@ -5378,6 +5563,7 @@ function openProtoModal(id){
   document.getElementById('proto-obj').value = '';
   document.getElementById('proto-equiplist').dataset.open = '';
   equipPickerInit('proto-equiplist', DATA.equip===undefined ? null : DATA.equip);
+  document.getElementById('proto-local').value = 'ginasio'; document.getElementById('proto-equipcasa').dataset.open = ''; equipPickerInit('proto-equipcasa', homeEquipDefault());
   protoModalChange();
   openModal('modal-proto');
 }
@@ -5439,7 +5625,7 @@ function protoCreateCycle(){
       dias.forEach(d=>{ if(d.workoutId) usedW.add(d.workoutId); });
       let prog = `${fa.nome} (semana ${s}/${nSem})` + (adapt && keys.length ? ' — ajustado a: ' + keys.map(k=>PATOLOGIAS[k].nome).join(' + ') : '') + (level!=='Intermédio' ? ' — nível ' + level : '');
       if(s===nSem) prog += ' — avaliar critérios para avançar: ' + fa.criterios.join('; ');
-      semanas.push({ numero: semanas.length+1, progressao: prog, dias });
+      semanas.push({ numero: semanas.length+1, progressao: prog, dias, fase: i });
     }
   });
   if(plan && semanas.length){
@@ -5449,7 +5635,10 @@ function protoCreateCycle(){
   }
   if(nFit){ const drop = allW.filter(id=>!usedW.has(id)); if(drop.length) DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id)); }
   const nome = p.nome.split(' (')[0] + (provaISO ? ' — prova a ' + formatDate(provaISO) : ' (protocolo)');
-  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: clientId2 || '', inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '' });
+  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: clientId2 || '', inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '', meta: { tipo:'proto', id:p.id, opt:{ keys, adapt, level, obj, equip: opt.equip }, equipCasa: equipPickerGet('proto-equipcasa'), local: document.getElementById('proto-local').value }, localPT: document.getElementById('proto-local').value });
+  { const cyN = DATA.cycles[DATA.cycles.length-1]; ptApplyLocal(cyN, cyN.localPT==='casa');
+    const used = new Set(); DATA.cycles.forEach(c=>c.semanas.forEach(w=>w.dias.forEach(d=>d.workoutId&&used.add(d.workoutId))));
+    allW.forEach(id=>{ if(!used.has(id)) DATA.workouts = DATA.workouts.filter(w=>w.id!==id); }); }
   closeModal('modal-proto');
   saveData();
   document.querySelector('.rail-btn[data-view="ciclos"]').click();

@@ -133,13 +133,13 @@
       let total = 0, done = 0;
       wk.d.forEach((day,di)=>{ if(day[0]>=0){ const w = P.w[day[0]]; (w.e||[]).forEach((x,xi)=>{ total++; if(st.done[dkey(di)+'.'+xi]) done++; }); } });
       const days = wk.d.map((day,di)=>{
-        const wi = day[0], ai = day[1], hora = day[2];
-        const rest = wi<0 && ai<0;
+        const wi = day[0], ai = day[1], hora = day[2], pt = !!day[3], ptH = day[4]||'';
+        const rest = wi<0 && ai<0 && !pt;
         const w = wi>=0 ? P.w[wi] : null;
         const a = ai>=0 ? P.a[ai] : null;
         const open = st['open.'+dkey(di)] ? ' open' : '';
-        const title = w ? esc(w.n) : (a ? '' : 'Descanso');
-        const sub = [w ? (w.e||[]).length+' exercícios' : '', a ? '<span class="chip">Aula</span>'+esc(a.n)+(hora?' · '+esc(hora):'') : ''].filter(Boolean).join(' · ');
+        const title = pt ? 'Treino de PT' : (w ? esc(w.n) : (a ? '' : 'Descanso'));
+        const sub = [pt ? ((ptH ? 'às '+esc(ptH)+' · ' : '') + (day[5]==='casa' ? 'em casa · ' : (day[5]==='ginasio' ? 'no ginásio · ' : '')) + 'com o teu treinador') : '', w ? (w.e||[]).length+' exercícios' : '', a ? '<span class="chip">Aula</span>'+esc(a.n)+(hora?' · '+esc(hora):'') : ''].filter(Boolean).join(' · ');
         let aulaHtml = '';
         if(a) aulaHtml = '<div class="aula" style="margin-top:0"><b>'+esc(a.n)+'</b> · '+esc(a.du)+' min · '+esc(a.i)+(hora?' · '+esc(hora):'')+(a.ds?'<div class="sub" style="margin-top:4px">'+esc(a.ds)+'</div>':'')+'</div>';
         let exHtml = '';
