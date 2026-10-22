@@ -445,6 +445,7 @@
       <div class="select-line">
         <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
         <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Corrida</option><option>Reabilitação</option></select>
+        <select id="lib-chain" onchange="libReset()"><option value="">Todas as linhas miofasciais</option><option value="SBL">SBL — Superficial Posterior</option><option value="SFL">SFL — Superficial Anterior</option><option value="LL">LL — Lateral</option><option value="SPL">SPL — Espiral</option><option value="FFL">FFL — Funcional Anterior</option><option value="BFL">BFL — Funcional Posterior</option><option value="DFL">DFL — Profunda Anterior</option><option value="SBAL">SBAL — Braço sup. posterior</option><option value="DBAL">DBAL — Braço prof. posterior</option><option value="SFAL">SFAL — Braço sup. anterior</option><option value="DFAL">DFAL — Braço prof. anterior</option></select>
         <select id="lib-pat" onchange="libReset()"><option value="">Todas as patologias</option></select>
         <select id="lib-group" onchange="libReset()"><option value="">Todos os grupos</option></select>
       </div>
@@ -1019,6 +1020,8 @@
       <div style="margin-top:6px;"><div class="view-sub">Equipamento disponível em casa:</div><div id="proto-equipcasa"></div></div></div>
     <div class="field"><label>Condição física (a app ajusta volume e séries)</label><select id="proto-nivel"><option value="">Automático (nível da ficha do cliente)</option><option>Iniciante</option><option>Intermédio</option><option>Avançado</option></select>
       <div class="view-sub" style="margin-top:4px;">Intermédio = protocolo como está. Iniciante reduz cerca de 25% o volume das corridas e uma série nos exercícios de força. Avançado aumenta cerca de 10%. Com dois clientes, vale o nível mais baixo.</div></div>
+    <div class="field"><label>Ondas de carga (Bompa)</label><select id="proto-onda"><option value="auto">Automático: 3 semanas a subir e 1 de descarga (2:1 para iniciantes)</option><option value="off">Sem semanas de descarga</option></select>
+      <div class="view-sub" style="margin-top:4px;">A semana de descarga reduz cerca de 30% do volume e mantém a técnica. Só se aplica a protocolos de treino e não às afinações de prova, à reabilitação nem à prevenção.</div></div>
     <div class="field"><label>Ou escolhe tu os dias: toca para alternar descanso → treino → treino de PT (opcional; se escolheres dias, o número acima é ignorado)</label><div id="proto-dayspick" data-v="0000000"></div></div>
     <div class="field"><label>Outras patologias ou condicionantes (opcional, podes escolher várias)</label><div class="patpick" id="proto-extra" data-keys="[]" data-cb="protoModalChange"></div>
       <div style="margin-top:4px;"><a href="#" onclick="openPatModal(); return false;" style="font-size:12.5px;">+ Introduzir nova patologia</a></div></div>
@@ -1461,7 +1464,10 @@ function monitAnalyze(clientId){
   let estado = 'verde';
   if(red>0 || yellow>=2) estado = 'vermelho'; else if(yellow===1) estado = 'amarelo';
   const pct = estado==='vermelho' ? 30 : estado==='amarelo' ? 20 : 0;
-  return { last, cmjBase, cmjPct, bem, bemBase, estado, motivos, pct, n: L.length, comBase: !!cmjBase };
+  let cmjSD = null, cmjCV = null, md95 = null, z = null;
+  { const vs = prev.map(m=>Number(m.cmj)).filter(v=>v>0);
+    if(vs.length>=4 && cmjBase){ const sd = Math.sqrt(vs.reduce((a,v)=>a+(v-cmjBase)*(v-cmjBase),0)/(vs.length-1)); if(sd>0){ cmjSD = sd; cmjCV = sd/cmjBase*100; md95 = sd*1.96*Math.SQRT2; if(Number(last.cmj)>0) z = (Number(last.cmj)-cmjBase)/sd; } } }
+  return { last, cmjSD, cmjCV, md95, z, cmjBase, cmjPct, bem, bemBase, estado, motivos, pct, n: L.length, comBase: !!cmjBase };
 }
 function monitCycleNow(clientId){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
@@ -1473,10 +1479,10 @@ function monitCycleNow(clientId){
   }
   return null;
 }
-function monitScaleWorkout(w, pct){
+function monitScaleWorkout(w, pct, label){
   const f = 1 - pct/100;
   const hard = /intervalos|hiit|tabata|sprint|limiar|ritmo de prova|ritmo de maratona|repeticoes/;
-  const nw = { ...w, id: uid(), nome: String(w.nome).replace(/ \(−\d+% fadiga\)$/, '') + ' (−' + pct + '% fadiga)',
+  const nw = { ...w, id: uid(), nome: String(w.nome).replace(/ \(−\d+% (fadiga|descarga)\)$/, '') + ' (−' + pct + '% ' + (label||'fadiga') + ')',
     exercicios: (w.exercicios||[]).map(l=>{
       const ex = DATA.exercises.find(e=>e.id===l.exId) || {};
       const dura = /\bmin\b/i.test(String(l.reps||'')) || ex.grupo==='Cardio' || ex.padrao==='cardio';
@@ -1547,8 +1553,10 @@ function renderMonit(){
       ${an.estado!=='verde' && ciclo ? `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primary" onclick="monitApply('${cid}',${an.pct}); renderMonit();">Aplicar −${an.pct}% aos treinos que faltam esta semana</button>${an.pct!==30?`<button class="btn" onclick="monitApply('${cid}',30); renderMonit();">Aplicar −30%</button>`:''}</div>` : ''}
     </div>`;
   }
+  h += monitStatsHtml(an);
   h += '<div style="margin-top:12px; font-weight:600;">Últimos registos</div>';
   h += L.length ? '<table style="width:100%; font-size:13px; border-collapse:collapse;"><tr style="text-align:left;"><th>Data</th><th>CMJ (cm)</th><th>Sono (h)</th><th>Bem-estar</th><th></th></tr>' + L.slice(-14).reverse().map(m=>`<tr><td>${esc(formatDate(m.data))}</td><td>${m.cmj||'—'}</td><td>${m.sono||'—'}</td><td>${monitTotal(m)}/25</td><td><button class="btn btn-sm" onclick="monitDel('${m.id}')">Apagar</button></td></tr>`).join('') + '</table>' : '<div class="view-sub">Ainda sem registos para este cliente.</div>';
+  h += monitCalcHtml();
   out.innerHTML = h;
 }
 function monitSubmit(){ monitSave(); }
@@ -2680,7 +2688,8 @@ function renderLibrary(){
   const pCur = pSel.value;
   pSel.innerHTML = '<option value="">Todas as patologias</option>' + patOptions(pCur);
   const mCur = document.getElementById('lib-mod').value;
-  const filtered = DATA.exercises.filter(e=>(!gCur || e.grupo===gCur) && (!mCur || exModalidade(e)===mCur) && (!pCur || (mCur && mCur!=='Reabilitação') || (e.patologias||[]).includes(pCur)) && (!q || normText(e.nome+' '+(e.equip||'')+' '+(e.variantes||[]).join(' ')).includes(q)));
+  const chCur = (document.getElementById('lib-chain')||{}).value || '';
+  const filtered = DATA.exercises.filter(e=>(!chCur || exLinhas(e).includes(chCur)) && (!gCur || e.grupo===gCur) && (!mCur || exModalidade(e)===mCur) && (!pCur || (mCur && mCur!=='Reabilitação') || (e.patologias||[]).includes(pCur)) && (!q || normText(e.nome+' '+(e.equip||'')+' '+(e.variantes||[]).join(' ')).includes(q)));
   document.getElementById('lib-count').textContent = `${filtered.length} de ${DATA.exercises.length} exercícios` + (filtered.length>libLimit ? ` · a mostrar ${libLimit}` : '');
   if(pCur && mCur && mCur!=='Reabilitação') document.getElementById('lib-count').textContent += ' · ⚠ = contraindicado em ' + PATOLOGIAS[pCur].nome;
   if(filtered.length===0){ list.innerHTML = `<div class="empty"><strong>Nenhum resultado</strong>Experimenta outra pesquisa ou outro grupo.</div>`; return; }
@@ -2690,7 +2699,7 @@ function renderLibrary(){
   const groups = {};
   filtered.forEach(e=>{ (groups[e.grupo] = groups[e.grupo]||[]).push(e); });
   Object.values(groups).forEach(arr=>arr.sort((x,y)=>x.nome.localeCompare(y.nome,'pt')));
-  list.innerHTML = Object.keys(groups).sort().map(g=>{
+  list.innerHTML = libBiomPrincipios() + (chCur ? libChainPanel(chCur) : '') + Object.keys(groups).sort().map(g=>{
     return `<div style="margin-bottom:20px;">
       <div style="font-family:var(--font-display); font-size:15px; color:var(--chalk-dim); margin-bottom:8px; letter-spacing:.3px;">${g}</div>
       <div class="list">` + groups[g].map(e=>`
@@ -2701,9 +2710,11 @@ function renderLibrary(){
           <div class="list-row-main">
             <div class="list-row-title">${esc(e.nome)}${(pCur && contraAlert(e,pCur)) ? ` <span class="tag" style="color:var(--danger); border-color:var(--danger);" title="Evitar: ${esc(contraAlert(e,pCur))}">⚠ Contraindicado em ${esc(PATOLOGIAS[pCur].nome)}</span>` : ''}</div>
             <div class="list-row-meta">${esc(exModalidade(e))}${(e.patologias||[]).length ? ' · Indicado para: '+e.patologias.map(k=>esc((PATOLOGIAS[k]||{}).nome||k)).join(', ') : ''} · ${e.equip ? esc(e.equip) : 'Sem equipamento especificado'}${e.padrao ? ' · '+PATTERN_LABELS[e.padrao] : ''} · Músculo: ${esc(exMusculo(e))} · Função: ${esc(exFuncao(e))}${e.notas ? ' · '+esc(e.notas) : ''}</div>
+            ${exLinhasHtml(e)}${exBiomHtml(e)}
             ${openVariants.has(e.id) ? `<div style="margin-top:8px;"><div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">${(e.variantes||[]).map((v,i)=>`<span style="display:inline-flex; align-items:center; gap:4px; background:var(--surface-raised); border:1px solid var(--line); border-radius:99px; padding:2px 8px; font-size:12px;">${esc(v)} <button onclick="removeVariant('${e.id}',${i})" style="background:none; border:0; color:var(--chalk-dim); cursor:pointer; padding:0 2px;" aria-label="Remover variante">×</button></span>`).join('') || '<span class="view-sub">Sem variantes ainda.</span>'}</div><input type="text" placeholder="Nova variante + Enter" onkeydown="if(event.key==='Enter'){addVariant('${e.id}',this)}" style="width:100%; max-width:320px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:6px 8px; border-radius:var(--radius-s); font-size:13px;"></div>` : ''}
           </div>
           <div class="list-row-actions">
+            <button class="btn btn-ghost btn-sm" onclick="toggleBiom('${e.id}')">Biomecânica</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleVariants('${e.id}')">Variantes (${(e.variantes||[]).length})</button>
             ${e.videoData ? `<button class="btn btn-ghost btn-sm" onclick="openVideoPlayer('${e.id}')">▶ Ver vídeo</button>` : `<a class="btn btn-ghost btn-sm" href="${e.videoLink ? esc(e.videoLink) : techLink(e.nome)}" target="_blank" rel="noopener">Ver técnica ↗</a>`}
             <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteExercise('${e.id}')">Remover</button>
@@ -6479,6 +6490,7 @@ function protoCreateCycle(){
       semanas.push({ numero: semanas.length+1, progressao: prog, dias, fase: i });
     }
   });
+  { const mode = (document.getElementById('proto-onda')||{}).value || 'auto'; const nd = bompaWaves(semanas, p, level, mode); if(nd) report.push('Ondas de carga: ' + nd + ' semana(s) de descarga com −30% de volume.'); }
   if(plan && semanas.length){
     const last = semanas[semanas.length-1];
     last.progressao += ' — SEMANA DA PROVA (' + formatDate(provaISO) + ')';
@@ -7067,6 +7079,169 @@ function renderPrev(){
   box.innerHTML = prevTabsHtml() + fn();
   if(open.length) box.querySelectorAll('details').forEach(d=>{ const t = d.querySelector('.proto-t'); if(t) d.open = open.includes(t.textContent); });
   window.scrollTo(0, scroll);
+}
+
+// ---------- LITERATURA: Myers (linhas miofasciais), Watkins (biomecânica), Bompa (ondas de carga), Weir (erro de medição) ----------
+const LINHAS = {
+  SBL:{nome:'Linha Superficial Posterior', trilho:'fáscia plantar → gémeos → isquiotibiais → sacro → eretores da coluna → crânio', f:'Mantém a postura em pé e a extensão do corpo; protege a face posterior.', pista:'Rigidez posterior (cadeia dos isquiotibiais, gémeos, lombar) limita a flexão anterior e o agachamento.', forca:'dobradiça da anca, extensões, gémeos', mob:'gémeos, isquiotibiais, lombar'},
+  SFL:{nome:'Linha Superficial Anterior', trilho:'dorso do pé → tibial anterior → quadríceps → reto abdominal → esternocleidomastoideu', f:'Flexão do tronco e da anca, extensão do joelho; equilibra a linha posterior.', pista:'Encurtamento anterior leva a anteversão pélvica e extensão lombar excessiva.', forca:'quadríceps, reto abdominal, afundos', mob:'quadríceps, flexores da anca, peitoral'},
+  LL:{nome:'Linha Lateral', trilho:'peroneais → banda iliotibial → glúteo médio e TFL → oblíquos → intercostais → pescoço', f:'Estabilidade lateral do tronco e da bacia; controlo do valgo e do apoio unipodal.', pista:'Fraqueza lateral aparece como queda da bacia e valgo dinâmico.', forca:'prancha lateral, abdução, transporte unilateral', mob:'banda iliotibial, glúteo médio, quadrado lombar'},
+  SPL:{nome:'Linha Espiral', trilho:'crânio → romboides → serrátil → oblíquos → TFL → tibial anterior → bíceps femoral → sacro', f:'Rotações e estabilização anti-rotação; liga ombro e bacia em diagonal.', pista:'Assimetrias de rotação do tronco e da bacia, importantes em corrida e desportos de lançamento.', forca:'anti-rotação (Pallof), lenhador, rotações controladas', mob:'rotação torácica, oblíquos, peroneais'},
+  FFL:{nome:'Linha Funcional Anterior', trilho:'peitoral maior → bainha do reto abdominal → adutor longo contralateral', f:'Empurrar e lançar com transferência cruzada do braço para a perna oposta.', pista:'Limita o gesto de lançamento e o impulso em diagonal.', forca:'supino, flexões, lançamentos de peito', mob:'peitoral, adutores'},
+  BFL:{nome:'Linha Funcional Posterior', trilho:'grande dorsal → fáscia toracolombar → glúteo máximo → vasto lateral contralateral', f:'Puxar e correr: liga o braço à perna oposta pela face posterior.', pista:'Falha de transferência no sprint, na marcha e nos puxões cruzados.', forca:'puxadas, remadas, hip thrust, passada com remada', mob:'grande dorsal, glúteo máximo'},
+  DFL:{nome:'Linha Profunda Anterior', trilho:'tibial posterior → adutores → psoas e ilíaco → diafragma → escalenos', f:'Núcleo profundo: arco do pé, adutores, psoas e respiração; sustenta o eixo do corpo.', pista:'Colapso do arco e valgo do joelho, dor na virilha, controlo pélvico fraco.', forca:'adutores, dead bug, short foot, core profundo', mob:'psoas, adutores, respiração diafragmática'},
+  SBAL:{nome:'Linha Superficial Posterior do Braço', trilho:'trapézio → deltoide → septo lateral → extensores do punho', f:'Eleva e afasta o braço; lado dorsal do membro superior.', pista:'Excesso de trapézio superior e ombros elevados.', forca:'elevações, press de ombros', mob:'trapézio superior, extensores do antebraço'},
+  DBAL:{nome:'Linha Profunda Posterior do Braço', trilho:'romboides → coifa dos rotadores → tríceps → cúbito', f:'Estabilidade da omoplata e do ombro; empurrar e controlar.', pista:'Ombro instável ou dor de impacto com fraqueza da coifa e dos retratores.', forca:'face pull, remadas, rotações externas, tríceps', mob:'dorsal alta, romboides'},
+  SFAL:{nome:'Linha Superficial Anterior do Braço', trilho:'peitoral maior e grande dorsal → septo medial → flexores do punho', f:'Empurrar e puxar contra o corpo; lado palmar do membro superior.', pista:'Postura de ombros enrolados e encurtamento peitoral.', forca:'supino, flexões, paralelas', mob:'peitoral, flexores do antebraço'},
+  DFAL:{nome:'Linha Profunda Anterior do Braço', trilho:'peitoral menor → bíceps → rádio → polegar', f:'Controlo fino da omoplata e da mão; ligação ao polegar.', pista:'Omoplata projetada para a frente.', forca:'rosca bíceps, push-up plus, remada supinada', mob:'peitoral menor, bíceps'}
+};
+const LINHAS_REG = [
+  [/peso morto|terra\b|stiff|romeno|good morning|bom dia|hiperextens|extensao lombar|superman|swing|hip thrust|ponte|nordico|leg curl|flexao de joelho|femoral|gemeos|panturrilha|salto|jump|sprint|bulgaro|pistol|isquio/, 'SBL'],
+  [/agachamento|squat|leg press|afundo|lunge|passada|step.?up|extensao (de )?(joelho|quadriceps)|extensora|abdominal|crunch|sit.?up|quadriceps|flexores da anca/, 'SFL'],
+  [/(?<!elevacao )lateral|abducao|clam|ostra|copenhag|farmer|suitcase|mala|pallof|monster|shuffle|unipodal|banda iliotibial|gluteo medio/, 'LL'],
+  [/rotacao|rotativ|russian|twist|lenhador|chop|pallof|helic|diagonal|cruzad|bicicleta|torcao|\bcross(?!over)/, 'SPL'],
+  [/supino|flexoes|flexao de bracos|crossover|cross.?over|voador|peck|\bfly\b|crucifixo|dips|paralelas|press de peito|chest pass|lancamento (de )?peito/, 'FFL'],
+  [/puxada|pulldown|barra fixa|pull.?up|chin.?up|remada unilateral|serrote|slam|pullover|lancamento (por cima|acima)|dorsal/, 'BFL'],
+  [/adutor|copenhag|sumo|goblet|taca|psoas|iliaco|dead bug|hollow|prancha|plank|respiracao|diafragma|bird.?dog|short foot|pe curto|arco do pe|tibial posterior|mobilidade da anca|90.?90|lagarto/, 'DFL'],
+  [/elevacao lateral|elevacao frontal|press (de ombros|militar)|desenvolvimento|encolhimento|remada alta|trapezio|extensores do antebraco/, 'SBAL'],
+  [/remada|face pull|rotacao externa|triceps|extensao de cotovelo|aves|crucifixo invertido|romboide|retracao/, 'DBAL'],
+  [/supino|flexoes|flexao de bracos|dips|paralelas|press de peito|peitoral|flexores do antebraco|rosca de punho/, 'SFAL'],
+  [/rosca|biceps|push.?up plus|peitoral menor|remada supinada/, 'DFAL']
+];
+function exLinhas(e){
+  const n = normText(e.nome || '');
+  const out = [];
+  LINHAS_REG.forEach(([re, k])=>{ if(re.test(n) && !out.includes(k)) out.push(k); });
+  if(!out.length){
+    const fb = { dobradica:['SBL'], agachamento:['SFL','SBL'], empurrar_h:['SFAL','FFL'], empurrar_v:['SBAL'], puxar_h:['DBAL'], puxar_v:['BFL','SFAL'], core:['DFL','SFL'] }[e.padrao];
+    if(fb) return fb.slice();
+  }
+  return out.slice(0, 3);
+}
+function exLinhasHtml(e){
+  const l = exLinhas(e); if(!l.length) return '';
+  return `<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:4px;">` + l.map(k=>`<span class="tag" title="${esc(LINHAS[k].nome)}" style="font-size:11px; cursor:pointer;" onclick="document.getElementById('lib-chain').value='${k}'; libReset();">${k}</span>`).join('') + `</div>`;
+}
+// Biomecânica (Watkins): braço do momento, alavancas, cargas articulares, impulso
+const BIOM_PRINC = [
+  ['Torque = força × braço do momento', 'O esforço numa articulação cresce com a distância perpendicular entre a carga e o eixo articular. Aproximar a carga reduz o esforço; afastá-la aumenta-o.'],
+  ['Progredir ou regredir pela alavanca', 'Mudar o comprimento da alavanca ajusta a dificuldade sem mudar o peso: prancha de joelhos → pés, flexão inclinada → no chão, braços junto ao corpo → estendidos.'],
+  ['Base de apoio e centro de massa', 'A linha do peso deve cair dentro da base de apoio. Base estreita (unipodal, acima da cabeça) pede mais controlo e menos carga.'],
+  ['Impulso = força × tempo', 'Para saltar mais, aplica força durante mais tempo. Na aterragem, amortecer em flexão de anca e joelho aumenta o tempo de travagem e reduz o pico de força.'],
+  ['Ciclo alongamento-encurtamento', 'O músculo produz mais força se o alongamento excêntrico for seguido logo da contração. Pausas longas na fase de transição perdem esse ganho.'],
+  ['Cadeia aberta e fechada', 'Em cadeia aberta (extensão de joelho sentado) o cisalhamento no joelho é maior perto da extensão; em cadeia fechada (agachamento) a carga é partilhada com anca e tornozelo.']
+];
+const BIOM_REG = [
+  [/agachamento|squat|leg press/, {t:'Alavanca: anca, joelho e tornozelo em cadeia fechada.', n:'O braço do momento do joelho aumenta com a flexão e com o avanço do joelho; o da anca e da lombar aumenta com a inclinação do tronco. Mantém a barra sobre o meio do pé.', a:'Joelhos dentro da linha do pé e tronco estável; evita a barra deslocada à frente da base de apoio.'}],
+  [/peso morto|terra\b|stiff|romeno|good morning|bom dia|swing/, {t:'Dobradiça de anca: o esforço lombar depende da distância horizontal da carga.', n:'Barra rente às pernas encurta o braço do momento e baixa o torque na lombar e na anca. Quanto mais longe a carga, maior o torque.', a:'Barra colada ao corpo, coluna neutra, empurra o chão com os pés.'}],
+  [/supino|press de peito/, {t:'Empurrar horizontal: ombro e cotovelo como eixos.', n:'Cotovelos a cerca de 45–75° do tronco reduzem o torque no ombro; pega larga e cotovelos a 90° aumentam-no e reduzem o do cotovelo.', a:'Omoplatas fixas no banco, trajetória levemente em arco, sem rebote no peito.'}],
+  [/flexoes|flexao de bracos/, {t:'Peso corporal sobre alavanca longa (pés → mãos).', n:'Elevar as mãos reduz a carga; elevar os pés ou afastar as mãos do tronco aumenta-a. Ajusta pela inclinação do corpo.', a:'Corpo alinhado, sem queda da bacia nem elevação dos ombros.'}],
+  [/press (de ombros|militar)|desenvolvimento/, {t:'Empurrar vertical com base estreita.', n:'A carga acima da cabeça pede alinhamento sobre a base de apoio; o ombro trabalha com braço de momento menor quando o cotovelo está sob a barra.', a:'Costelas baixas, sem hiperextensão lombar; barra sobre o meio do pé no fim.'}],
+  [/elevacao lateral|elevacao frontal/, {t:'Braço de alavanca longo: torque máximo com o braço a 90°.', n:'Cotovelo fletido encurta a alavanca e reduz o esforço; braço esticado aumenta-o. Usa cargas menores do que nos press.', a:'Sobe até ao plano da omoplata, sem encolher os ombros.'}],
+  [/rosca|biceps/, {t:'Flexão do cotovelo: torque externo máximo perto dos 90°.', n:'O ponto mais difícil com halteres é a 90°, quando o antebraço está horizontal; em polia o perfil de resistência é diferente.', a:'Cotovelo fixo ao tronco, sem balanço do corpo.'}],
+  [/remada|puxada|pulldown|barra fixa|pull.?up/, {t:'Puxar: carga vertical e escápula como base.', n:'Em remada inclinada, quanto mais horizontal o tronco, maior o torque na lombar; apoiar o peito reduz-no. Puxada com pega larga aumenta o braço de momento no ombro.', a:'Inicia o movimento com a omoplata; evita impulso do tronco.'}],
+  [/extensao (de )?(joelho|quadriceps)|extensora/, {t:'Cadeia aberta no joelho.', n:'O torque externo é máximo com a perna horizontal; o cisalhamento anterior da tíbia aumenta perto da extensão final.', a:'Limita a amplitude final em reconstrução do LCA ou dor patelar, se o fisioterapeuta indicar.'}],
+  [/hip thrust|ponte|gluteo/, {t:'Extensão da anca com torque máximo no topo.', n:'O torque da carga é máximo com o tronco paralelo ao chão, onde o glúteo tem o maior pedido.', a:'Queixo ao peito, costelas baixas, sem hiperextensão lombar no topo.'}],
+  [/prancha lateral|pallof|anti.?rotacao|lenhador|chop/, {t:'Anti-rotação e inclinação: torque = carga × distância.', n:'Afastar os braços do tronco, ou a carga do eixo, aumenta o torque. Progride aumentando a distância antes de aumentar a carga.', a:'Bacia e ombros alinhados, sem rodar o tronco.'}],
+  [/prancha|plank|hollow|dead bug/, {t:'Core: alavanca de tronco e membros.', n:'Afastar os cotovelos para a frente ou levantar membros alonga a alavanca e aumenta o pedido no core e no ombro.', a:'Pélvis neutra, sem lombar em arco nem bacia caída.'}],
+  [/salto|jump|pliom|box|bound|hop|skipping/, {t:'Impulso e ciclo alongamento-encurtamento.', n:'A altura de salto depende do impulso (força × tempo). Na aterragem, a força de reação pode atingir várias vezes o peso corporal: amortece em flexão de anca e joelho.', a:'Aterragem silenciosa, joelhos alinhados com os pés, sem colapso em valgo.'}],
+  [/corrida|run|sprint|passada|trote/, {t:'Marcha e corrida: força de reação do solo repetida.', n:'A força vertical de reação no apoio é da ordem de 2–3× o peso corporal. Aumentar a cadência e aterrar mais perto do centro de massa reduz o impacto e a sobrepassada.', a:'Aumenta o volume de forma gradual para dar tempo aos tecidos.'}],
+  [/afundo|lunge|bulgaro|step.?up/, {t:'Apoio unipodal dinâmico.', n:'Passada mais curta e tronco mais direito carregam o joelho; passada longa e tronco inclinado carregam a anca. Escolhe consoante o objetivo ou a lesão.', a:'Joelho alinhado com o segundo dedo; tronco controlado.'}],
+  [/farmer|transporte|suitcase|carry|mala/, {t:'Transporte: carga fora do eixo.', n:'Carga unilateral cria momento lateral que o quadrado lombar e os oblíquos têm de contrariar; o transporte bilateral treina a postura sem esse momento.', a:'Ombros nivelados, sem inclinar o tronco para o lado da carga.'}]
+];
+function exBiom(e){
+  const n = normText(e.nome || '');
+  for(const [re, o] of BIOM_REG) if(re.test(n)) return o;
+  return null;
+}
+const openBiom = new Set();
+function toggleBiom(id){ if(openBiom.has(id)) openBiom.delete(id); else openBiom.add(id); renderLibrary(); }
+function exBiomHtml(e){
+  if(!openBiom.has(e.id)) return '';
+  const b = exBiom(e), l = exLinhas(e);
+  let h = '<div style="margin-top:8px; padding:10px 12px; background:rgba(128,128,128,.08); border-radius:6px; font-size:13px; line-height:1.5;">';
+  if(b) h += `<div><b>Biomecânica.</b> ${b.t}</div><div style="margin-top:4px;">${b.n}</div><div style="margin-top:4px;"><b>Atenção:</b> ${b.a}</div>`;
+  else h += '<div class="view-sub">Sem nota de biomecânica para este exercício. Aplica o princípio geral: quanto mais longe a carga do eixo da articulação, maior o torque.</div>';
+  if(l.length) h += '<div style="margin-top:6px;"><b>Linhas miofasciais (Myers).</b> ' + l.map(k=>k+' — '+LINHAS[k].nome).join('; ') + '</div>';
+  return h + '</div>';
+}
+function libChainPanel(k){
+  const L = LINHAS[k]; if(!L) return '';
+  const pool = DATA.exercises.filter(e=>exLinhas(e).includes(k));
+  const isMob = e=>e.padrao==='mobilidade' || e.grupo==='Mobilidade';
+  const pick = (arr, n)=>arr.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).slice(0, n).map(e=>esc(e.nome)).join(', ') || '—';
+  return `<div style="border-left:4px solid var(--accent, #c9a227); background:rgba(128,128,128,.08); padding:12px 14px; border-radius:4px; margin-bottom:14px; font-size:13.5px; line-height:1.55;">
+    <div style="font-weight:600;">${esc(L.nome)} (${k})</div>
+    <div><b>Trilho:</b> ${esc(L.trilho)}</div>
+    <div><b>Função:</b> ${esc(L.f)}</div>
+    <div><b>Pista para avaliar:</b> ${esc(L.pista)}</div>
+    <div><b>Fortalecer:</b> ${esc(L.forca)}. <b>Mobilizar:</b> ${esc(L.mob)}.</div>
+    <div style="margin-top:4px;"><b>Exemplos da biblioteca (força):</b> ${pick(pool.filter(e=>!isMob(e)), 4)}</div>
+    <div><b>Exemplos (mobilidade):</b> ${pick(pool.filter(isMob), 4)}</div>
+    <div class="view-sub" style="margin-top:6px;">As linhas são um modelo de raciocínio sobre a continuidade das fáscias. A evidência anatómica é parcial em algumas ligações: usa-as para escolher exercícios e não como diagnóstico.</div>
+  </div>`;
+}
+function libBiomPrincipios(){
+  return `<details style="margin-bottom:14px;"><summary style="cursor:pointer; font-weight:600;">Princípios de biomecânica para prescrever (Watkins)</summary><div style="margin-top:8px; font-size:13.5px; line-height:1.55;">` + BIOM_PRINC.map(([t,d])=>`<div style="margin-bottom:6px;"><b>${esc(t)}.</b> ${esc(d)}</div>`).join('') + `</div></details>`;
+}
+// Bompa: ondas de carga 3:1 (2:1 para iniciantes) com semana de descarga
+function bompaWaves(semanas, p, level, mode){
+  if(mode==='off' || protoKindOf(p)!=='treino') return 0;
+  const L = level==='Iniciante' ? 2 : 3;
+  const cache = new Map();
+  let k = 0, nDesc = 0;
+  semanas.forEach((s, i)=>{
+    const last = i===semanas.length-1;
+    const taper = p.prova && s.fase===p.fases.length-1;
+    if(taper){ k = 0; return; }
+    k++;
+    if(k<=L){
+      s.onda = k + '/' + L;
+      s.progressao += ` — Onda ${k}/${L}: ` + (k===1 ? 'carga de entrada' : k===L ? 'carga mais alta do bloco' : 'carga a subir');
+    } else if(last){
+      k = 0;
+    } else {
+      s.onda = 'D'; k = 0; nDesc++;
+      s.progressao += ' — SEMANA DE DESCARGA (Bompa): −30% de volume, mantém a técnica e a intensidade';
+      s.dias.forEach(d=>{
+        if(!d.workoutId || d.ajuste) return;
+        if(!cache.has(d.workoutId)){ const w = DATA.workouts.find(x=>x.id===d.workoutId); cache.set(d.workoutId, w ? monitScaleWorkout(w, 30, 'descarga') : d.workoutId); }
+        d.workoutId = cache.get(d.workoutId); d.ajuste = 30;
+      });
+    }
+  });
+  return nDesc;
+}
+// Weir: erro de medição e diferença mínima real
+function monitCalc(){
+  const g = id=>parseFloat(String((document.getElementById(id)||{}).value||'').replace(',', '.'));
+  const sd = g('mc-sd'), icc = g('mc-icc'), a = g('mc-a'), b = g('mc-b');
+  const out = document.getElementById('mc-out'); if(!out) return;
+  if(!(sd>0) || !(icc>=0 && icc<1)){ out.textContent = 'Preenche o desvio-padrão do teste e o ICC (entre 0 e 0,99).'; return; }
+  const sem = sd*Math.sqrt(1-icc), md95 = sem*1.96*Math.SQRT2, md90 = sem*1.645*Math.SQRT2;
+  let t = `SEM = ${sem.toFixed(2)}. Diferença mínima real: ${md90.toFixed(2)} (90%) ou ${md95.toFixed(2)} (95%).`;
+  if(a>=0 && b>=0 && !isNaN(a) && !isNaN(b)){
+    const d = b-a;
+    t += ` Variação observada: ${d>=0?'+':''}${d.toFixed(2)} → ` + (Math.abs(d) >= md95 ? 'mudança real com 95% de confiança.' : Math.abs(d) >= md90 ? 'mudança provável (90%), mas ainda dentro do critério de 95%.' : 'dentro do erro de medição: não se pode afirmar que mudou.');
+  }
+  out.textContent = t;
+}
+function monitStatsHtml(an){
+  if(!an || an.cmjSD==null) return '<div class="view-sub" style="margin:8px 0;">Com 4 ou mais registos de CMJ a app calcula a variação normal do atleta e a diferença mínima real.</div>';
+  const f = v=>v.toFixed(1).replace('.', ',');
+  const d = Number(an.last.cmj) - an.cmjBase;
+  const real = Math.abs(d) >= an.md95;
+  return `<div style="margin:8px 0; font-size:13.5px; line-height:1.5;"><b>Estatística do CMJ.</b> Linha de base ${f(an.cmjBase)} cm, DP ${f(an.cmjSD)} (CV ${f(an.cmjCV)}%). Hoje: ${f(d)} cm de diferença, z = ${f(an.z)}. Diferença mínima real (95%): ${f(an.md95)} cm. ` + (real ? 'A variação de hoje é maior do que o ruído normal do atleta.' : 'A variação de hoje está dentro do ruído normal do atleta: não a leias como fadiga só por este valor.') + ` <span class="view-sub">(Weir: SEM × 1,96 × √2; aqui o SEM é estimado pela variação dos últimos dias.)</span></div>`;
+}
+function monitCalcHtml(){
+  return `<details style="margin-top:16px;"><summary style="cursor:pointer; font-weight:600;">Calculadora de erro de medição (Weir)</summary>
+  <div class="view-sub" style="margin:6px 0;">Para qualquer teste repetido (CMJ, 1RM, tempo, sprint). Com o desvio-padrão do grupo e o ICC do teste, vê se uma mudança é maior do que o erro.</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+    <div class="field" style="margin:0"><label>Desvio-padrão do teste</label><input id="mc-sd" type="text" inputmode="decimal" oninput="monitCalc()"></div>
+    <div class="field" style="margin:0"><label>ICC (ex.: 0,95)</label><input id="mc-icc" type="text" inputmode="decimal" oninput="monitCalc()"></div>
+    <div class="field" style="margin:0"><label>Valor antes</label><input id="mc-a" type="text" inputmode="decimal" oninput="monitCalc()"></div>
+    <div class="field" style="margin:0"><label>Valor depois</label><input id="mc-b" type="text" inputmode="decimal" oninput="monitCalc()"></div>
+  </div><div id="mc-out" style="margin-top:8px; font-size:13.5px;"></div></details>`;
 }
 
 function renderAll(){
