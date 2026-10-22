@@ -1164,6 +1164,64 @@ function ptAddMobility(w, obj, perf, keys, casa, home, wi){
   if(w.nome && !/mobilidade/i.test(w.nome)) w.nome += ' + mobilidade';
 }
 
+// ---------- EXERCÍCIOS DOS PROTOCOLOS DE PERFORMANCE ----------
+// g grupo, e equipamento, p padrão, f função, m músculo/região
+const PERFX_LIB = [
+  {n:'Remada com barra', g:'Costas', e:'Barra', p:'puxar_h', f:'Força e hipertrofia (multiarticular)', m:'Dorsais', o:'Tronco a 45°, coluna neutra, puxar a barra ao abdómen sem impulso.'},
+  {n:'Remada unilateral com halteres', g:'Costas', e:'Halteres', p:'puxar_h', f:'Força e hipertrofia (multiarticular)', m:'Dorsais', o:'Apoio no banco, puxar o haltere à anca com a escápula a trabalhar.'},
+  {n:'Press militar com barra', g:'Ombros', e:'Barra', p:'empurrar_v', f:'Força e hipertrofia (multiarticular)', m:'Deltoides', o:'Glúteos e core contraídos, barra passa rente à cara, sem arquear a lombar.'},
+  {n:'Face pull com elástico', g:'Ombros', e:'Elástico', p:'puxar_h', f:'Estabilidade / controlo do core', m:'Trapézio / deltoide posterior', o:'Puxar para a cara com cotovelos altos e rodar os braços para fora. Protege o ombro.'},
+  {n:'Salto vertical com contramovimento (CMJ)', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Potência', m:'Quadríceps', o:'Mãos na anca, descer rápido e saltar o mais alto possível. Aterrar suave, com os joelhos alinhados. Regista a melhor de 3.'},
+  {n:'Drop jump (salto em profundidade)', g:'Pernas', e:'Caixa', p:'agachamento', f:'Potência', m:'Quadríceps', o:'Descer de uma caixa baixa (20-30 cm) e saltar de imediato, com o mínimo tempo de contacto no solo.'},
+  {n:'Copenhagen plank', g:'Core', e:'Banco', p:'core', f:'Estabilidade / controlo do core', m:'Adutores', o:'Prancha lateral com a perna de cima apoiada no banco. Protege a virilha e melhora o controlo da bacia.'},
+  {n:'Lançamento de medicine ball acima da cabeça', g:'Corpo inteiro', e:'Medicine ball', p:'puxar_v', f:'Potência', m:'Corpo inteiro', o:'Extensão total das ancas e lançamento para a parede ou chão, com intenção máxima.'},
+  {n:'Intervalos 4×4 min (Z5, 90-95% da FC máx.)', g:'Cardio', e:'', p:'cardio', f:'Resistência cardiovascular', m:'Sistema cardiorrespiratório', o:'4 blocos de 4 min a 90-95% da FC máx. (Borg 17-18), com 3 min de recuperação ativa (70% da FC máx.). Corrida em subida, bicicleta ou remo.'},
+  {n:'HIIT 30/30 (30 s intenso, 30 s fácil)', g:'Cardio', e:'', p:'cardio', f:'Resistência cardiovascular', m:'Sistema cardiorrespiratório', o:'Séries de 10 a 12 repetições de 30 s a 100% da velocidade aeróbia máxima, com 30 s de trote ou pedalada fácil.'},
+  {n:'Tabata (8×20 s intenso, 10 s de pausa)', g:'Cardio', e:'', p:'cardio', f:'Resistência cardiovascular', m:'Sistema cardiorrespiratório', o:'20 s à máxima intensidade e 10 s de pausa, 8 vezes. Bicicleta, remo ou agachamentos com salto. Só em atletas adaptados.'},
+  {n:'Sprints repetidos de 30 m', g:'Cardio', e:'', p:'cardio', f:'Potência', m:'Sistema cardiorrespiratório', o:'Sprint máximo de 30 m com recuperação de 25-30 s a andar. Treina a capacidade de repetir esforços máximos.'},
+  {n:'Escada de agilidade — in-in-out-out', g:'Corpo inteiro', e:'Escada de agilidade', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Dois apoios dentro, dois fora de cada quadrado, passos rápidos e leves, olhar em frente.'},
+  {n:'Escada de agilidade — lateral (icky shuffle)', g:'Corpo inteiro', e:'Escada de agilidade', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Deslocamento lateral com dois apoios por quadrado, ritmo constante.'},
+  {n:'Escada de agilidade — um pé por quadrado', g:'Corpo inteiro', e:'Escada de agilidade', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Apoio rápido em cada quadrado, braços coordenados com as pernas.'},
+  {n:'Slalom entre cones', g:'Corpo inteiro', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Cones a 1,5-2 m, centro de gravidade baixo, passos curtos, mudanças de direção por impulso do pé exterior.'},
+  {n:'Drill 5-10-5 (pro agility)', g:'Corpo inteiro', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Três cones em linha a 5 jardas (4,57 m). Sprint para um lado, inversão, sprint 10 jardas ao outro lado e regresso ao centro. Desacelerar com controlo.'},
+  {n:'Drill em T (cones)', g:'Corpo inteiro', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Sprint em frente, deslocamento lateral para cada lado e regresso de costas. Mantém os pés sem cruzar nos laterais.'},
+  {n:'Saltos sobre barreiras baixas', g:'Pernas', e:'Barreiras', p:'agachamento', f:'Potência', m:'Quadríceps', o:'Barreiras de 15-30 cm, contactos curtos e reativos, aterragem silenciosa.'},
+  {n:'Saltos laterais sobre linha', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Agilidade e coordenação', m:'Quadríceps', o:'Saltar de um lado ao outro da linha com os dois pés, o mais rápido possível, 15 s.'},
+  {n:'Reação a estímulo visual (cones de cor)', g:'Corpo inteiro', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'O treinador indica a cor com a mão ou luz; o atleta corre ao cone certo e volta. Treina a decisão sob pressão de tempo.'},
+  {n:'Reação a estímulo auditivo (palma ou apito)', g:'Corpo inteiro', e:'Peso corporal', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Em posição atlética, sprint de 5 m ao sinal sonoro. Variar o intervalo e a direção.'},
+  {n:'Mudança de direção a 45° e 90° com desaceleração', g:'Corpo inteiro', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Aproximar, travar com os últimos 2 passos curtos, apoiar o pé exterior e acelerar para o novo ângulo.'},
+  {n:'Aterragem controlada de salto (stick landing)', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Estabilidade / controlo do core', m:'Quadríceps', o:'Saltar e aterrar com joelhos fletidos e alinhados, parar 2 s. Protege o joelho e o tornozelo.'},
+  {n:'Passes à parede alternando as mãos', g:'Corpo inteiro', e:'Bola', p:'cardio', f:'Agilidade e coordenação', m:'Corpo inteiro', o:'Bola pequena, passes rápidos alternando mãos e variando a distância. Coordenação olho-mão.'},
+  {n:'Equilíbrio unipodal com olhos fechados', g:'Core', e:'Peso corporal', p:'core', f:'Estabilidade / controlo do core', m:'Tornozelo e pé', o:'Apoio num pé, olhos fechados, 20-30 s. Treina os recetores proprioceptivos.'},
+  {n:'Teste CMJ matinal (melhor de 3 saltos)', g:'Corpo inteiro', e:'Peso corporal', p:'mobilidade', f:'Monitorização e recuperação', m:'Prontidão neuromuscular', o:'Aquecimento curto, 3 saltos verticais com pausa de 30 s. Regista a melhor altura e compara com a média dos últimos 7 dias. Queda superior a 5-10% = fadiga neuromuscular.'},
+  {n:'Questionário de bem-estar matinal (1-5)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Monitorização e recuperação', m:'Prontidão', o:'Pontuar de 1 a 5: sono, fadiga, dores musculares, humor e stress. Soma baixa em 2 dias seguidos = reduzir a carga.'},
+  {n:'Registo de sono (horas e qualidade)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Monitorização e recuperação', m:'Sono', o:'Anotar hora de deitar, de acordar e qualidade (1-5). Objetivo: 7-9 h por noite, horários regulares.'},
+  {n:'Registo alimentar de 3 dias', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Monitorização e recuperação', m:'Nutrição', o:'Anotar tudo o que come e bebe durante 3 dias (1 de fim de semana). Serve para avaliar proteína, hidratos de carbono e hidratação.'},
+  {n:'Caminhada de recuperação (20-30 min)', g:'Cardio', e:'', p:'cardio', f:'Monitorização e recuperação', m:'Sistema cardiorrespiratório', o:'Ritmo muito leve (Borg 9-11), de preferência ao ar livre. Promove a circulação sem fadiga adicional.'},
+  {n:'Respiração lenta (6 ciclos por minuto)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Monitorização e recuperação', m:'Sistema nervoso autónomo', o:'Inspirar 5 s e expirar 5 s, 5 min. Ajuda a baixar a ativação e a recuperar após o treino.'},
+  {n:'Rolo de espuma para dorsais e glúteos', g:'Mobilidade', e:'Rolo de espuma', p:'mobilidade', f:'Mobilidade (alongamento)', m:'Mobilidade articular', o:'Rolar devagar 60 s por zona, parando 10 s nos pontos mais sensíveis, sem dor aguda.'},
+  {n:'Definir objetivos de processo, desempenho e resultado', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'Escrever 1 objetivo de resultado, 2 de desempenho (números) e 3 de processo (o que fazer em cada treino). Objetivos específicos e desafiantes melhoram o rendimento.'},
+  {n:'Rotina pré-execução (respirar, imagem, palavra-chave)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'Antes de cada série ou tentativa: 1 respiração lenta, imagem do gesto perfeito, uma palavra-chave. Sempre igual.'},
+  {n:'Visualização guiada do gesto (PETTLEP)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'3-5 min de imagem mental na primeira pessoa, com a postura, o ambiente e as sensações reais do gesto. Complementa o treino físico.'},
+  {n:'Respiração de foco (box breathing 4-4-4-4)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'Inspirar 4 s, reter 4 s, expirar 4 s, reter 4 s. 2 a 4 min antes de uma tarefa exigente.'},
+  {n:'Auto-diálogo: palavras-chave positivas', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'Escolher 3 palavras ou frases curtas e instrutivas ("forte", "devagar", "firme") e usá-las nas séries difíceis.'},
+  {n:'Treino sob pressão (consequência ou tempo limite)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Resiliência', o:'Repetir uma tarefa simples com uma consequência (por exemplo: falhar = 5 burpees) ou com público. Treina o desempenho sob stress.'},
+  {n:'Rotina de reset após erro', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Resiliência', o:'Após um erro: soltar (expirar), reenquadrar ("próxima ação") e voltar ao foco em menos de 10 s.'},
+  {n:'Reflexão pós-treino (3 perguntas)', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Resiliência', o:'O que correu bem? O que posso melhorar? Qual é o foco do próximo treino? Anotar numa frase cada.'},
+  {n:'Tarefa dupla: atenção focada', g:'Corpo inteiro', e:'', p:'mobilidade', f:'Preparação mental', m:'Foco e motivação', o:'Fazer um exercício simples (agachamento ou marcha) enquanto conta de trás para a frente de 7 em 7 ou responde a estímulos. Treina a atenção sob distração.'}
+];
+function perfEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const have = new Set(list.map(e=>normName(e.nome)));
+  let n = 0;
+  PERFX_LIB.forEach(m=>{
+    if(have.has(normName(m.n))) return;
+    list.push({ id: uid(), nome: m.n, grupo: m.g, equip: m.e, notas: m.o, padrao: m.p, modalidade:'Funcional', musculo: m.m, funcao: m.f, patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' });
+    n++;
+  });
+  return n;
+}
+
 function exFixPadrao(e){
   if(e.padraoManual) return;
   const n = String(e.nome||''), g = e.grupo, p = e.padrao;
@@ -1212,6 +1270,7 @@ function exFuncao(e){
 function migrateAulas(d){
   exFixAll(d.exercises);
   if(!d.mobV && (d.exercises||[]).length){ mobEnsure(d.exercises); d.mobV = 1; }
+  if(!d.perfV && (d.exercises||[]).length){ perfEnsure(d.exercises); d.perfV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -2176,7 +2235,7 @@ function loadFullLibrary(){
   if(!confirm(`Adicionar ${toAdd.length} exercícios`+(toUpdate.length?` e completar notas/variantes em ${toUpdate.length} já existentes`:'')+'? Não apaga nem altera o que já escreveste.')) return;
   toAdd.forEach(e=>DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: e.notas||'', padrao: e.padrao, imagem: '', modalidade: e.modalidade||'', variantes: (e.variantes||[]).slice(), patologias: (e.patologias||[]).slice(), rx: e.rx||null }));
   toUpdate.forEach(e=>{ const x=byName.get(normName(e.nome)); if(!x.notas && e.notas) x.notas=e.notas; if(!(x.variantes||[]).length && (e.variantes||[]).length) x.variantes=e.variantes.slice(); if(!x.modalidade && e.modalidade) x.modalidade=e.modalidade; if(!x.rx && e.rx) x.rx=e.rx; if(!(x.patologias||[]).length && (e.patologias||[]).length) x.patologias=e.patologias.slice(); });
-  mobEnsure(DATA.exercises); DATA.mobV = 1;
+  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1;
   exFixAll(DATA.exercises);
   saveData();
 }
@@ -4133,7 +4192,7 @@ function genPtWorkout(cy, wi, local){
         const drop = ws.filter(w=>w!==keep).map(w=>w.id);
         DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id));
         keep.nome = keep.nome + ' (PT ' + lab + ')';
-        const pObj = p.prova ? 'Performance' : (p.pat ? 'Reabilitação' : 'Condição física geral');
+        const pObj = (p.prova || p.grupo==='Performance') ? 'Performance' : (p.pat ? 'Reabilitação' : 'Condição física geral');
         const pPerf = ({'p-5k':'corrida5k','p-10k':'corrida10k','p-meia':'meia','p-maratona':'maratona','p-trail':'trail'})[p.id] || '';
         ptAddMobility(keep, pObj, pPerf, keys, casa, home, wi);
         return keep.id;
@@ -5438,6 +5497,119 @@ const PROVAS = [
 ['p-5k','p-10k','p-meia','p-maratona','p-trail'].forEach(id=>{ const p = PROVAS.find(x=>x.id===id); p.fases[0].sess[0].ex.push(['Skipping A (elevação de joelho)','2','20 m','Voltar a andar'],['Skipping C (calcanhar ao glúteo)','2','20 m','Voltar a andar'],['Quick feet (passos rápidos)','3','15 s','30s']); });
 PROTOCOLOS.push(...PROVAS);
 
+// ---------- PROTOCOLOS DE PERFORMANCE (atleta: força, resistência, agilidade, recuperação, mente) ----------
+const PERF_AVISO = 'Protocolo de apoio à performance desportiva, a ajustar ao nível, ao historial de lesões e ao desporto do atleta. Recomenda-se avaliação médica antes de começar, sobretudo com treino intenso ou acima dos 35 anos.';
+const PERF_BAND = ['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou tendinosa que aumenta de forma persistente.','Queda do rendimento, sono mau e fadiga que se acumulam durante mais de 1 semana (suspeita de sobretreino).','Perda de peso involuntária, alterações do ciclo menstrual ou lesões de stress repetidas (suspeita de défice energético).'];
+const PX_FA = [['Agachamento com barra','4','5','150s','Pernas'],['Levantamento terra romeno com barra','3','6','120s','Pernas'],['Agachamento búlgaro','3','6 por perna','90s','Pernas'],['Nordic curl assistido','3','5','90s','Pernas'],['Elevação de gémeos unipodal','3','8','60s','Pernas']];
+const PX_FB = [['Supino reto com barra','4','5','150s','Peito'],['Barra fixa estrita (strict pull-up)','4','5','120s','Costas'],['Remada com barra','3','6','90s','Costas'],['Press militar com barra','3','6','120s','Ombros'],['Face pull com elástico','3','15','45s','Ombros'],['Prancha Lateral','3','30s','45s','Core']];
+const PX_FC = [['Pogo jumps (saltos de tornozelo)','3','15','45s','Pernas'],['Box jump','4','4','90s','Pernas'],['Kettlebell swing','4','8','75s','Corpo inteiro'],['Medicine ball throw','4','5','75s','Corpo inteiro'],['Copenhagen plank','3','20s','45s','Core']];
+const PX_FA2 = [['Agachamento com barra','4','3','180s','Pernas','Carga alta (85-90% de 1RM) com intenção de velocidade máxima na subida.'],['Agachamento com salto','4','4','120s','Pernas','Com peso leve (cerca de 20-30% de 1RM) ou só o corpo. Potência máxima.'],['Drop jump (salto em profundidade)','3','5','120s','Pernas'],['Hip thrust com barra','3','5','90s','Glúteos'],['Nordic curl assistido','3','5','90s','Pernas']];
+const PX_FB2 = [['Supino reto com barra','4','3','180s','Peito'],['Barra fixa estrita (strict pull-up)','4','4','150s','Costas'],['Lançamento de medicine ball acima da cabeça','4','5','75s','Corpo inteiro'],['Press militar com barra','3','4','120s','Ombros'],['Face pull com elástico','3','15','45s','Ombros']];
+const PX_FC2 = [['Salto vertical com contramovimento (CMJ)','5','3','90s','Pernas'],['Box jump','4','4','90s','Pernas'],['Kettlebell swing','5','6','90s','Corpo inteiro','Pegada firme e extensão total da anca; carga pesada com velocidade.'],['Skater jumps (saltos laterais)','3','6','60s','Pernas'],['Salto horizontal unipodal (hop)','3','4 por perna','75s','Pernas']];
+const PX_PEAK_A = [['Agachamento com barra','3','2','210s','Pernas','Carga de 90% de 1RM, sem falha. Pico de força.'],['Salto vertical com contramovimento (CMJ)','3','3','90s','Pernas','Teste de potência: regista a melhor altura.'],['Hip thrust com barra','2','4','120s','Glúteos']];
+const PX_PEAK_B = [['Supino reto com barra','3','2','210s','Peito'],['Barra fixa estrita (strict pull-up)','3','3','150s','Costas'],['Lançamento de medicine ball acima da cabeça','3','4','75s','Corpo inteiro']];
+const PX_DELOAD = [['Agachamento com barra','2','3','120s','Pernas','Carga moderada (cerca de 70%), sem fadiga.'],['Salto vertical com contramovimento (CMJ)','3','3','90s','Pernas','Reavaliar a altura do salto após a descarga.'],['Pogo jumps (saltos de tornozelo)','2','10','45s','Pernas'],['Prancha Lateral','2','20s','30s','Core']];
+const PX_RECUP = [['Teste CMJ matinal (melhor de 3 saltos)','1','3 saltos','—','Corpo inteiro'],['Questionário de bem-estar matinal (1-5)','1','1 min','—','Corpo inteiro'],['Caminhada de recuperação (20-30 min)','1','20-30 min','—','Cardio'],['Rolo de espuma para dorsais e glúteos','1','5 min','—','Mobilidade'],['Respiração lenta (6 ciclos por minuto)','1','5 min','—','Corpo inteiro']];
+const PX_MENTAL_ROT = [['Rotina pré-execução (respirar, imagem, palavra-chave)','1','antes de cada série','—','Corpo inteiro']];
+const PX_CHECKIN = [['Teste CMJ matinal (melhor de 3 saltos)','1','3 saltos','—','Corpo inteiro'],['Questionário de bem-estar matinal (1-5)','1','1 min','—','Corpo inteiro']];
+const PX_AG1 = [['Escada de agilidade — in-in-out-out','4','2 passagens','45s','Corpo inteiro'],['Escada de agilidade — lateral (icky shuffle)','4','2 passagens','45s','Corpo inteiro'],['Equilíbrio unipodal com olhos fechados','3','30s por perna','30s','Core'],['Aterragem controlada de salto (stick landing)','3','6','45s','Pernas'],['Slalom entre cones','4','2 passagens','60s','Corpo inteiro']];
+const PX_AG2 = [['Drill 5-10-5 (pro agility)','5','1','90s','Corpo inteiro'],['Drill em T (cones)','4','1','90s','Corpo inteiro'],['Mudança de direção a 45° e 90° com desaceleração','4','4 por lado','60s','Corpo inteiro'],['Saltos laterais sobre linha','3','15s','45s','Pernas'],['Saltos sobre barreiras baixas','4','5','60s','Pernas']];
+const PX_AG3 = [['Reação a estímulo visual (cones de cor)','6','1 tarefa','60s','Corpo inteiro'],['Reação a estímulo auditivo (palma ou apito)','6','5 m','45s','Corpo inteiro'],['Tarefa dupla: atenção focada','3','60s','45s','Corpo inteiro'],['Passes à parede alternando as mãos','3','45s','30s','Corpo inteiro'],['Shuttle run','4','1','90s','Cardio']];
+const PX_VO2_BASE = [{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','40-50 min',PN.z2)]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Resistência — outra modalidade',ex:[['Bicicleta estática','1','40 min','—','Cardio','Z2 (Borg 11-12). Variar a modalidade reduz o impacto articular.']]}];
+const PERFPROT = [
+{ id:'perf-forca', prova:false, nome:'Performance — Força e Potência (8 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Corpo inteiro',
+  resumo:'Desenvolve a força máxima, a potência e a velocidade com agachamento, supino, tração, pliometria e lançamentos, protegendo as articulações com trabalho de isquiotibiais, gémeos e adutores.',
+  quando:'Atleta com pelo menos 6 meses de treino de força, com boa técnica de agachamento e sem dor articular.',
+  bandeiras:PERF_BAND,
+  notas:[PERF_AVISO,'Força: 4-6 repetições a cerca de 80-85% de 1RM, 3 sessões por semana. A força máxima é a base da potência, da velocidade e da prevenção de lesões (Suchomel et al., 2016, Sports Med).','Potência: cargas leves a moderadas com intenção de velocidade máxima, pliometria e lançamentos. A pliometria melhora a altura do salto (Markovic, 2007, Br J Sports Med; Cormie et al., 2011, Sports Med).','Proteção articular: Nordic curl (isquiotibiais), gémeos unipodais, Copenhagen plank (adutores) e face pull (ombro). Fazer o teste CMJ no início e no fim.'],
+  fases:[
+  { nome:'Fase 1 — Força base', sem:3, freq:3, obj:['Aumentar a força máxima com 4-6 repetições.','Introduzir a pliometria com contactos curtos.','Reforçar isquiotibiais, gémeos e adutores.'], criterios:['Agachamento 5 repetições com técnica estável.','Aterragens silenciosas e alinhadas.'], evitar:['Falha muscular em todas as séries.','Pliometria com fadiga.'],
+    sess:[{n:'Pernas',ex:PX_FA},{n:'Superior',ex:PX_FB},{n:'Potência (introdução)',ex:PX_FC}]},
+  { nome:'Fase 2 — Força-velocidade', sem:3, freq:3, obj:['Subir a carga a 85-90% e a velocidade de execução.','Potência com saltos, swings e lançamentos.'], criterios:['Agachamento 3 repetições a 85-90% com velocidade.','Altura do CMJ igual ou superior à da fase 1.'], evitar:['Carga acima da técnica.','Treino pesado nas 48 h antes de um jogo ou prova.'],
+    sess:[{n:'Pernas',ex:PX_FA2},{n:'Superior',ex:PX_FB2},{n:'Potência',ex:PX_FC2}]},
+  { nome:'Fase 3 — Pico e teste', sem:1, freq:3, obj:['Testar a força (2-3 repetições) e o CMJ.','Reduzir o volume e manter a intensidade.'], criterios:['CMJ melhor do que na linha de base.'], evitar:['Falha muscular.','Exercícios novos.'],
+    sess:[{n:'Pernas e salto',ex:PX_PEAK_A},{n:'Superior',ex:PX_PEAK_B},{n:'Mobilidade e ativação',ex:[['Alongamento suave de corpo inteiro','1','8 min','—','Mobilidade'],['Pogo jumps (saltos de tornozelo)','2','10','45s','Pernas']]}]},
+  { nome:'Fase 4 — Descarga', sem:1, freq:2, obj:['Reduzir o volume cerca de 50%.','Reavaliar o CMJ com o corpo recuperado.'], criterios:['Chega descansado, com dores musculares mínimas.'], evitar:['Treinos longos ou novos.'],
+    sess:[{n:'Força leve',ex:PX_DELOAD},{n:'Recuperação',ex:PX_RECUP}]}
+  ]},
+
+{ id:'perf-vo2', prova:false, nome:'Performance — Resistência e VO₂máx (8 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Otimiza o sistema cardiorrespiratório com base aeróbia em Z2 e intervalos de alta intensidade (HIIT) para elevar o VO₂máx.',
+  quando:'Atleta que consegue treinar 40 min contínuos em Z2 sem dor.',
+  bandeiras:PERF_BAND,
+  notas:[PERF_AVISO,'Cerca de 80% do tempo em intensidade baixa (Z1-Z2) e 20% em intensidade alta, com sessões de qualidade separadas por 48 h (Seiler, 2010, Int J Sports Physiol Perform).','Intervalos 4×4 min a 90-95% da FC máx. com 3 min de recuperação ativa elevam o VO₂máx mais do que o treino moderado (Helgerud et al., 2007, Med Sci Sports Exerc). Os intervalos curtos 30/30 são uma alternativa eficaz (Buchheit & Laursen, 2013, Sports Med).','Zonas da app: Z2 ritmo conversável (Borg 11-12), Z4 limiar (Borg 15-16), Z5 máximo (Borg 17-18).'],
+  fases:[
+  { nome:'Fase 1 — Base aeróbia', sem:2, freq:3, obj:['Consolidar a base aeróbia em Z2.','Preparar tendões e articulações para a intensidade.'], criterios:['40-50 min em Z2 com controlo.','Sem dor articular.'], evitar:['Treinar todas as sessões em ritmo moderado-forte.'],
+    sess:PX_VO2_BASE},
+  { nome:'Fase 2 — Desenvolvimento do VO₂máx', sem:4, freq:4, obj:['Intervalos de 4 min a 90-95% da FC máx.','Intervalos curtos 30/30.','Manter 2-3 sessões fáceis em Z2.'], criterios:['4×4 min completos com ritmo constante.','Recuperação cardíaca entre blocos.'], evitar:['Mais de 2 sessões de alta intensidade por semana.','Intensidade alta em dias seguidos.'],
+    sess:[{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','40-50 min',PN.z2)]},{n:'Intervalos longos',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),['Intervalos 4×4 min (Z5, 90-95% da FC máx.)','4','4 min','3 min trote','Cardio'],cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','10 min',PN.limiar,'3','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Intervalos curtos 30/30',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),['HIIT 30/30 (30 s intenso, 30 s fácil)','2','10 repetições','4 min','Cardio'],cx('Corrida regenerativa','5-10 min',PN.rega)]}]},
+  { nome:'Fase 3 — Pico e teste', sem:1, freq:3, obj:['Manter a intensidade com menos volume.','Testar a resposta (teste de 3 km, 1,5 milhas ou 5 min de esforço máximo).'], criterios:['Melhor desempenho no teste do que na fase 1.'], evitar:['Aumentar o volume.'],
+    sess:[{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2)]},{n:'Intervalos',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),['Intervalos 4×4 min (Z5, 90-95% da FC máx.)','3','4 min','3 min trote','Cardio']]},{n:'Teste',ex:[cx('Aquecimento de corrida leve','15 min',PN.z2),['Tabata (8×20 s intenso, 10 s de pausa)','1','8 ciclos','—','Cardio','Só se estiveres adaptado. Alternativa: teste de 3 km à máxima velocidade sustentável.']]}]},
+  { nome:'Fase 4 — Descarga', sem:1, freq:2, obj:['Reduzir o volume cerca de 50%.','Recuperar antes de um novo ciclo.'], criterios:['Chega descansado.'], evitar:['Intensidade elevada.'],
+    sess:[{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Recuperação',ex:PX_RECUP}]}
+  ]},
+
+{ id:'perf-agil', prova:false, nome:'Performance — Agilidade e Coordenação (6 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Corpo inteiro',
+  resumo:'Trabalha reflexos, equilíbrio e resposta neuromuscular com escadas de agilidade, cones, saltos e exercícios de reação.',
+  quando:'Atleta sem dor, com boa técnica de aterragem. Indicado para desportos de equipa, raquete e de combate.',
+  bandeiras:PERF_BAND,
+  notas:[PERF_AVISO,'A agilidade tem duas componentes: mudança de direção (força, desaceleração e técnica) e agilidade reativa (perceção e decisão). São capacidades diferentes e treinam-se separadamente (Sheppard & Young, 2006, J Sports Sci; Young et al., 2015).','As sessões devem ser curtas e de qualidade (descanso completo entre séries). Priorizar a desaceleração e a aterragem controlada, que protegem o joelho e o tornozelo.'],
+  fases:[
+  { nome:'Fase 1 — Fundamentos', sem:2, freq:3, obj:['Coordenação e ritmo nas escadas.','Equilíbrio e aterragem controlada.'], criterios:['Escadas sem erros a ritmo médio.','Aterragem alinhada em 6 saltos seguidos.'], evitar:['Velocidade máxima sem técnica.'],
+    sess:[{n:'Escadas e equilíbrio',ex:PX_AG1},{n:'Força de base',ex:[['Agachamento búlgaro','3','8 por perna','75s','Pernas'],['Nordic curl assistido','3','5','90s','Pernas'],['Prancha Lateral','3','30s','45s','Core']]},{n:'Mobilidade e coordenação',ex:[['Passes à parede alternando as mãos','3','45s','30s','Corpo inteiro'],['Equilíbrio unipodal com alcance (Y-balance)','3','6 por lado','30s','Core']]}]},
+  { nome:'Fase 2 — Mudança de direção', sem:2, freq:3, obj:['Desaceleração e mudança de direção a 45° e 90°.','Saltos reativos.'], criterios:['Tempo estável nos drills 5-10-5 e em T.','Sem dor no joelho.'], evitar:['Treinar com fadiga elevada.'],
+    sess:[{n:'Drills de cones',ex:PX_AG2},{n:'Força e potência',ex:[['Agachamento com barra','3','5','150s','Pernas'],['Agachamento com salto','3','5','90s','Pernas'],['Copenhagen plank','3','20s','45s','Core']]},{n:'Escadas rápidas',ex:PX_AG1}]},
+  { nome:'Fase 3 — Reação e especificidade', sem:2, freq:3, obj:['Agilidade reativa com estímulos visuais e auditivos.','Decisão sob fadiga e atenção dividida.'], criterios:['Tempo de reação estável sob fadiga.','Sem erros de decisão nos drills reativos.'], evitar:['Drills reativos com fadiga extrema.'],
+    sess:[{n:'Reação',ex:PX_AG3},{n:'Mudança de direção',ex:PX_AG2},{n:'Potência',ex:[['Salto vertical com contramovimento (CMJ)','4','3','90s','Pernas'],['Box jump','3','4','90s','Pernas'],['Skater jumps (saltos laterais)','3','6','60s','Pernas']]}]}
+  ]},
+
+{ id:'perf-recup', prova:false, nome:'Performance — Gestão Energética e Recuperação (4 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Corpo inteiro',
+  resumo:'Controlo do sono, da nutrição e da fadiga, com testes diários de salto vertical (CMJ) e questionário de bem-estar. Ajuda a decidir quando treinar forte e quando recuperar.',
+  quando:'Atleta que treina 4 ou mais vezes por semana. Também indicado em semanas de carga alta ou competição.',
+  bandeiras:PERF_BAND,
+  notas:[PERF_AVISO,'Monitorização: o CMJ matinal e o questionário de bem-estar detetam a fadiga neuromuscular. Uma queda do CMJ superior a 5-10% da média de 7 dias, ou 2 dias seguidos com bem-estar baixo, indica reduzir a carga em 20-30% (Claudino et al., 2017, J Sci Med Sport; Halson, 2014, Sports Med).','Sono: 7-9 h por noite, horários regulares, ecrãs desligados 1 h antes de dormir (Walsh et al., 2021, Br J Sports Med).','Nutrição: proteína 1,4-2,0 g/kg/dia repartida em 3-5 refeições (Jäger et al., 2017, JISSN); hidratos de carbono ajustados à carga do dia (mais nos treinos intensos); disponibilidade energética suficiente (cerca de 45 kcal/kg de massa isenta de gordura por dia) para evitar o défice energético (Mountjoy et al., 2018, Br J Sports Med).','Os dados do CMJ e do questionário são do atleta: o treinador compara-os com a linha de base dele, não com tabelas gerais.'],
+  fases:[
+  { nome:'Semana 1 — Linha de base', sem:1, freq:3, obj:['Medir o CMJ e o bem-estar durante 5 dias.','Registar o sono e 3 dias de alimentação.'], criterios:['Média do CMJ e do bem-estar estabelecida.'], evitar:['Mudar a carga de treino nesta semana.'],
+    sess:[{n:'Check-in matinal',ex:PX_CHECKIN},{n:'Registos',ex:[['Registo de sono (horas e qualidade)','1','toda a semana','—','Corpo inteiro'],['Registo alimentar de 3 dias','1','3 dias','—','Corpo inteiro']]},{n:'Recuperação ativa',ex:PX_RECUP}]},
+  { nome:'Semanas 2-3 — Monitorização e ajuste', sem:2, freq:3, obj:['Comparar o CMJ e o bem-estar com a linha de base.','Reduzir a carga em 20-30% se houver sinais de fadiga.'], criterios:['CMJ dentro de 5% da linha de base na maior parte dos dias.'], evitar:['Treino intenso com 2 dias seguidos de bem-estar baixo.'],
+    sess:[{n:'Check-in matinal',ex:PX_CHECKIN},{n:'Recuperação ativa',ex:PX_RECUP},{n:'Mobilidade e rolo',ex:[['Rolo de espuma para dorsais e glúteos','1','8 min','—','Mobilidade'],['Alongamento suave de corpo inteiro','1','8 min','—','Mobilidade'],['Respiração lenta (6 ciclos por minuto)','1','5 min','—','Corpo inteiro']]}]},
+  { nome:'Semana 4 — Consolidação', sem:1, freq:3, obj:['Estabilizar os hábitos de sono e de nutrição.','Planear a próxima semana de carga com base nos dados.'], criterios:['Sono médio de 7-9 h.','Proteína distribuída pelas refeições.'], evitar:['Abandonar os registos.'],
+    sess:[{n:'Check-in matinal',ex:PX_CHECKIN},{n:'Recuperação ativa',ex:PX_RECUP},{n:'Reflexão',ex:[['Reflexão pós-treino (3 perguntas)','1','5 min','—','Corpo inteiro']]}]}
+  ]},
+
+{ id:'perf-mental', prova:false, nome:'Performance — Componente Cognitiva e Mental (6 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Corpo inteiro',
+  resumo:'Treina a clareza de objetivos, o foco, a visualização e a resiliência sob pressão, em articulação com o treino físico.',
+  quando:'Qualquer atleta que queira melhorar o foco e a gestão da pressão.',
+  bandeiras:['Ansiedade intensa, insónia persistente ou sintomas de depressão: encaminhar para um profissional de saúde mental ou psicólogo do desporto.','Pensamentos de autoagressão: procurar ajuda profissional de imediato.'],
+  notas:[PERF_AVISO,'As intervenções psicológicas (objetivos, imagética, auto-diálogo, rotinas) melhoram o rendimento desportivo (Brown & Fletcher, 2017, Sports Med; Birrer & Morgan, 2010, Scand J Med Sci Sports). Objetivos específicos e desafiantes aumentam o desempenho (Locke & Latham, 2002).','A visualização complementa o treino físico (Slimani et al., 2016, J Sports Sci Med). A respiração lenta ajuda a regular a ativação (Zaccaro et al., 2018, Front Hum Neurosci).','Este protocolo não substitui acompanhamento por um psicólogo do desporto. Os exercícios fazem-se integrados nas séries do treino físico.'],
+  fases:[
+  { nome:'Fase 1 — Clareza de objetivos', sem:2, freq:3, obj:['Definir objetivos de resultado, desempenho e processo.','Criar uma rotina simples antes de cada execução.'], criterios:['Objetivos escritos com números e prazos.','Rotina pré-execução feita sem pensar.'], evitar:['Objetivos vagos ou apenas de resultado.'],
+    sess:[{n:'Objetivos',ex:[['Definir objetivos de processo, desempenho e resultado','1','15 min','—','Corpo inteiro'],['Reflexão pós-treino (3 perguntas)','1','5 min','—','Corpo inteiro']]},{n:'Rotina e força',ex:[...PX_MENTAL_ROT,['Agachamento com barra','3','5','150s','Pernas','Usar a rotina antes de cada série.']]},{n:'Respiração',ex:[['Respiração de foco (box breathing 4-4-4-4)','1','4 min','—','Corpo inteiro'],['Respiração lenta (6 ciclos por minuto)','1','5 min','—','Corpo inteiro']]}]},
+  { nome:'Fase 2 — Foco e visualização', sem:2, freq:3, obj:['Visualizar o gesto com a técnica correta.','Auto-diálogo com palavras-chave.','Manter o foco sob distração.'], criterios:['Visualização de 5 min com imagens nítidas.','Foco mantido na tarefa dupla.'], evitar:['Auto-diálogo negativo ou punitivo.'],
+    sess:[{n:'Visualização',ex:[['Visualização guiada do gesto (PETTLEP)','1','5 min','—','Corpo inteiro'],['Auto-diálogo: palavras-chave positivas','1','3 min','—','Corpo inteiro']]},{n:'Atenção focada',ex:[['Tarefa dupla: atenção focada','4','60s','45s','Corpo inteiro'],['Agachamento com barra','3','5','150s','Pernas','Palavra-chave em cada repetição.']]},{n:'Respiração',ex:[['Respiração de foco (box breathing 4-4-4-4)','1','4 min','—','Corpo inteiro']]}]},
+  { nome:'Fase 3 — Pressão e resiliência', sem:2, freq:3, obj:['Treinar com consequências e com público.','Rotina de reset após o erro.','Reflexão e aprendizagem.'], criterios:['Recuperar o foco em menos de 10 s após um erro.','Desempenho estável sob pressão.'], evitar:['Punições excessivas ou humilhantes.'],
+    sess:[{n:'Treino sob pressão',ex:[['Treino sob pressão (consequência ou tempo limite)','4','1 tarefa','60s','Corpo inteiro'],['Rotina de reset após erro','1','durante a sessão','—','Corpo inteiro']]},{n:'Visualização e foco',ex:[['Visualização guiada do gesto (PETTLEP)','1','5 min','—','Corpo inteiro'],['Respiração de foco (box breathing 4-4-4-4)','1','4 min','—','Corpo inteiro']]},{n:'Reflexão',ex:[['Reflexão pós-treino (3 perguntas)','1','5 min','—','Corpo inteiro'],['Definir objetivos de processo, desempenho e resultado','1','10 min','—','Corpo inteiro']]}]}
+  ]},
+
+{ id:'perf-integr', prova:false, nome:'Performance — Atleta integrado (12 semanas)', grupo:'Performance', pat:'', mod:'Funcional', g:'Corpo inteiro',
+  resumo:'Junta num só plano a força e potência, a resistência e o VO₂máx, a agilidade, a gestão da recuperação (CMJ, sono, nutrição) e o treino mental.',
+  quando:'Atleta que treina 4 vezes por semana, com boa técnica e sem dor.',
+  bandeiras:PERF_BAND,
+  notas:[PERF_AVISO,'Estrutura semanal: 1 sessão de força e potência, 1 de resistência (Z2 ou HIIT), 1 de agilidade e 1 de recuperação e prontidão. No máximo 2 sessões de alta intensidade por semana (Seiler, 2010).','Faz o CMJ matinal e o questionário de bem-estar todos os dias de treino; se o CMJ cair mais de 5-10% ou o bem-estar estiver baixo 2 dias seguidos, reduz a carga em 20-30% (Claudino et al., 2017).','Referências: Suchomel et al. (2016), Markovic (2007), Helgerud et al. (2007), Sheppard & Young (2006), Walsh et al. (2021), Jäger et al. (2017), Brown & Fletcher (2017).'],
+  fases:[
+  { nome:'Fase 1 — Base e controlo', sem:4, freq:4, obj:['Força base e base aeróbia.','Fundamentos de agilidade e aterragem.','Linha de base de CMJ, sono e bem-estar.'], criterios:['Técnica estável nos exercícios de força.','CMJ e bem-estar registados todos os dias.'], evitar:['Intensidade alta antes de consolidar a base.'],
+    sess:[{n:'Força',ex:PX_FA},{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Agilidade — fundamentos',ex:PX_AG1},{n:'Recuperação e prontidão',ex:[...PX_CHECKIN,...PX_MENTAL_ROT,['Rolo de espuma para dorsais e glúteos','1','8 min','—','Mobilidade']]}]},
+  { nome:'Fase 2 — Desenvolvimento', sem:4, freq:4, obj:['Força-velocidade e potência.','HIIT 4×4 min para o VO₂máx.','Mudança de direção.'], criterios:['Agachamento 3 repetições com velocidade.','4×4 min completos.'], evitar:['Mais de 2 sessões de alta intensidade por semana.'],
+    sess:[{n:'Força e potência',ex:PX_FA2},{n:'HIIT',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),['Intervalos 4×4 min (Z5, 90-95% da FC máx.)','4','4 min','3 min trote','Cardio'],cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Agilidade — mudança de direção',ex:PX_AG2},{n:'Recuperação e foco',ex:[...PX_CHECKIN,['Visualização guiada do gesto (PETTLEP)','1','5 min','—','Corpo inteiro'],['Respiração lenta (6 ciclos por minuto)','1','5 min','—','Corpo inteiro']]}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:4, obj:['Potência máxima, sprints repetidos e HIIT 30/30.','Agilidade reativa.','Treino sob pressão.'], criterios:['CMJ melhor do que na linha de base.','Desempenho estável sob pressão.'], evitar:['Aumentar o volume.','Treino pesado nas 48 h antes de competir.'],
+    sess:[{n:'Potência',ex:PX_FC2},{n:'HIIT 30/30 e sprints',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),['HIIT 30/30 (30 s intenso, 30 s fácil)','2','10 repetições','4 min','Cardio'],['Sprints repetidos de 30 m','6','30 m','30s','Cardio']]},{n:'Agilidade — reação',ex:PX_AG3},{n:'Recuperação e pressão',ex:[...PX_CHECKIN,['Treino sob pressão (consequência ou tempo limite)','3','1 tarefa','60s','Corpo inteiro'],['Rotina de reset após erro','1','durante a sessão','—','Corpo inteiro']]}]},
+  { nome:'Fase 4 — Descarga e teste', sem:1, freq:3, obj:['Reduzir o volume 50% e repetir o CMJ.','Planear o ciclo seguinte.'], criterios:['Chega descansado.'], evitar:['Treinos longos ou novos.'],
+    sess:[{n:'Força leve',ex:PX_DELOAD},{n:'Aeróbio Z2',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Recuperação e reflexão',ex:[...PX_RECUP,['Reflexão pós-treino (3 perguntas)','1','5 min','—','Corpo inteiro']]}]}
+  ]}
+];
+PROTOCOLOS.push(...PERFPROT);
+
+
 // ---------- PROTOCOLOS: interface ----------
 let protoFilter = '';
 function protoById(id){ return PROTOCOLOS.find(p=>p.id===id); }
@@ -5486,6 +5658,16 @@ function protoEnsureEx(x, p){
   if(e){
     if(e.modalidade==='Reabilitação' && p.pat){ e.patologias = e.patologias||[]; if(!e.patologias.includes(p.pat)) e.patologias.push(p.pat); }
     return e.id;
+  }
+  const pl = PERFX_LIB.find(c=>normName(c.n)===n);
+  if(pl){
+    e = { id: uid(), nome: pl.n, grupo: pl.g, equip: pl.e, notas: pl.o, padrao: pl.p, modalidade: 'Funcional', musculo: pl.m, funcao: pl.f, patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' };
+    DATA.exercises.push(e); return e.id;
+  }
+  const ml = MOB_LIB.find(c=>normName(c.n)===n);
+  if(ml){
+    e = { id: uid(), nome: ml.n, grupo: 'Mobilidade', equip: ml.e, notas: ml.o, padrao: 'mobilidade', modalidade: 'Funcional', musculo: MOB_REG[ml.r], funcao: ml.t==='din' ? 'Mobilidade (dinâmica)' : ml.t==='corr' ? 'Técnica e qualidade do movimento de corrida' : 'Ativação e controlo motor', patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' };
+    DATA.exercises.push(e); return e.id;
   }
   const cd = (typeof CORRIDA_EXERCISES!=='undefined') && CORRIDA_EXERCISES.find(c=>normName(c.nome)===n);
   if(cd){
