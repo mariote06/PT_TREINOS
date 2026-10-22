@@ -395,6 +395,7 @@
       <button class="rail-btn" data-view="protocolos"><span class="long">Protocolos</span><span class="short">Protoc.</span></button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
       <button class="rail-btn" data-view="ciclos">Ciclos</button>
+      <button class="rail-btn" data-view="monit"><span class="long">Monitorização</span><span class="short">Monit.</span></button>
       <button class="rail-btn" data-view="backup"><span class="long">Cópia de segurança</span><span class="short">Backup</span></button>
     </div>
     <div class="rail-foot">Dados guardados neste dispositivo</div>
@@ -451,15 +452,42 @@
     </div>
 
     <!-- PROTOCOLOS -->
+    <div class="view" id="view-monit">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Monitorização</h1>
+          <div class="view-sub">Salto vertical (CMJ), sono e bem-estar. A app compara cada dia com a média do próprio atleta e propõe reduzir a carga quando há sinais de fadiga.</div>
+        </div>
+      </div>
+      <div class="field"><label>Cliente</label><select id="monit-cliente" onchange="renderMonit()"></select></div>
+      <div class="row-2">
+        <div class="field"><label>Data</label><input id="monit-data" type="date"></div>
+        <div class="field"><label>CMJ (cm, melhor de 3 saltos)</label><input id="monit-cmj" type="text" inputmode="decimal" placeholder="ex.: 38"></div>
+      </div>
+      <div class="row-2">
+        <div class="field"><label>Horas de sono</label><input id="monit-sono" type="text" inputmode="decimal" placeholder="ex.: 7,5"></div>
+        <div class="field"><label>Bem-estar (1 = muito mau, 5 = ótimo)</label>
+          <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px;"><div><div class="view-sub" style="font-size:11px;">Sono</div><select id="monit-b-sono"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div><div><div class="view-sub" style="font-size:11px;">Fadiga</div><select id="monit-b-fadiga"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div><div><div class="view-sub" style="font-size:11px;">Dores</div><select id="monit-b-dor"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div><div><div class="view-sub" style="font-size:11px;">Humor</div><select id="monit-b-humor"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div><div><div class="view-sub" style="font-size:11px;">Stress</div><select id="monit-b-stress"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div></div>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="monitSubmit(); renderMonit();">Guardar registo do dia</button>
+      <div id="monit-out"></div>
+    </div>
     <div class="view" id="view-protocolos">
       <div class="view-head">
         <div>
-          <h1 class="view-title">Protocolos de treino</h1>
-          <div class="view-sub">Reabilitação, patologias e preparação de provas, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
+          <h1 class="view-title" id="proto-titulo">Protocolos de treino</h1>
+          <div class="view-sub" id="proto-sub">Preparação de provas e performance, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.</div>
         </div>
-        <div style="display:flex; gap:8px;"><button class="btn" onclick="openPatModal()">+ Patologia</button></div>
+        <div style="display:flex; gap:8px;"><button class="btn" id="proto-pat-btn" style="display:none;" onclick="openPatModal()">+ Patologia</button></div>
       </div>
-      <div class="select-line"><select id="proto-grupo" onchange="renderProtocolos()"></select></div>
+      <div class="select-line" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary" id="proto-kind-treino" onclick="protoSetKind('treino')">Protocolos de treino</button>
+          <button class="btn" id="proto-kind-pat" onclick="protoSetKind('pat')">Protocolos de patologias</button>
+        </div>
+        <select id="proto-grupo" onchange="renderProtocolos()"></select>
+      </div>
       <div id="protocolos-list"></div>
     </div>
 
@@ -962,6 +990,14 @@
       <div class="field"><label>Começar na fase</label><select id="proto-fase" onchange="protoModalChange()"></select></div>
     </div>
     <div class="field" id="proto-prova-field" style="display:none;"><label>Data da prova (a app planeia as semanas até lá)</label><input id="proto-prova" type="date" onchange="protoModalChange()"></div>
+    <div id="proto-ref-box" style="display:none;">
+      <div class="row-2">
+        <div class="field"><label>Tempo de referência recente (opcional; a app calcula os ritmos de treino)</label><select id="proto-ref-d" onchange="protoModalChange()"><option value="">Sem tempo de referência</option><option value="5k">5 km</option><option value="10k">10 km</option><option value="meia">Meia-maratona</option><option value="maratona">Maratona</option></select></div>
+        <div class="field"><label>Tempo (mm:ss ou h:mm:ss)</label><input id="proto-ref-t" type="text" placeholder="ex.: 48:30 ou 1:45:10" oninput="protoModalChange()"></div>
+      </div>
+      <div id="proto-paces-box" style="display:none; border-left:3px solid #3a7bd5; background:rgba(58,123,213,.08); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
+      <div class="field"><label>Terreno</label><select id="proto-terreno" onchange="protoModalChange()"><option value="estrada">Estrada</option><option value="pista">Pista de atletismo</option><option value="trilho">Trilho ou montanha (por esforço, com desnível)</option><option value="passadeira">Passadeira (1% de inclinação)</option></select></div>
+    </div>
     <div id="proto-plan-box" style="display:none; border-left:3px solid var(--ochre, #c9a227); background:rgba(201,162,39,.1); padding:10px 12px; border-radius:4px; margin:0 0 10px; font-size:13.5px; line-height:1.5;"></div>
     <div class="field"><label>Treinos por semana</label><select id="proto-nsem"><option value="">Automático (como vem no protocolo)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option></select>
       <div class="view-sub" style="margin-top:4px;">A app ajusta cada fase a este número e distribui os dias. Mantém sempre o treino mais longo (ex.: corrida longa) no último dia.</div></div>
@@ -1221,6 +1257,217 @@ function perfEnsure(list){
   });
   return n;
 }
+
+// ---------- RITMOS POR TEMPO DE REFERÊNCIA (VDOT, Daniels & Gilbert) ----------
+const PACE_D = { '5k':5000, '10k':10000, 'meia':21097.5, 'maratona':42195 };
+const PACE_LBL = { '5k':'5 km', '10k':'10 km', 'meia':'meia-maratona', 'maratona':'maratona' };
+const PROTO_RACEKEY = { 'p-5k':'5k', 'p-10k':'10k', 'p-meia':'meia', 'p-maratona':'maratona' };
+function paceParse(str){
+  const m = String(str||'').trim().replace(',', '.').split(':').map(Number);
+  if(!m.length || m.some(x=>isNaN(x) || x<0)) return 0;
+  if(m.length===2) return m[0]*60 + m[1];
+  if(m.length===3) return m[0]*3600 + m[1]*60 + m[2];
+  return 0;
+}
+function paceFmt(sec){ sec = Math.round(sec); return Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0'); }
+function timeFmt(sec){ sec = Math.round(sec); const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60; return h ? h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') : m + ':' + String(s).padStart(2,'0'); }
+function vdotCalc(dm, ts){
+  const t = ts/60, v = dm/t;
+  const vo2 = -4.60 + 0.182258*v + 0.000104*v*v;
+  const f = 0.8 + 0.1894393*Math.exp(-0.012778*t) + 0.2989558*Math.exp(-0.1932605*t);
+  return vo2/f;
+}
+function paceVel(vo2){ const a=0.000104, b=0.182258, c=-(4.6+vo2); return (-b + Math.sqrt(b*b - 4*a*c))/(2*a); }  // m/min
+function paceAt(vdot, frac){ return 60000/paceVel(vdot*frac); }  // s/km
+function paceRaceTime(vdot, dm){
+  let lo = dm/8, hi = dm/1.2;
+  for(let i=0;i<60;i++){ const mid = (lo+hi)/2; if(vdotCalc(dm, mid) > vdot) lo = mid; else hi = mid; }
+  return (lo+hi)/2;
+}
+function paceSet(key, tSec){
+  const dm = PACE_D[key];
+  if(!dm || !(tSec>0)) return null;
+  const vdot = vdotCalc(dm, tSec);
+  if(!(vdot>=22 && vdot<=85)) return null;
+  const race = {};
+  Object.keys(PACE_D).forEach(k=>{ const t = (k===key) ? tSec : paceRaceTime(vdot, PACE_D[k]); race[k] = { t, pace: t/(PACE_D[k]/1000) }; });
+  return { vdot: Math.round(vdot*10)/10, ref: { d:key, t:tSec }, E: [paceAt(vdot,0.72), paceAt(vdot,0.62)], T: paceAt(vdot,0.88), I: paceAt(vdot,0.98), R: paceAt(vdot,1.06), race };
+}
+function protoPaceStr(name, pc, pid, terreno){
+  const n = normText(name);
+  if(!/corrida|intervalos|hiit|fartlek|repeticoes|aquecimento/.test(n)) return '';
+  if(!pc){ return (terreno==='passadeira' && /corrida/.test(n)) ? 'Passadeira a 1% de inclinação' : (terreno==='trilho' && /corrida|fartlek/.test(n) ? 'Por esforço (FC ou Borg), não por ritmo' : ''); }
+  const E = paceFmt(pc.E[0]) + '–' + paceFmt(pc.E[1]);
+  let s = '';
+  if(/ritmo de maratona/.test(n)) s = 'Ritmo de maratona ' + paceFmt(pc.race.maratona.pace) + ' /km';
+  else if(/ritmo de prova/.test(n)){ const k = PROTO_RACEKEY[pid]; if(k) s = 'Ritmo de prova ' + paceFmt(pc.race[k].pace) + ' /km'; }
+  else if(/limiar/.test(n)) s = 'Ritmo de limiar ' + paceFmt(pc.T) + ' /km';
+  else if(/intervalos de v|intervalos 4|hiit/.test(n)) s = 'Ritmo de intervalos ' + paceFmt(pc.I) + ' /km (esforço de 3 a 5 km)';
+  else if(/repeticoes de velocidade/.test(n)) s = 'Repetições a ' + paceFmt(pc.R) + ' /km (400 m em ' + timeFmt(pc.R*0.4) + ')';
+  else if(/fartlek/.test(n)) s = 'Blocos rápidos ao ritmo de limiar ' + paceFmt(pc.T) + ' /km; trote a ' + E + ' /km';
+  else if(/corrida (continua leve|longa|regenerativa)|aquecimento de corrida/.test(n)){
+    s = 'Ritmo fácil ' + E + ' /km';
+    if(/longa/.test(n) && pid==='p-maratona') s += '; blocos a ritmo de maratona ' + paceFmt(pc.race.maratona.pace) + ' /km';
+    if(/longa/.test(n) && pid==='p-meia') s += '; blocos a ritmo de prova ' + paceFmt(pc.race.meia.pace) + ' /km';
+  }
+  if(!s) return '';
+  if(terreno==='trilho') return 'Por esforço (FC ou Borg). Referência em plano: ' + s;
+  if(terreno==='passadeira') return s + ' · passadeira a 1% de inclinação';
+  return s;
+}
+function protoTerrainRows(rows, se, p, fi, terreno){
+  if(terreno!=='trilho' || !p.prova || p.id==='p-trail') return rows;
+  const out = rows.map(r=>/^Corrida longa/i.test(r[0]) ? [r[0], r[1], r[2] + ' em trilho com desnível (cerca de 10-15 m D+ por km)', ...r.slice(3)] : r);
+  if(/Corrida fácil/.test(se.n||'') && fi>=1 && fi<p.fases.length-2) out.push(cx('Corrida em subida (repetições)','1 min',PN.sub,'6','Descida a trote'));
+  if(/^Força/.test(se.n||'')) out.push(['Descida de step controlada (excêntrico)','3','10 por perna','60s','Pernas','Subir com as duas pernas e descer 3-4 s com uma perna. Prepara os quadríceps para as descidas.']);
+  return out;
+}
+function protoPacesGet(){
+  const d = (document.getElementById('proto-ref-d')||{}).value, t = paceParse((document.getElementById('proto-ref-t')||{}).value);
+  return d && t ? paceSet(d, t) : null;
+}
+function protoPacesCheck(){
+  const p = protoById(document.getElementById('proto-id').value);
+  const box = document.getElementById('proto-paces-box'), wrap = document.getElementById('proto-ref-box');
+  if(!wrap) return;
+  const run = !!(p && (p.prova && p.id!=='p-triatlo' && p.id!=='p-hyrox' || p.id==='perf-vo2'));
+  wrap.style.display = run ? 'block' : 'none';
+  if(!run){ box.style.display = 'none'; return; }
+  const d = document.getElementById('proto-ref-d').value, raw = document.getElementById('proto-ref-t').value;
+  if(!d || !raw.trim()){ box.style.display = 'none'; return; }
+  const pc = protoPacesGet();
+  box.style.display = 'block';
+  if(!pc){ box.innerHTML = '<div style="color:var(--danger);">Não consegui calcular. Escreve o tempo como mm:ss ou h:mm:ss (por exemplo 48:30 ou 1:45:10) e confirma a distância.</div>'; return; }
+  const terr = (document.getElementById('proto-terreno')||{}).value;
+  box.innerHTML = '<div><strong>Ritmos calculados (VDOT ' + pc.vdot + ')</strong>' + (terr==='trilho' ? ' — em trilho a app mostra-os só como referência em plano' : '') + '</div>' +
+    '<table style="margin-top:6px; font-size:13px;"><tr><td style="padding-right:14px;">Fácil (Z2)</td><td>' + paceFmt(pc.E[0]) + '–' + paceFmt(pc.E[1]) + ' /km</td></tr>' +
+    '<tr><td>Limiar (Z4)</td><td>' + paceFmt(pc.T) + ' /km</td></tr><tr><td>Intervalos (Z5)</td><td>' + paceFmt(pc.I) + ' /km</td></tr><tr><td>Repetições curtas</td><td>' + paceFmt(pc.R) + ' /km</td></tr>' +
+    Object.keys(PACE_D).map(k=>'<tr><td>Prova de ' + PACE_LBL[k] + '</td><td>' + timeFmt(pc.race[k].t) + ' (' + paceFmt(pc.race[k].pace) + ' /km)</td></tr>').join('') + '</table>' +
+    '<div class="view-sub" style="margin-top:6px;">Previsões pelo modelo VDOT (Daniels & Gilbert). Para a maratona assumem volume de treino suficiente: se o atleta corre pouco, usa um ritmo 3-5% mais lento.</div>';
+}
+
+// ---------- MONITORIZAÇÃO: CMJ, SONO E BEM-ESTAR ----------
+const MONIT_ITENS = [['sono','Sono'],['fadiga','Fadiga'],['dor','Dores musculares'],['humor','Humor'],['stress','Stress']];
+function monitList(clientId){ return (DATA.monit||[]).filter(m=>m.clientId===clientId).sort((a,b)=>a.data.localeCompare(b.data)); }
+function monitTotal(m){ return MONIT_ITENS.reduce((a,[k])=>a + (Number(m['b_'+k])||0), 0); }
+function monitMean(arr){ return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null; }
+function monitAnalyze(clientId){
+  const L = monitList(clientId);
+  if(!L.length) return null;
+  const last = L[L.length-1], prev = L.slice(-8, -1);
+  const cmjBase = monitMean(prev.map(m=>Number(m.cmj)).filter(v=>v>0));
+  const bemBase = monitMean(prev.map(monitTotal).filter(v=>v>0));
+  const flags = [], motivos = [];
+  let red = 0, yellow = 0;
+  const cmjPct = (Number(last.cmj)>0 && cmjBase) ? (Number(last.cmj)-cmjBase)/cmjBase*100 : null;
+  if(cmjPct!==null){
+    if(cmjPct <= -10){ red++; motivos.push('CMJ ' + cmjPct.toFixed(1) + '% abaixo da média dos últimos dias'); }
+    else if(cmjPct <= -5){ yellow++; motivos.push('CMJ ' + cmjPct.toFixed(1) + '% abaixo da média dos últimos dias'); }
+  }
+  const bem = monitTotal(last), bemPrev = L.length>1 ? monitTotal(L[L.length-2]) : 0;
+  if(bem){
+    if(bem <= 14 && bemPrev && bemPrev <= 14){ red++; motivos.push('bem-estar baixo 2 dias seguidos (' + bem + '/25)'); }
+    else if(bem <= 14 || (bemBase && bem <= bemBase-4)){ yellow++; motivos.push('bem-estar baixo (' + bem + '/25)'); }
+  }
+  const sono = Number(last.sono), sonoPrev = L.length>1 ? Number(L[L.length-2].sono) : 0;
+  if(sono>0){
+    if(sono < 6 && sonoPrev>0 && sonoPrev < 6){ red++; motivos.push('menos de 6 h de sono 2 noites seguidas'); }
+    else if(sono < 6.5){ yellow++; motivos.push('pouco sono (' + sono + ' h)'); }
+  }
+  let estado = 'verde';
+  if(red>0 || yellow>=2) estado = 'vermelho'; else if(yellow===1) estado = 'amarelo';
+  const pct = estado==='vermelho' ? 30 : estado==='amarelo' ? 20 : 0;
+  return { last, cmjBase, cmjPct, bem, bemBase, estado, motivos, pct, n: L.length, comBase: !!cmjBase };
+}
+function monitCycleNow(clientId){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  for(const cy of DATA.cycles){
+    if(!cycleHas(cy, clientId)) continue;
+    const d0 = new Date(cy.inicio+'T00:00:00'); d0.setDate(d0.getDate() - ((d0.getDay()+6)%7));
+    const off = Math.round((hoje-d0)/86400000); const wi = Math.floor(off/7), di = ((off%7)+7)%7;
+    if(wi>=0 && wi<cy.semanas.length) return { cy, wi, di };
+  }
+  return null;
+}
+function monitScaleWorkout(w, pct){
+  const f = 1 - pct/100;
+  const hard = /intervalos|hiit|tabata|sprint|limiar|ritmo de prova|ritmo de maratona|repeticoes/;
+  const nw = { ...w, id: uid(), nome: String(w.nome).replace(/ \(−\d+% fadiga\)$/, '') + ' (−' + pct + '% fadiga)',
+    exercicios: (w.exercicios||[]).map(l=>{
+      const ex = DATA.exercises.find(e=>e.id===l.exId) || {};
+      const dura = /\bmin\b/i.test(String(l.reps||'')) || ex.grupo==='Cardio' || ex.padrao==='cardio';
+      const ff = (pct>=30 && hard.test(normText(ex.nome||''))) ? f*f : f;
+      const out = { ...l };
+      if(dura && Number(l.series)<=1) out.reps = protoScaleText(String(l.reps||''), ff);
+      else out.series = String(Math.max(1, Math.round((Number(l.series)||1) * ff)));
+      return out;
+    }) };
+  DATA.workouts.push(nw);
+  return nw.id;
+}
+function monitApply(clientId, pct){
+  const cur = monitCycleNow(clientId);
+  if(!cur){ alert('Este cliente não tem nenhum ciclo ativo esta semana.'); return; }
+  const sem = cur.cy.semanas[cur.wi];
+  let n = 0;
+  sem.dias.forEach((d, di)=>{
+    if(di < cur.di || !d.workoutId || d.ajuste) return;
+    const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w) return;
+    d.workoutId = monitScaleWorkout(w, pct); d.ajuste = pct; n++;
+  });
+  if(!n){ alert('Não há treinos por ajustar nos dias que faltam desta semana.'); return; }
+  const tag = ' — AJUSTE POR FADIGA (' + formatDate(protoISO(new Date())) + '): −' + pct + '% de volume' + (pct>=30 ? ' e menos intensidade' : '');
+  if(!String(sem.progressao||'').includes('AJUSTE POR FADIGA')) sem.progressao = String(sem.progressao||'') + tag;
+  saveData();
+  alert('Ajustei ' + n + ' treino(s) dos dias que faltam desta semana (−' + pct + '%). Os treinos originais ficam guardados em Treinos.');
+}
+function monitSave(){
+  const clientId = document.getElementById('monit-cliente').value; if(!clientId) return;
+  const g = id=>document.getElementById(id).value;
+  const data = g('monit-data') || protoISO(new Date());
+  const cmj = parseFloat(String(g('monit-cmj')).replace(',', '.')) || '';
+  const sono = parseFloat(String(g('monit-sono')).replace(',', '.')) || '';
+  const m = { id: uid(), clientId, data, cmj, sono };
+  MONIT_ITENS.forEach(([k])=>{ m['b_'+k] = parseInt(g('monit-b-'+k)) || 3; });
+  DATA.monit = DATA.monit || [];
+  const i = DATA.monit.findIndex(x=>x.clientId===clientId && x.data===data);
+  if(i>=0){ m.id = DATA.monit[i].id; DATA.monit[i] = m; } else DATA.monit.push(m);
+  saveData();
+}
+function monitDel(id){ DATA.monit = (DATA.monit||[]).filter(m=>m.id!==id); saveData(); }
+function renderMonit(){
+  const sel = document.getElementById('monit-cliente'); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  if(cur && DATA.clients.some(c=>c.id===cur)) sel.value = cur;
+  const out = document.getElementById('monit-out');
+  if(!DATA.clients.length){ out.innerHTML = '<div class="view-sub">Adiciona um cliente para começar a registar.</div>'; return; }
+  const cid = sel.value;
+  const dEl = document.getElementById('monit-data'); if(!dEl.value) dEl.value = protoISO(new Date());
+  const an = monitAnalyze(cid), L = monitList(cid);
+  const cor = { verde:'#3a9d5d', amarelo:'#c9a227', vermelho:'#c0533a' };
+  let h = '';
+  if(an){
+    const ciclo = monitCycleNow(cid);
+    const fase = ciclo ? String(ciclo.cy.semanas[ciclo.wi].progressao||'').slice(0,90) : '';
+    const taper = /Afina|Descarga|deload|Semana da prova/i.test(fase);
+    let rec;
+    if(!an.comBase) rec = 'Regista pelo menos 4 dias para a app calcular a linha de base do atleta (média do CMJ dos dias anteriores).';
+    else if(an.estado==='verde') rec = taper ? 'Recuperação em ordem: mantém a afinação ou a descarga como planeado, sem acrescentar carga.' : 'Sem sinais de fadiga: mantém o plano.' + (an.cmjPct>=3 ? ' O CMJ está acima da média, bom momento para progredir como previsto.' : '');
+    else if(an.estado==='amarelo') rec = 'Sinal de fadiga: reduz o volume cerca de ' + an.pct + '% nos próximos treinos, mantendo a técnica e a intensidade curta.';
+    else rec = taper ? 'Fadiga mesmo em afinação ou descarga: reduz ' + an.pct + '%, tira a intensidade alta e garante 2 dias de descanso. Se durar mais de uma semana, pede avaliação médica.' : 'Fadiga marcada: reduz o volume ' + an.pct + '% e troca as sessões de intensidade alta por Z2 nos próximos dias. Se durar mais de uma semana, pede avaliação médica.';
+    h += `<div style="border-left:4px solid ${cor[an.estado]}; background:rgba(128,128,128,.08); padding:12px 14px; border-radius:4px; margin:12px 0;">
+      <div style="font-weight:600;">Estado: ${an.estado}${an.motivos.length ? ' — ' + esc(an.motivos.join('; ')) : ''}</div>
+      <div style="margin-top:4px;">${esc(rec)}</div>
+      ${ciclo ? `<div class="view-sub" style="margin-top:4px;">Ciclo atual: ${esc(ciclo.cy.nome)}, semana ${ciclo.wi+1}${fase ? ' — ' + esc(fase) : ''}</div>` : '<div class="view-sub" style="margin-top:4px;">Sem ciclo ativo esta semana.</div>'}
+      ${an.estado!=='verde' && ciclo ? `<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primary" onclick="monitApply('${cid}',${an.pct}); renderMonit();">Aplicar −${an.pct}% aos treinos que faltam esta semana</button>${an.pct!==30?`<button class="btn" onclick="monitApply('${cid}',30); renderMonit();">Aplicar −30%</button>`:''}</div>` : ''}
+    </div>`;
+  }
+  h += '<div style="margin-top:12px; font-weight:600;">Últimos registos</div>';
+  h += L.length ? '<table style="width:100%; font-size:13px; border-collapse:collapse;"><tr style="text-align:left;"><th>Data</th><th>CMJ (cm)</th><th>Sono (h)</th><th>Bem-estar</th><th></th></tr>' + L.slice(-14).reverse().map(m=>`<tr><td>${esc(formatDate(m.data))}</td><td>${m.cmj||'—'}</td><td>${m.sono||'—'}</td><td>${monitTotal(m)}/25</td><td><button class="btn btn-sm" onclick="monitDel('${m.id}')">Apagar</button></td></tr>`).join('') + '</table>' : '<div class="view-sub">Ainda sem registos para este cliente.</div>';
+  out.innerHTML = h;
+}
+function monitSubmit(){ monitSave(); }
 
 function exFixPadrao(e){
   if(e.padraoManual) return;
@@ -2983,7 +3230,7 @@ async function ghPush(cfg, sha){
 function applyRemote(remote){
   try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
   const d = remote.payload.data;
-  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [] });
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, equip: d.equip, equipCasa: d.equipCasa });
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
   setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
   renderAll();
@@ -3086,7 +3333,7 @@ function importBackup(input){
       if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
         status.textContent = 'Importação cancelada.'; return;
       }
-      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [] });
+      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, equip: d.equip, equipCasa: d.equipCasa });
       saveData();
       status.textContent = 'Cópia importada: ' + resumo + '.';
     }catch(e){
@@ -5615,16 +5862,34 @@ let protoFilter = '';
 function protoById(id){ return PROTOCOLOS.find(p=>p.id===id); }
 function protoSess(fa){ return fa.sess || [{n:'', ex:fa.ex}]; }
 function protoTotalSem(p){ return p.fases.reduce((a,f)=>a+f.sem,0); }
+let protoKind = 'treino';
+try{ protoKind = localStorage.getItem('ciclo_proto_kind') === 'pat' ? 'pat' : 'treino'; }catch(e){}
+// protocolo de patologia = tem patologia associada; protocolo de treino = provas e performance
+function protoIsPat(p){ return !!p.pat; }
+function protoSetKind(k){
+  protoKind = k;
+  try{ localStorage.setItem('ciclo_proto_kind', k); }catch(e){}
+  const sel = document.getElementById('proto-grupo'); if(sel) sel.innerHTML = '';
+  renderProtocolos();
+}
 function renderProtocolos(){
   const box = document.getElementById('protocolos-list');
   if(!box) return;
+  const isPat = protoKind === 'pat';
+  const lista = PROTOCOLOS.filter(p=>protoIsPat(p) === isPat);
+  const bt = document.getElementById('proto-kind-treino'), bp = document.getElementById('proto-kind-pat');
+  if(bt) bt.className = 'btn' + (isPat ? '' : ' btn-primary');
+  if(bp) bp.className = 'btn' + (isPat ? ' btn-primary' : '');
+  const tit = document.getElementById('proto-titulo'); if(tit) tit.textContent = isPat ? 'Protocolos de patologias' : 'Protocolos de treino';
+  const sub = document.getElementById('proto-sub'); if(sub) sub.textContent = isPat ? 'Reabilitação e treino com patologias, por fases e com critérios para avançar. Cria o treino de uma fase ou o ciclo completo para um cliente.' : 'Preparação de provas e performance atlética, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.';
+  const pb = document.getElementById('proto-pat-btn'); if(pb) pb.style.display = isPat ? '' : 'none';
   const sel = document.getElementById('proto-grupo');
   if(sel && !sel.options.length){
-    sel.innerHTML = '<option value="">Todas as áreas</option>' + [...new Set(PROTOCOLOS.map(p=>p.grupo))].map(g=>`<option>${esc(g)}</option>`).join('');
+    sel.innerHTML = '<option value="">Todas as áreas</option>' + [...new Set(lista.map(p=>p.grupo))].map(g=>`<option>${esc(g)}</option>`).join('');
   }
   const f = sel ? sel.value : '';
   const open = [...box.querySelectorAll('details[open]')].map(d=>d.dataset.id);
-  box.innerHTML = PROTOCOLOS.filter(p=>!f || p.grupo===f).map(p=>`
+  box.innerHTML = lista.filter(p=>!f || p.grupo===f).map(p=>`
     <details class="proto" data-id="${p.id}" ${open.includes(p.id)?'open':''}>
       <summary>
         <span class="proto-t">${esc(p.nome)}</span>
@@ -5827,7 +6092,7 @@ function protoPlanCheck(){
   if(plan.error){ box.innerHTML = `<div style="color:var(--danger);">${esc(plan.error)}</div>`; return; }
   box.innerHTML = `<div><strong>Plano de ${plan.weeks.reduce((a,b)=>a+b,0)} semanas</strong> (de ${esc(formatDate(plan.inicio))} até à prova a ${esc(formatDate(plan.provaISO))}):</div><ul style="margin:4px 0 0; padding-left:18px;">${p.fases.slice(fi0).map((f,i)=>plan.weeks[i]?`<li>${esc(f.nome)} — ${plan.weeks[i]} semana${plan.weeks[i]>1?'s':''}</li>`:'').join('')}</ul>` + plan.notes.map(t=>`<div style="margin-top:6px; ${plan.short?'color:var(--danger);':''}">${esc(t)}</div>`).join('');
 }
-function protoModalChange(){ protoPatCheck(); protoPlanCheck(); }
+function protoModalChange(){ protoPatCheck(); protoPlanCheck(); protoPacesCheck(); }
 
 // ---------- Ajuste do protocolo às patologias ----------
 function protoExObj(x, p){
@@ -5972,7 +6237,7 @@ function protoMakeWorkouts(p, fi, opt){
   const fa = p.fases[fi];
   return ses.map(se=>{
     const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: keys[0] || p.pat || '', patologias: [...new Set([...keys, p.pat].filter(Boolean))], protocolo: p.id,
-      exercicios: protoEqList(se.ex.map(x=>protoScaleEx(x, level)).map(x=>p.prova ? protoObjEx(x, opt && opt.obj) : x), p, opt, keys, fa.nome).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: p.prova ? '' : 'Dor ≤ 3/10', descanso: x[3], met: '' })) };
+      exercicios: protoTerrainRows(protoEqList(se.ex.map(x=>protoScaleEx(x, level)).map(x=>p.prova ? protoObjEx(x, opt && opt.obj) : x), p, opt, keys, fa.nome), se, p, fi, opt && opt.terreno).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: protoPaceStr(x[0], opt && opt.paces, p.id, opt && opt.terreno) || (p.prova ? '' : 'Dor ≤ 3/10'), descanso: x[3], met: '' })) };
     DATA.workouts.push(w);
     return w;
   });
@@ -5997,6 +6262,7 @@ function openProtoModal(id){
   document.getElementById('proto-fase').value = '0';
   document.getElementById('proto-adapt').checked = true;
   document.getElementById('proto-prova').value = '';
+  { const c0 = DATA.clients.find(x=>x.id===document.getElementById('proto-cliente').value) || {}; document.getElementById('proto-ref-d').value = c0.refD || ''; document.getElementById('proto-ref-t').value = c0.refT || ''; document.getElementById('proto-terreno').value = 'estrada'; }
   patPickerSet('proto-extra', []);
   dayPickInit('proto-dayspick');
   document.getElementById('proto-nsem').value = '';
@@ -6038,7 +6304,8 @@ function protoCreateCycle(){
   if(p.prova && level==='Iniciante' && ['p-maratona','p-meia'].includes(p.id) && !confirm('Este protocolo pressupõe que o atleta já corre com regularidade (' + p.nome.split(' (')[0] + '). Para um nível iniciante, considera primeiro um plano de 10 km. Criar mesmo assim, com o volume reduzido?')) return;
   const report = [];
   const obj = document.getElementById('proto-obj').value || (DATA.clients.find(c=>c.id===clientId)||{}).objetivo || '';
-  const opt = { keys, adapt, level, report, obj, equip: equipPickerGet('proto-equiplist') };
+  { const cl0 = DATA.clients.find(x=>x.id===clientId); const rd = (document.getElementById('proto-ref-d')||{}).value, rt = (document.getElementById('proto-ref-t')||{}).value; if(cl0 && rd && rt && paceParse(rt)){ cl0.refD = rd; cl0.refT = rt; } }
+  const opt = { keys, adapt, level, report, obj, equip: equipPickerGet('proto-equiplist'), paces: protoPacesGet(), terreno: (document.getElementById('proto-terreno')||{}).value || 'estrada' };
   let inicio = inicio0;
   let sems = p.fases.slice(fi0).map(f=>f.sem);
   const provaISO = p.prova ? document.getElementById('proto-prova').value : '';
@@ -6076,7 +6343,7 @@ function protoCreateCycle(){
   }
   if(nFit){ const drop = allW.filter(id=>!usedW.has(id)); if(drop.length) DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id)); }
   const nome = p.nome.split(' (')[0] + (provaISO ? ' — prova a ' + formatDate(provaISO) : ' (protocolo)');
-  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: clientId2 || '', inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '', meta: { tipo:'proto', id:p.id, opt:{ keys, adapt, level, obj, equip: opt.equip }, equipCasa: equipPickerGet('proto-equipcasa'), local: document.getElementById('proto-local').value }, localPT: document.getElementById('proto-local').value });
+  DATA.cycles.push({ id: uid(), nome, clientId, clientId2: clientId2 || '', inicio, numSemanas: semanas.length, semanas, provaData: provaISO || '', meta: { tipo:'proto', id:p.id, opt:{ keys, adapt, level, obj, equip: opt.equip, paces: opt.paces, terreno: opt.terreno }, equipCasa: equipPickerGet('proto-equipcasa'), local: document.getElementById('proto-local').value }, localPT: document.getElementById('proto-local').value });
   { const cyN = DATA.cycles[DATA.cycles.length-1]; ptApplyLocal(cyN, cyN.localPT==='casa');
     const used = new Set(); DATA.cycles.forEach(c=>c.semanas.forEach(w=>w.dias.forEach(d=>d.workoutId&&used.add(d.workoutId))));
     allW.forEach(id=>{ if(!used.has(id)) DATA.workouts = DATA.workouts.filter(w=>w.id!==id); }); }
@@ -6104,6 +6371,7 @@ function renderAll(){
   renderWorkouts();
   renderProtocolos();
   renderCycles();
+  renderMonit();
   renderHoje();
 }
 renderAll();
