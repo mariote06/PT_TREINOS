@@ -599,7 +599,8 @@
       </div>
       <div class="field"><label>Semanas do ciclo</label><input id="plan-semanas" type="number" min="2" max="12" value="4"></div>
     </div>
-    <div class="field" id="plan-perf-field" style="display:none;"><label>Performance para (a app define os treinos de força de apoio à modalidade)</label><select id="plan-perf"><option value="">Força e potência (geral)</option><option value="corrida10k">Corrida — 10 km</option><option value="meia">Corrida — meia-maratona</option><option value="maratona">Corrida — maratona</option><option value="ciclismo">Ciclismo</option><option value="trail">Trail</option></select></div>
+    <div class="field" id="plan-prova-field" style="display:none;"><label>Data da prova (opcional; o plano vai de hoje até à prova, com base, desenvolvimento, fase específica e afinação)</label><input id="plan-prova" type="date"></div>
+    <div class="field" id="plan-perf-field" style="display:none;"><label>Performance para (a app define os treinos de força de apoio à modalidade)</label><select id="plan-perf" onchange="planObjChange()"><option value="">Força e potência (geral)</option><option value="corrida5k">Corrida — 5 km</option><option value="corrida10k">Corrida — 10 km</option><option value="meia">Corrida — meia-maratona</option><option value="maratona">Corrida — maratona</option><option value="ciclismo">Ciclismo</option><option value="trail">Trail</option></select></div>
     <div class="field"><label>Equipamento disponível (o plano só usa exercícios com este equipamento)</label><div id="plan-equiplist"></div></div>
     <div class="field"><label>Local dos treinos de PT (a app gera os treinos para este local)</label><select id="plan-local"><option value="ginasio">No ginásio</option><option value="casa">Em casa</option></select>
       <div style="margin-top:6px;"><div class="view-sub">Equipamento disponível em casa:</div><div id="plan-equipcasa"></div></div></div>
@@ -1038,7 +1039,179 @@ function defaultAulas(){
   ];
   return L.map(x=>({ id: 'aula'+Math.random().toString(36).slice(2,8), nome:x[0], duracao:x[1], intensidade:x[2], descricao:x[3], padrao:true }));
 }
+
+// ---------- BIBLIOTECA DE MOBILIDADE E CONTROLO MOTOR ----------
+// t: din = mobilidade dinâmica (aquecimento), act = ativação / controlo motor, corr = técnica de corrida; r = região
+const MOB_REG = { tornozelo:'Tornozelo e pé', pe:'Pé', anca:'Anca', toracica:'Coluna torácica', ombro:'Ombro e escápula', lombar:'Lombar e core', cervical:'Cervical', ativacao:'Glúteos e estabilidade', corrida:'Técnica de corrida', corpo:'Corpo inteiro' };
+const MOB_LIB = [
+  {n:'Círculos de tornozelo em apoio unipodal', r:'tornozelo', e:'Peso corporal', t:'din', s:'2', x:'10 por lado', o:'Em pé, apoio numa mão. Círculos amplos e lentos com o pé no ar.'},
+  {n:'Dorsiflexão do tornozelo em joelho ao chão', r:'tornozelo', e:'Peso corporal', t:'din', s:'2', x:'10 por lado', o:'Pé de apoio plano. Levar o joelho à frente sobre o segundo dedo sem levantar o calcanhar.'},
+  {n:'Marcha de calcanhares e pontas dos pés', r:'tornozelo', e:'Peso corporal', t:'din', s:'2', x:'20 m', o:'Caminhar 10 m nos calcanhares e 10 m nas pontas. Melhora o controlo do tornozelo e do pé.'},
+  {n:'Equilíbrio unipodal com alcance', r:'tornozelo', e:'Peso corporal', t:'act', s:'2', x:'6 por lado', o:'Apoio num pé; com o outro tocar com a ponta em 3 direções (frente, lado, trás) sem perder o alinhamento do joelho.'},
+  {n:'Doming do pé (pé curto)', r:'pe', e:'Peso corporal', t:'act', s:'2', x:'10 por lado', o:'Aproximar o antepé do calcanhar sem fletir os dedos, criando o arco do pé.'},
+  {n:'Círculos de anca em quatro apoios', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'8 por lado', o:'Joelho flete e faz círculos amplos (fire hydrant), tronco imóvel.'},
+  {n:'Rotações articulares da anca em pé', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'5 por direção e lado', o:'Em apoio unipodal, círculo máximo e controlado do joelho. Sem mover a bacia.'},
+  {n:'Transições de anca 90/90', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'8 por lado', o:'Sentado, passar os joelhos de um lado para o outro sem usar as mãos.'},
+  {n:'Afundo com rotação torácica (world\'s greatest stretch)', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'6 por lado', o:'Afundo longo, mão no chão, rodar o tronco e levar o braço ao teto. Abre anca, torácica e isquiotibiais.'},
+  {n:'Agachamento profundo com pausa', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'30 s', o:'Calcanhares no chão, joelhos para fora, coluna neutra. Apoiar as mãos se necessário.'},
+  {n:'Cossack agachamento lateral controlado', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'6 por lado', o:'Descer para um lado com a outra perna estendida, pé em dorsiflexão.'},
+  {n:'Balanço de perna frente-trás', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'10 por lado', o:'Apoio na parede, balanço controlado da perna estendida, tronco direito.'},
+  {n:'Balanço de perna lateral', r:'anca', e:'Peso corporal', t:'din', s:'2', x:'10 por lado', o:'De frente para a parede, balanço lateral da perna sem inclinar o tronco.'},
+  {n:'Ponte de glúteos com pausa', r:'ativacao', e:'Peso corporal', t:'act', s:'2', x:'10 com 2 s de pausa', o:'Empurrar com os calcanhares, bacia neutra, sem hiperextender a lombar.'},
+  {n:'Clamshell com mini band', r:'ativacao', e:'Mini band', t:'act', s:'2', x:'12 por lado', o:'Deitado de lado, joelhos fletidos. Abrir o joelho de cima sem rodar a bacia.'},
+  {n:'Monster walk com mini band', r:'ativacao', e:'Mini band', t:'act', s:'2', x:'10 passos por lado', o:'Banda acima dos joelhos, passos laterais com joelhos para fora e tensão constante.'},
+  {n:'Passos laterais com mini band', r:'ativacao', e:'Mini band', t:'act', s:'2', x:'10 por lado', o:'Posição de meio agachamento e passos laterais curtos, sem deixar o joelho colapsar para dentro.'},
+  {n:'Extensão de anca em quatro apoios', r:'ativacao', e:'Peso corporal', t:'act', s:'2', x:'10 por lado', o:'Estender a perna sem rodar a bacia nem arquear a lombar.'},
+  {n:'Dead bug (controlo lombo-pélvico)', r:'lombar', e:'Peso corporal', t:'act', s:'2', x:'8 por lado', o:'Lombar encostada ao chão, braço e perna opostos descem devagar. Expirar ao estender.'},
+  {n:'Bird dog com pausa', r:'lombar', e:'Peso corporal', t:'act', s:'2', x:'8 por lado', o:'Estender braço e perna opostos, 3 s de pausa, bacia nivelada.'},
+  {n:'Báscula pélvica deitado', r:'lombar', e:'Peso corporal', t:'din', s:'2', x:'12', o:'Alternar lombar plana e lombar neutra, movimento pequeno e controlado.'},
+  {n:'Respiração 90/90 com bola', r:'lombar', e:'Peso corporal', t:'act', s:'2', x:'6 respirações lentas', o:'Costas no chão, pernas a 90°, expirar totalmente. Reorganiza costelas e core.'},
+  {n:'Curl-up de McGill', r:'lombar', e:'Peso corporal', t:'act', s:'2', x:'6 com 8 s de pausa', o:'Uma perna fletida, mãos sob a lombar, elevar apenas cabeça e ombros sem fletir a coluna.'},
+  {n:'Rotação torácica em afundo', r:'toracica', e:'Peso corporal', t:'din', s:'2', x:'8 por lado', o:'Afundo, mãos atrás da cabeça, rodar o tronco para o lado da perna da frente.'},
+  {n:'Thread the needle (passagem do braço)', r:'toracica', e:'Peso corporal', t:'din', s:'2', x:'8 por lado', o:'Quatro apoios, passar o braço por baixo do corpo e depois abrir ao teto.'},
+  {n:'Livro aberto deitado de lado', r:'toracica', e:'Peso corporal', t:'din', s:'2', x:'8 por lado', o:'Joelhos fletidos e juntos, abrir o braço de cima e seguir a mão com o olhar.'},
+  {n:'Extensão torácica na parede', r:'toracica', e:'Peso corporal', t:'din', s:'2', x:'10', o:'Mãos na parede, afundar o peito sem arquear a lombar.'},
+  {n:'Mobilidade torácica com bastão', r:'toracica', e:'Bastão', t:'din', s:'2', x:'10', o:'Bastão nos ombros, rodar o tronco com a bacia fixa.'},
+  {n:'CARs de ombro (rotações articulares controladas)', r:'ombro', e:'Peso corporal', t:'din', s:'2', x:'5 por lado', o:'Círculo máximo do braço com tensão em todo o corpo, sem mover o tronco.'},
+  {n:'Passagem de bastão por cima da cabeça (pass-through)', r:'ombro', e:'Bastão', t:'din', s:'2', x:'10', o:'Pega larga, braços estendidos; ir mais estreito conforme a mobilidade permite.'},
+  {n:'Wall slides com elástico', r:'ombro', e:'Elástico', t:'act', s:'2', x:'10', o:'Antebraços na parede, deslizar para cima mantendo as costelas fechadas.'},
+  {n:'Y-T-W no chão', r:'ombro', e:'Peso corporal', t:'act', s:'2', x:'6 por posição', o:'De barriga para baixo, elevar os braços em Y, T e W. Ativa trapézio inferior e escápulas.'},
+  {n:'Retração cervical (queixo para dentro)', r:'cervical', e:'Peso corporal', t:'act', s:'2', x:'10 com 5 s de pausa', o:'Duplo queixo sem baixar a cabeça. Corrige a postura anteriorizada.'},
+  {n:'Marcha A lenta (técnica de corrida)', r:'corrida', e:'Peso corporal', t:'corr', s:'2', x:'20 m', o:'Joelho à altura da anca, pé em dorsiflexão, apoio no antepé por baixo do corpo.'},
+  {n:'Marcha B lenta (técnica de corrida)', r:'corrida', e:'Peso corporal', t:'corr', s:'2', x:'20 m', o:'Do skipping A estender a perna à frente e puxar o pé para baixo e para trás num movimento de varrimento.'},
+  {n:'Corrida de calcanhares ao glúteo lenta', r:'corrida', e:'Peso corporal', t:'corr', s:'2', x:'20 m', o:'Calcanhar sobe até ao glúteo, joelhos apontados para baixo, postura alta.'},
+  {n:'Apoio unipodal com joelho alto (equilíbrio de corredor)', r:'corrida', e:'Peso corporal', t:'corr', s:'2', x:'20 s por lado', o:'Postura de corrida congelada: joelho a 90°, tronco direito, pé de apoio ativo.'},
+  {n:'Passada lateral (shuffle) controlada', r:'corrida', e:'Peso corporal', t:'corr', s:'2', x:'10 m por lado', o:'Passos laterais curtos e rápidos, joelhos alinhados com os pés.'}
+];
+// alongamento final por região
+const MOB_CD = { tornozelo:'Alongamento de gémeos na parede', pe:'Alongamento da fáscia plantar', anca:'Alongamento do flexor da anca', ativacao:'Alongamento de isquiotibiais em pé', corrida:'Alongamento de isquiotibiais em pé', toracica:'Alongamento lateral do tronco (lado côncavo)', ombro:'Alongamento posterior do ombro (cross-body)', lombar:'Joelhos ao peito alternado', cervical:'Alongamento suave do pescoço', corpo:'Alongamento suave de corpo inteiro' };
+const MOB_BY_PAT = { joelho:['anca','tornozelo','ativacao'], oa:['anca','tornozelo','ativacao'], ombro:['ombro','toracica'], supra:['ombro','toracica'], cervical:['cervical','toracica','ombro'], lombar:['lombar','anca','toracica'], hernia:['lombar','anca','toracica'], escoliose:['toracica','lombar','anca'], entorse:['tornozelo','ativacao','pe'], aquiles:['tornozelo','pe','anca'], fascite:['pe','tornozelo'], epicondilite:['ombro','toracica'], epitrocleite:['ombro','toracica'], osteop:['toracica','anca','lombar'], fibro:['corpo','toracica','anca'], em:['corpo','anca','toracica'] };
+function mobEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const have = new Set(list.map(e=>normName(e.nome)));
+  let n = 0;
+  MOB_LIB.forEach(m=>{
+    if(have.has(normName(m.n))) return;
+    list.push({ id: uid(), nome: m.n, grupo:'Mobilidade', equip: m.e, notas: m.o, padrao:'mobilidade', modalidade:'Funcional', musculo: MOB_REG[m.r], funcao: m.t==='din' ? 'Mobilidade (dinâmica)' : m.t==='corr' ? 'Técnica e qualidade do movimento de corrida' : 'Ativação e controlo motor', patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' });
+    n++;
+  });
+  return n;
+}
+function ptMobFocus(obj, perf, keys){
+  const out = [];
+  keys.forEach(k=>(MOB_BY_PAT[k]||[]).forEach(r=>{ if(!out.includes(r)) out.push(r); }));
+  let base;
+  if(obj==='Reabilitação') base = ['anca','toracica','tornozelo','ativacao'];
+  else if(obj==='Performance' && ['corrida5k','corrida10k','meia','maratona','trail'].includes(perf)) base = ['tornozelo','anca','corrida','ativacao','toracica'];
+  else if(obj==='Performance' && perf==='ciclismo') base = ['anca','toracica','lombar','ativacao'];
+  else if(obj==='Performance' || obj==='Força' || obj==='Hipertrofia') base = ['anca','ombro','toracica','tornozelo'];
+  else if(obj==='Perda de gordura') base = ['anca','toracica','ativacao','tornozelo'];
+  else base = ['toracica','anca','ombro','tornozelo'];
+  base.forEach(r=>{ if(!out.includes(r)) out.push(r); });
+  return out;
+}
+// devolve {pre:[linhas], pos:[linhas]} com o bloco de mobilidade do treino de PT
+function ptMobBlock(obj, perf, keys, casa, home, wi){
+  const ok = (nome, equip)=>{
+    const n = normText(nome);
+    if(keys.some(k=>PATOLOGIAS[k] && PATOLOGIAS[k].ex && PATOLOGIAS[k].ex.test(n))) return false;
+    if(casa){
+      const base = ['', 'Peso corporal', 'Toalha', 'Bastão'];
+      if(base.includes(equip||'')) return true;
+      return Array.isArray(home) ? home.includes(equip) : false;
+    }
+    return true;
+  };
+  const focus = ptMobFocus(obj, perf, keys);
+  const byReg = {}; MOB_LIB.forEach(m=>{ if(ok(m.n, m.e)) (byReg[m.r] = byReg[m.r] || []).push(m); });
+  const nWarm = (obj==='Performance' && ['corrida5k','corrida10k','meia','maratona','trail'].includes(perf)) ? 5 : 4;
+  const pre = [], used = new Set();
+  // 1 exercício por região, depois repete as regiões prioritárias; roda com a semana para variar
+  for(let round=0; pre.length<nWarm && round<4; round++){
+    for(const r of focus){
+      if(pre.length>=nWarm) break;
+      const arr = byReg[r] || [];
+      const cand = arr.filter(m=>!used.has(m.n));
+      if(!cand.length) continue;
+      const m = cand[(wi + round) % cand.length];
+      used.add(m.n); pre.push(m);
+    }
+  }
+  const pos = [], usedCd = new Set();
+  for(const r of focus){
+    if(pos.length>=2) break;
+    const nome = MOB_CD[r];
+    if(nome && !usedCd.has(nome) && ok(nome, '')){ usedCd.add(nome); pos.push(nome); }
+  }
+  const line = (nome, s, x, nota)=>({ nome, series: s, reps: x, carga: '', descanso: '30s', nota });
+  return {
+    pre: pre.map(m=>line(m.n, m.s, m.x, m.o)),
+    pos: pos.map(n=>line(n, '2', '30 s por lado', 'Alongamento final, sem dor, respiração lenta.'))
+  };
+}
+// junta o bloco de mobilidade a um treino já criado em DATA.workouts
+function ptAddMobility(w, obj, perf, keys, casa, home, wi){
+  if(!w) return;
+  const blk = ptMobBlock(obj, perf, keys, casa, home, wi||0);
+  const toLine = l=>{
+    const key = normName(l.nome);
+    let e = DATA.exercises.find(x=>normName(x.nome)===key);
+    if(!e){ e = { id: uid(), nome: l.nome, grupo:'Mobilidade', equip:'', notas: l.nota||'', padrao:'mobilidade', modalidade:'Funcional', imagem:'', videoLink:'', videoData:'', variantes:[], patologias:[] }; DATA.exercises.push(e); }
+    return { exId: e.id, series: String(l.series), reps: String(l.reps), carga: '', descanso: l.descanso, met: '', mob: 1 };
+  };
+  const pre = blk.pre.map(toLine), pos = blk.pos.map(toLine);
+  w.exercicios = [...pre, ...(w.exercicios||[]), ...pos];
+  if(w.nome && !/mobilidade/i.test(w.nome)) w.nome += ' + mobilidade';
+}
+
+function exFixPadrao(e){
+  if(e.padraoManual) return;
+  const n = String(e.nome||''), g = e.grupo, p = e.padrao;
+  if(g==='Pernas' && /plantar/i.test(n)){ e.padrao = 'isolamento'; return; }
+  if(g==='Tríceps' && /mergulho/i.test(n) && p==='empurrar_h'){ e.padrao = 'empurrar_v'; return; }
+  if(p==='empurrar_h' || p==='isolamento'){
+    if(/pulso|flex[ãa]o cotovelo/i.test(n)) e.padrao = 'isolamento';
+    else if(g==='Pernas' && /plantar|g[ée]meo/i.test(n)) e.padrao = 'isolamento';
+    else if(g==='Pernas' && /hip press|extens[ãa]o\/flex[ãa]o MI/i.test(n)) e.padrao = 'dobradica';
+    else if(g==='Tríceps' && /dips/i.test(n)) e.padrao = 'empurrar_v';
+    else if(g==='Tríceps' && /press [àa] (testa|nuca|barriga)|press barriga/i.test(n)) e.padrao = 'isolamento';
+  }
+}
+function exFixAll(list){ (list||[]).forEach(exFixPadrao); }
+const EX_MUSC = [
+  [/g[ée]meo|plantar|calf/i,'Gémeos'],[/pulso|antebra/i,'Antebraço'],[/isquio|leg curl|curl femoral|flex[ãa]o (de )?joelho|stiff|romeno|good ?morning|nordic/i,'Isquiotibiais'],
+  [/gl[úu]te|hip thrust|ponte|abdu[çc][ãa]o|kickback|clam|monster|hip press/i,'Glúteos'],[/quadr|extens[ãa]o (de )?joelho|leg ext|agachamento|squat|afundo|lunge|leg press|step.?up|passada|hack/i,'Quadríceps'],
+  [/adutor/i,'Adutores'],[/tr[íi]ceps|dips|press [àa] (testa|nuca|barriga)|skull|extens[ãa]o (de )?cotovelo|pushdown/i,'Tríceps'],
+  [/b[íi]ceps|curl|martelo/i,'Bíceps'],[/lombar|hiperextens|superman|bird.?dog/i,'Lombar'],[/trap[ée]zio|encolh|shrug|face pull/i,'Trapézio / deltoide posterior'],
+  [/dorsal|puxada|remada|pull.?up|barra fixa|lat /i,'Dorsais'],[/peito|supino|flex[ãa]o de bra[çc]os|push.?up|crucifixo|fly|peck/i,'Peitoral'],
+  [/ombro|desenvolvimento|militar|eleva[çc][ãa]o lateral|eleva[çc][ãa]o frontal|arnold|press (de )?ombros/i,'Deltoides'],
+  [/abdom|crunch|prancha|plank|dead.?bug|rota[çc][ãa]o|russian|core|pallof|hollow|v-?up|l-?sit|respira/i,'Core / abdominais']
+];
+const EX_GRUPO_MUSC = { 'Peito':'Peitoral','Costas':'Dorsais','Ombros':'Deltoides','Bíceps':'Bíceps','Tríceps':'Tríceps','Antebraço':'Antebraço','Glúteos':'Glúteos','Core':'Core / abdominais','Cardio':'Sistema cardiorrespiratório','Mobilidade':'Mobilidade articular','Corpo inteiro':'Corpo inteiro','Pernas':'Quadríceps' };
+function exMusculo(e){
+  if(e.musculo) return e.musculo;
+  const n = String(e.nome||'');
+  if(e.grupo==='Cardio' || e.padrao==='cardio') return 'Sistema cardiorrespiratório';
+  if(e.grupo==='Mobilidade' || e.padrao==='mobilidade') return 'Mobilidade articular';
+  if(e.grupo!=='Corpo inteiro'){ for(const [re,m] of EX_MUSC){ if(re.test(n) && (e.grupo==='Pernas' ? ['Gémeos','Isquiotibiais','Glúteos','Quadríceps','Adutores'].includes(m) : (m===EX_GRUPO_MUSC[e.grupo] || e.grupo==='Costas' && ['Dorsais','Trapézio / deltoide posterior','Lombar'].includes(m) || e.grupo==='Ombros' && ['Deltoides','Trapézio / deltoide posterior'].includes(m) || e.grupo==='Core' && ['Core / abdominais','Lombar'].includes(m) || e.grupo==='Glúteos' && ['Glúteos','Isquiotibiais'].includes(m)))) return m; } }
+  return EX_GRUPO_MUSC[e.grupo] || e.grupo || '';
+}
+function exFuncao(e){
+  if(e.funcao) return e.funcao;
+  const n = String(e.nome||''), m = exModalidade(e), p = e.padrao;
+  if(m==='Reabilitação' || (e.patologias||[]).length && m==='Reabilitação') return 'Reabilitação';
+  if(p==='mobilidade' || e.grupo==='Mobilidade') return 'Mobilidade';
+  if(p==='cardio' || e.grupo==='Cardio') return m==='Corrida' ? 'Resistência (técnica de corrida)' : 'Resistência cardiovascular';
+  if(m==='HYROX') return 'Resistência específica de prova';
+  if(/salto|jump|pliom|box jump|slam|swing|snatch|clean|arranco|lan[çc]amento|throw|burpee|sprint|skipping|bound|hop/i.test(n)) return 'Potência';
+  if(/prancha|plank|pallof|dead.?bug|bird.?dog|hollow|ponte|clam|estabil|equil[íi]brio|unilateral|single|bosu|instável/i.test(n) || p==='core') return 'Estabilidade / controlo do core';
+  if(p==='isolamento') return 'Hipertrofia (isolamento)';
+  if(['agachamento','dobradica','empurrar_h','empurrar_v','puxar_h','puxar_v'].includes(p)) return /barra|halter|multipower|m[áa]quina|polia|kettle|landmine/i.test(e.equip||n) ? 'Força e hipertrofia (multiarticular)' : 'Força-resistência (multiarticular)';
+  return 'Condição física geral';
+}
 function migrateAulas(d){
+  exFixAll(d.exercises);
+  if(!d.mobV && (d.exercises||[]).length){ mobEnsure(d.exercises); d.mobV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -2003,6 +2176,8 @@ function loadFullLibrary(){
   if(!confirm(`Adicionar ${toAdd.length} exercícios`+(toUpdate.length?` e completar notas/variantes em ${toUpdate.length} já existentes`:'')+'? Não apaga nem altera o que já escreveste.')) return;
   toAdd.forEach(e=>DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: e.notas||'', padrao: e.padrao, imagem: '', modalidade: e.modalidade||'', variantes: (e.variantes||[]).slice(), patologias: (e.patologias||[]).slice(), rx: e.rx||null }));
   toUpdate.forEach(e=>{ const x=byName.get(normName(e.nome)); if(!x.notas && e.notas) x.notas=e.notas; if(!(x.variantes||[]).length && (e.variantes||[]).length) x.variantes=e.variantes.slice(); if(!x.modalidade && e.modalidade) x.modalidade=e.modalidade; if(!x.rx && e.rx) x.rx=e.rx; if(!(x.patologias||[]).length && (e.patologias||[]).length) x.patologias=e.patologias.slice(); });
+  mobEnsure(DATA.exercises); DATA.mobV = 1;
+  exFixAll(DATA.exercises);
   saveData();
 }
 
@@ -2089,7 +2264,7 @@ function renderLibrary(){
           </div>
           <div class="list-row-main">
             <div class="list-row-title">${esc(e.nome)}${(pCur && contraAlert(e,pCur)) ? ` <span class="tag" style="color:var(--danger); border-color:var(--danger);" title="Evitar: ${esc(contraAlert(e,pCur))}">⚠ Contraindicado em ${esc(PATOLOGIAS[pCur].nome)}</span>` : ''}</div>
-            <div class="list-row-meta">${esc(exModalidade(e))}${(e.patologias||[]).length ? ' · Indicado para: '+e.patologias.map(k=>esc((PATOLOGIAS[k]||{}).nome||k)).join(', ') : ''} · ${e.equip ? esc(e.equip) : 'Sem equipamento especificado'}${e.padrao ? ' · '+PATTERN_LABELS[e.padrao] : ''}${e.notas ? ' · '+esc(e.notas) : ''}</div>
+            <div class="list-row-meta">${esc(exModalidade(e))}${(e.patologias||[]).length ? ' · Indicado para: '+e.patologias.map(k=>esc((PATOLOGIAS[k]||{}).nome||k)).join(', ') : ''} · ${e.equip ? esc(e.equip) : 'Sem equipamento especificado'}${e.padrao ? ' · '+PATTERN_LABELS[e.padrao] : ''} · Músculo: ${esc(exMusculo(e))} · Função: ${esc(exFuncao(e))}${e.notas ? ' · '+esc(e.notas) : ''}</div>
             ${openVariants.has(e.id) ? `<div style="margin-top:8px;"><div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">${(e.variantes||[]).map((v,i)=>`<span style="display:inline-flex; align-items:center; gap:4px; background:var(--surface-raised); border:1px solid var(--line); border-radius:99px; padding:2px 8px; font-size:12px;">${esc(v)} <button onclick="removeVariant('${e.id}',${i})" style="background:none; border:0; color:var(--chalk-dim); cursor:pointer; padding:0 2px;" aria-label="Remover variante">×</button></span>`).join('') || '<span class="view-sub">Sem variantes ainda.</span>'}</div><input type="text" placeholder="Nova variante + Enter" onkeydown="if(event.key==='Enter'){addVariant('${e.id}',this)}" style="width:100%; max-width:320px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:6px 8px; border-radius:var(--radius-s); font-size:13px;"></div>` : ''}
           </div>
           <div class="list-row-actions">
@@ -3092,7 +3267,7 @@ function importResult(r, clientId, pick, clientId2, meta){
   DATA.cycles.push({
     id: uid(), nome: cycleName, clientId, clientId2: clientId2 || '',
     inicio: new Date().toISOString().slice(0,10),
-    numSemanas: semanas.length, semanas, meta: meta || null, localPT: (meta && meta.local) || 'ginasio'
+    numSemanas: semanas.length, semanas, provaData: r.provaData || '', meta: meta || null, localPT: (meta && meta.local) || 'ginasio'
   });
   { const cyN = DATA.cycles[DATA.cycles.length-1]; if(cyN.localPT==='casa') ptApplyLocal(cyN, true); else ptApplyLocal(cyN, false);
     const used = new Set(); DATA.cycles.forEach(c=>c.semanas.forEach(w=>w.dias.forEach(d=>d.workoutId&&used.add(d.workoutId))));
@@ -3122,6 +3297,10 @@ const PLAN_WEEK = {
 };
 const PERF = {
   forca: { nome:'Força e potência' },
+  corrida5k: { nome:'Corrida — 5 km', dias:3, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[4,2]}, reps:['4-6','8-10'], rest:[150,75], carga:'RPE 8 (≈85% 1RM), técnica perfeita', plyo:true,
+    tpl:[{nome:'Força de pernas e pliometria', slots:['PW_JUMP','SQ','HIP','UNI','CALF','CORE']},{nome:'Unilateral, glúteos e core', slots:['PW_SWING','UNI','GLU','HAM','CALF','CORE','ROW']},{nome:'Força geral de apoio', slots:['SQ','HIP','UNI','CALF','CORE','LAT','PUSH_H']}],
+    semana:['Acumulação: 4 séries de 4-5 reps (≈80-85% 1RM, RPE 7-8). Saltos 3×5. Fazer a força nos dias de corrida dura ou com pelo menos 6 h de intervalo','Subir 2,5–5% (RPE 8). Manter as sessões de VO₂máx e limiar intactas','Pico: 3-4 reps a ≈87% 1RM (RPE 8-9). Priorizar a qualidade, sem falha','Deload: menos 40% de volume e mesma carga (RPE 6-7); semana de teste de ritmo na corrida'],
+    av:['Fundamentação (corrida 5 km): nos 5 km o VO₂máx e a economia de corrida pesam muito; a força máxima e a pliometria melhoram a economia sem aumentar a massa muscular de forma relevante (Balsalobre-Fernández et al., 2016, JSCR; Blagrove et al., 2018, Sports Med; Berryman et al., 2018; Saunders et al., 2006, JSCR).','Estrutura: 2 sessões por semana na preparação, 1 de manutenção na fase específica e só ativação na afinação (Rønnestad & Mujika, 2014; Mujika & Padilla, 2003). Trabalho unilateral e gémeos pesados para a rigidez do tendão de Aquiles.'] },
   corrida10k: { nome:'Corrida — 10 km', dias:3, series:{Iniciante:[2,2],Intermédio:[3,2],Avançado:[4,2]}, reps:['4-6','8-10'], rest:[150,75], carga:'RPE 8 (≈85% 1RM), técnica perfeita', plyo:true,
     tpl:[{nome:'Força de pernas e pliometria', slots:['PW_JUMP','SQ','HIP','UNI','CALF','CORE']},{nome:'Unilateral, glúteos e core', slots:['PW_SWING','UNI','GLU','HAM','CALF','CORE','ROW']},{nome:'Força geral de apoio', slots:['SQ','HIP','UNI','CALF','CORE','LAT','PUSH_H']}],
     semana:['Acumulação: 3 séries de 6 reps (≈80% 1RM, RPE 7). Saltos 3×5. Fazer a força nos dias de corrida dura ou com pelo menos 6 h de intervalo','Subir 2,5–5% (RPE 8). Manter a corrida de qualidade intacta','Pico: 4-5 reps a ≈85% 1RM (RPE 8-9). Priorizar a qualidade, sem falha','Deload: menos 40% de volume e mesma carga (RPE 6-7); semana de teste de ritmo na corrida'],
@@ -3297,6 +3476,21 @@ function planDefaults(c){
   d.duracao = parseInt(c.duracaoSessao) || (t ? parseInt(t[1]) : 45);
   d.dias = Math.min(6, Math.max(1, d.dias));
   return d;
+}
+const PERF_PROTO = { corrida5k:'p-5k', corrida10k:'p-10k', meia:'p-meia', maratona:'p-maratona' };
+// Mapeia cada semana até à prova para a fase do protocolo de corrida (base, desenvolvimento, específica, afinação, prova)
+function perfProvaFases(perf, inicioISO, provaISO){
+  const pr = protoById(PERF_PROTO[perf]);
+  if(!pr) return null;
+  const pl = protoPlanWeeks(pr, 0, inicioISO, provaISO);
+  if(pl.error) throw new Error(pl.error);
+  const out = [];
+  pr.fases.forEach((f, i)=>{
+    const tipo = /Semana da prova/.test(f.nome) ? 'prova' : /Afina/.test(f.nome) ? 'afinacao' : /Espec/.test(f.nome) ? 'especifica' : /Desenvolvimento|Constru/.test(f.nome) ? 'dev' : 'base';
+    for(let k=0;k<pl.weeks[i];k++) out.push({ tipo, k, de:pl.weeks[i] });
+  });
+  // a última fase do protocolo é sempre a semana da prova (ou a afinação, nos 5 e 10 km)
+  return { fases: out, W: pl.W, provaDay: pl.provaDay, notes: pl.notes, pr };
 }
 function planWeekText(i, n, obj, perf){
   const texts = (obj==='Performance' && perf && PERF[perf] && PERF[perf].semana) ? PERF[perf].semana : PLAN_WEEK[obj];
@@ -3515,9 +3709,42 @@ function buildAutoPlan(p){
   });
   const nomes = treinos.map(t=>t.nome);
   const semanas = [];
-  for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo, p.perf), sessoes: nomes });
-  if(p.semanas>=4) avisos.push('A semana 4 (e a 8, a 12) é de deload: reduz o volume para recuperar.');
-  return { nome: `${p.objetivo} · ${p.dias}x/semana · ${p.duracao} min`, avisos, treinos, semanas, estimativas: est };
+  let provaInfo = null;
+  if(PF && p.prova && PERF_PROTO[p.perf]){
+    provaInfo = perfProvaFases(p.perf, new Date().toISOString().slice(0,10), p.prova);
+  }
+  if(provaInfo){
+    const texts = PF.semana;
+    provaInfo.fases.forEach((f, i)=>{
+      let prog, ses = nomes;
+      const lastWeek = i === provaInfo.fases.length-1;
+      if(lastWeek){
+        prog = 'Semana da prova: sem treino de força. Só mobilidade, ativação e sono.';
+        ses = [];
+      } else if(f.tipo==='base' || f.tipo==='dev'){
+        const idx = f.tipo==='base' ? Math.min(f.k, 1) : Math.min(1 + f.k, 2);
+        prog = ((i+1)%4===0 ? texts[3] : texts[idx]) + ' [' + (f.tipo==='base' ? 'Base' : 'Desenvolvimento') + ']';
+      } else if(f.tipo==='especifica'){
+        prog = 'Fase específica — manutenção: 1 sessão por semana, 2 séries por exercício, mesma carga (RPE 7), sem falha. A prioridade é a corrida específica (Rønnestad & Mujika, 2014).';
+        ses = nomes.slice(0,1);
+      } else if(f.tipo==='afinacao'){
+        prog = 'Afinação: 1 sessão curta de ativação, 2 séries a cerca de 70% (RPE 6), sem falha nem exercícios novos (Mujika & Padilla, 2003).';
+        ses = nomes.slice(0,1);
+      } else {
+        prog = 'Semana da prova: sem treino de força. Só mobilidade, ativação e sono.';
+        ses = [];
+      }
+      if(lastWeek) prog += ' — SEMANA DA PROVA (' + formatDate(p.prova) + ')';
+      semanas.push({ numero:i+1, progressao: prog, sessoes: ses });
+    });
+    p = { ...p, semanas: provaInfo.W };
+    avisos.push('Plano de ' + provaInfo.W + ' semanas, do início de hoje até à prova a ' + formatDate(p.prova) + ', alinhado com o protocolo «' + provaInfo.pr.nome.split(' (')[0] + '»: ' + ['base','dev','especifica','afinacao','prova'].map(t=>[t, provaInfo.fases.filter(f=>f.tipo===t).length]).filter(x=>x[1]).map(x=>x[1]+' sem. de '+({base:'base',dev:'desenvolvimento',especifica:'fase específica',afinacao:'afinação',prova:'semana da prova'})[x[0]]).join(', ') + '. Faz as sessões de força nos dias de corrida dura ou com pelo menos 6 h de intervalo.');
+    provaInfo.notes.forEach(n=>avisos.push(n));
+  } else {
+    for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo, p.perf), sessoes: nomes });
+    if(p.semanas>=4) avisos.push('A semana 4 (e a 8, a 12) é de deload: reduz o volume para recuperar.');
+  }
+  return { nome: `${p.objetivo} · ${p.dias}x/semana · ${p.duracao} min`, avisos, treinos, semanas, estimativas: est, provaData: provaInfo ? p.prova : '' };
 }
 
 let planResult = null, planResultP = null;
@@ -3539,7 +3766,7 @@ function plan2Change(){
   const c2 = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente2').value);
   if(c2) patPickerSet('plan-patologia', [...patPickerGet('plan-patologia'), ...clientPats(c2)]);
 }
-function planObjChange(){ const f = document.getElementById('plan-perf-field'); if(f) f.style.display = document.getElementById('plan-objetivo').value==='Performance' ? '' : 'none'; }
+function planObjChange(){ const perf = document.getElementById('plan-objetivo').value==='Performance'; const f = document.getElementById('plan-perf-field'); if(f) f.style.display = perf ? '' : 'none'; const pf = document.getElementById('plan-prova-field'); if(pf) pf.style.display = (perf && PERF_PROTO[document.getElementById('plan-perf').value]) ? '' : 'none'; }
 function prefillPlan(){
   const c = DATA.clients.find(x=>x.id===document.getElementById('plan-cliente').value);
   const d = planDefaults(c);
@@ -3571,6 +3798,7 @@ function generatePlan(){
     equipamento: document.getElementById('plan-equip').value,
     equipList: equipPickerGet('plan-equiplist'),
     perf: document.getElementById('plan-objetivo').value==='Performance' ? document.getElementById('plan-perf').value : '',
+    prova: (document.getElementById('plan-objetivo').value==='Performance' && PERF_PROTO[document.getElementById('plan-perf').value]) ? (document.getElementById('plan-prova').value || '') : '',
     limitacoes: document.getElementById('plan-limitacoes').value.trim(),
     patologia: patPickerGet('plan-patologia')[0] || '',
     patologiasExtra: patPickerGet('plan-patologia').slice(1)
@@ -3581,7 +3809,7 @@ function generatePlan(){
   if(p.comp.reab>0 && !p.patologia){ status.textContent = 'Escolhe uma patologia para incluir exercícios de reabilitação.'; return; }
   try{
     planResult = buildAutoPlan(p);
-    planResultP = { objetivo:p.objetivo, perf:p.perf, nivel:p.nivel, duracao:p.duracao, equipamento:p.equipamento, equipList:p.equipList, patologia:p.patologia, patologiasExtra:p.patologiasExtra };
+    planResultP = { prova:p.prova, objetivo:p.objetivo, perf:p.perf, nivel:p.nivel, duracao:p.duracao, equipamento:p.equipamento, equipList:p.equipList, patologia:p.patologia, patologiasExtra:p.patologiasExtra };
     status.textContent = '';
     renderPlanPreview(planResult);
     document.getElementById('plan-import-btn').style.display = 'inline-block';
@@ -3901,10 +4129,13 @@ function genPtWorkout(cy, wi, local){
       if(casa) opt.equip = home;
       const ws = protoMakeWorkouts(p, fase, opt);
       if(ws.length){
-        const keep = ws[nDia % ws.length];
+        const keep = (p.prova && (ws.find(w=>/— For[çc]a/.test(w.nome)) || ws.find(w=>/— Ativação/.test(w.nome)))) || ws[nDia % ws.length];
         const drop = ws.filter(w=>w!==keep).map(w=>w.id);
         DATA.workouts = DATA.workouts.filter(w=>!drop.includes(w.id));
         keep.nome = keep.nome + ' (PT ' + lab + ')';
+        const pObj = p.prova ? 'Performance' : (p.pat ? 'Reabilitação' : 'Condição física geral');
+        const pPerf = ({'p-5k':'corrida5k','p-10k':'corrida10k','p-meia':'meia','p-maratona':'maratona','p-trail':'trail'})[p.id] || '';
+        ptAddMobility(keep, pObj, pPerf, keys, casa, home, wi);
         return keep.id;
       }
     }
@@ -3912,7 +4143,7 @@ function genPtWorkout(cy, wi, local){
   const base = (meta && meta.tipo==='plano' && meta.p) ? meta.p : {
     objetivo: c.objetivo || 'Condição física geral', perf: c.perf||'', nivel: c.nivel || 'Intermédio', duracao: parseInt(c.duracaoSessao)||45,
     equipamento: 'Ginásio completo', equipList: DATA.equip===undefined ? null : DATA.equip, patologia: keys[0] || '', patologiasExtra: keys.slice(1) };
-  const pp = { ...base, dias: 1, semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
+  const pp = { ...base, dias: 1, prova: '', semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
   if(casa){ pp.equipamento = (home && home.length) ? 'Casa, com elásticos' : 'Casa, sem material'; pp.equipList = home; }
   if(keys.length){ pp.patologia = keys[0]; pp.patologiasExtra = keys.slice(1); }
   const r = buildAutoPlan(pp);
@@ -3922,6 +4153,7 @@ function genPtWorkout(cy, wi, local){
   const id = uid();
   DATA.workouts.push({ id, nome: `${cy.nome} — PT S${sem.numero} (${lab})`, patologias: keys, patologia: keys[0]||'',
     exercicios: (t.exercicios||[]).map(x=>({ exId: findOrCreateExercise(x.exercicio), series: String(x.series||3), reps: String(x.reps||'10'), carga: String(x.carga||''), descanso: String(x.descanso||'60s'), met: String(x.met||'') })).filter(l=>l.exId) });
+  ptAddMobility(DATA.workouts[DATA.workouts.length-1], base.objetivo, base.perf || '', keys, casa, home, wi);
   return id;
 }
 function workoutUsedAnywhere(id){ return DATA.cycles.some(cy=>cy.semanas.some(w=>w.dias.some(d=>d.workoutId===id))); }
@@ -5070,7 +5302,9 @@ const PN = {
   prova:'Ritmo alvo da prova. Serve para treinar a gestão do esforço e a sensação do ritmo.',
   sub:'Subidas em esforço Z4. Descer a trote de recuperação. Postura alta, passada curta.',
   tec:'Exercícios de técnica: skipping A e B, passos laterais, elevação de joelhos. Foco na postura e no apoio.',
-  rega:'Corrida muito fácil e curta para recuperar. Se te sentires cansado, caminha.'
+  rega:'Corrida muito fácil e curta para recuperar. Se te sentires cansado, caminha.',
+  vo2:'Esforço muito duro mas controlado (Z5, Borg 17-18), ao ritmo de 3 a 5 km. Ritmo igual em todas as repetições; trote de recuperação de duração semelhante.',
+  rep:'Repetições curtas ao ritmo de 3 km, com boa técnica e recuperação em trote. Melhoram a economia e a capacidade anaeróbia.'
 };
 function cx(n, reps, nota, s, d){ return [n, s||'1', reps, d||'—', 'Cardio', nota||'']; }
 const FB = [['Agachamento goblet com kettlebell','3','10','75s','Pernas'],['Peso morto','3','8','90s','Pernas'],['Box step-up','3','10','60s','Pernas'],['Ponte de glúteos','3','12','45s','Glúteos'],['Gémeos em pé','3','12','45s','Pernas'],['Prancha Frontal','3','30-45s','45s','Core'],['Prancha Lateral','2','20-30s','45s','Core']];
@@ -5078,53 +5312,79 @@ const FF = [['Agachamento com barra','4','5-6','120s','Pernas'],['Peso morto','3
 const FM = [['Agachamento goblet com kettlebell','2','8','75s','Pernas'],['Peso morto','2','6','90s','Pernas'],['Box step-up','2','8','60s','Pernas'],['Gémeos em pé','2','10','45s','Pernas'],['Prancha Frontal','2','30s','45s','Core']];
 const FT = [['Agachamento búlgaro','3','8 por perna','90s','Pernas'],['Descida de step controlada (excêntrico)','3','10 por perna','60s','Pernas','Subir com as duas pernas e descer 3-4 s com uma perna. Prepara os quadríceps para as descidas.'],['Peso morto','3','6','120s','Pernas'],['Afundo caminhado','3','10 por perna','60s','Pernas'],['Gémeos em pé','4','10','60s','Pernas'],['Prancha Lateral','3','30s','45s','Core']];
 const FH = [['Agachamento com barra','3','6-8','120s','Pernas'],['Peso morto','3','6','120s','Pernas'],['Afundo caminhado','3','10 por perna','75s','Pernas'],['Barra fixa estrita (strict pull-up)','3','5-8','90s','Costas'],['Kettlebell swing','3','15','60s','Corpo inteiro'],['Prancha Frontal','3','45s','45s','Core']];
+const FR1 = [['Agachamento com barra','4','4-5','150s','Pernas','Carga alta (cerca de 80-85% de 1 repetição máxima) com técnica estrita. A força máxima melhora a economia de corrida sem aumentar muito a massa muscular (Blagrove et al., 2018).'],['Levantamento terra romeno com barra','3','5','120s','Pernas'],['Agachamento búlgaro','3','6 por perna','90s','Pernas'],['Hip thrust com barra','3','6','90s','Glúteos'],['Elevação de gémeos em pé (máquina)','4','6','75s','Pernas','Gémeos pesados e lentos: aumentam a rigidez do tendão de Aquiles e melhoram a economia.'],['Pogo jumps (saltos de tornozelo)','3','15','45s','Pernas','Pliometria de contacto curto: apoios rápidos e elásticos, tornozelo rígido (Saunders et al., 2006).'],['Salto na caixa baixa','3','5','60s','Pernas'],['Prancha Lateral','3','30s','45s','Core']];
+const FR2 = [['Agachamento com barra','3','4-5','150s','Pernas','Manter a carga alta e baixar o volume: 1 sessão por semana chega para manter e continuar a ganhar força (Rønnestad & Mujika, 2014).'],['Levantamento terra romeno com barra','3','5','120s','Pernas'],['Box step-up','3','6 por perna','90s','Pernas'],['Elevação de gémeos unipodal','3','8','60s','Pernas'],['Pogo jumps (saltos de tornozelo)','3','15','45s','Pernas'],['Salto horizontal unipodal (hop)','3','5 por perna','60s','Pernas'],['Prancha Lateral','3','30s','45s','Core']];
+const FRM = [['Agachamento com barra','2','4','150s','Pernas','Manutenção: poucas séries, carga alta, sem chegar à falha.'],['Levantamento terra romeno com barra','2','5','120s','Pernas'],['Elevação de gémeos unipodal','2','8','60s','Pernas'],['Pogo jumps (saltos de tornozelo)','2','15','45s','Pernas'],['Prancha Lateral','2','30s','45s','Core']];
+const FRT = [['Agachamento com barra','2','3','120s','Pernas','Ativação: carga moderada (cerca de 70%), sem fadiga.'],['Pogo jumps (saltos de tornozelo)','2','10','45s','Pernas'],['Prancha Lateral','2','20s','30s','Core']];
+const PROVA_BAND = ['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou óssea persistente, sobretudo na canela, pé ou anca (suspeita de lesão de stress).','Fadiga que se acumula, má qualidade do sono ou frequência cardíaca de repouso elevada.','Palpitações ou batimento irregular.'];
+const REF_BASE = 'Base científica: Joyner & Coyle (2008), J Physiol: VO₂máx, limiar e economia determinam o rendimento. Seiler (2010), Int J Sports Physiol Perform: cerca de 80% do treino em intensidade baixa. Blagrove et al. (2018), Sports Med, e Berryman et al. (2018): a força máxima e a pliometria melhoram a economia de corrida. Sem experiência de força, nas primeiras 2 semanas usar 50-60% da carga e consolidar a técnica antes de subir.';
 const PROVAS = [
-{ id:'p-10k', prova:true, nome:'Prova de 10 km (10 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
-  resumo:'Preparação de 10 semanas para correr 10 km, com 3 a 4 sessões por semana: corrida fácil, qualidade, corrida longa e força.',
-  quando:'Atleta que já corre 30 min seguidos, 2-3 vezes por semana, sem dor.',
-  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou óssea que aumenta de forma persistente (suspeita de lesão de stress).','Fadiga que se acumula e não recupera com o descanso.','Palpitações ou batimento irregular.'],
-  notas:[PROVA_REGRAS,'Calçado adequado e com menos de 600-800 km. Aquecimento de 10 min antes das sessões de qualidade.'],
+{ id:'p-5k', prova:true, nome:'Prova de 5 km (8 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 8 semanas para 5 km, com 4 a 5 sessões por semana: base aeróbia, intervalos de VO₂máx, limiar, ritmo de prova e força máxima com pliometria.',
+  quando:'Atleta que já corre 20-30 min seguidos, 3 vezes por semana, sem dor.',
+  bandeiras:PROVA_BAND,
+  notas:[PROVA_REGRAS,'Nos 5 km o VO₂máx e a economia de corrida pesam mais do que o limiar: por isso há duas sessões de qualidade por semana (VO₂máx e limiar), sempre separadas por pelo menos 48 h.',REF_BASE+' Midgley et al. (2006), Sports Med, e Billat (2001), Sports Med: intervalos de 3-5 min a 90-100% do VO₂máx são o estímulo mais eficaz para o aumentar.'],
   fases:[
-  { nome:'Fase 1 — Base aeróbia', sem:3, freq:3, obj:['Consolidar a corrida contínua em Z2.','Introduzir a força para prevenir lesões.'], criterios:['Corre 40 min seguidos em Z2.','Sem dor articular após as sessões.'], evitar:['Correr rápido em todas as sessões.','Aumentar o volume mais de 10% por semana.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride,'1')]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','45-50 min',PN.longa)]},{n:'Força',ex:FB}]},
-  { nome:'Fase 2 — Construção', sem:4, freq:4, obj:['Introduzir intervalos em Z4.','Aumentar a corrida longa para 60 min.'], criterios:['Completa 5×3 min em Z4 com controlo.','Corrida longa de 60 min sem dor.'], evitar:['Fazer qualidade em dias seguidos.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-40 min',PN.z2)]},{n:'Intervalos',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Intervalos de corrida (Z4)','3 min',PN.int,'5','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','55-60 min',PN.longa)]},{n:'Força',ex:FF}]},
-  { nome:'Fase 3 — Específica', sem:2, freq:4, obj:['Treinar ao ritmo de prova.','Manter a força com menos volume.'], criterios:['3×8 min a ritmo de prova com controlo.','Sem dor nem fadiga acumulada.'], evitar:['Aumentar volume nesta fase.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','8 min',PN.prova,'3','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60 min',PN.longa)]},{n:'Força',ex:FM}]},
-  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume e chegar fresco à prova.','Manter alguma intensidade curta.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.','Alterar calçado ou alimentação.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','25 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','4 min',PN.prova,'3','2 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
+  { nome:'Fase 1 — Base aeróbia e força máxima', sem:2, freq:4, obj:['Consolidar o volume em Z2 (cerca de 80% do tempo de corrida).','Introduzir a força máxima e a pliometria para melhorar a economia.'], criterios:['Corre 40 min seguidos em Z2.','Sem dor articular após as sessões de força.'], evitar:['Correr rápido em todas as sessões.','Aumentar o volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride,'1')]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','45-50 min',PN.longa)]},{n:'Força e pliometria',ex:FR1}]},
+  { nome:'Fase 2 — Desenvolvimento (VO₂máx e limiar)', sem:3, freq:5, obj:['Elevar o VO₂máx com intervalos de 3 min em Z5.','Subir o limiar com blocos contínuos em Z4.'], criterios:['Completa 5×3 min em Z5 com ritmo constante.','2×10 min em limiar com controlo.'], evitar:['Qualidade em dias seguidos.','Intervalos mais rápidos do que o ritmo de 3 km.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-40 min',PN.z2)]},{n:'Intervalos VO₂máx',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),cx('Intervalos de VO₂máx (Z5)','3 min',PN.vo2,'5','2-3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','10 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','55-60 min',PN.longa)]},{n:'Força e pliometria',ex:FR2}]},
+  { nome:'Fase 3 — Específica', sem:2, freq:5, obj:['Treinar ao ritmo de prova e à velocidade de VO₂máx.','Manter a força com volume reduzido (1 sessão por semana).'], criterios:['3×6 min a ritmo de prova com controlo.','Repetições de 400 m regulares.'], evitar:['Aumentar o volume nesta fase.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','6 min',PN.prova,'3','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Repetições curtas',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Repetições de velocidade (400 m)','400 m',PN.rep,'6','90 s trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','50 min',PN.longa)]},{n:'Força (manutenção)',ex:FRM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume cerca de 40% e manter a intensidade curta.','Chegar fresco à prova.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.','Alterar calçado ou alimentação.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','25 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Intervalos de VO₂máx (Z5)','3 min',PN.vo2,'3','3 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
+  ]},
+
+{ id:'p-10k', prova:true, nome:'Prova de 10 km (10 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
+  resumo:'Preparação de 10 semanas para 10 km, com 4 a 5 sessões por semana: base aeróbia, limiar, intervalos de VO₂máx, ritmo de prova e força máxima com pliometria.',
+  quando:'Atleta que já corre 30 min seguidos, 3 vezes por semana, sem dor.',
+  bandeiras:PROVA_BAND,
+  notas:[PROVA_REGRAS,'Nos 10 km o rendimento depende do VO₂máx, do limiar e da economia de corrida. A fase de desenvolvimento alterna as duas sessões de qualidade (limiar e VO₂máx); o resto do volume fica em Z1-Z2.',REF_BASE+' Midgley et al. (2006) e Billat (2001): intervalos de 3-5 min perto do VO₂máx. Daniels (2014), Daniels\' Running Formula: o ritmo de limiar corresponde a cerca de 1 hora de esforço máximo.','Hidratos de carbono durante a prova: não são necessários em 10 km; basta água se estiver calor.'],
+  fases:[
+  { nome:'Fase 1 — Base aeróbia e força máxima', sem:3, freq:4, obj:['Consolidar a corrida contínua em Z2.','Introduzir a força máxima e a pliometria para melhorar a economia.'], criterios:['Corre 45 min seguidos em Z2.','Sem dor articular após as sessões.'], evitar:['Correr rápido em todas as sessões.','Aumentar o volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride,'1')]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','45-55 min',PN.longa)]},{n:'Força e pliometria',ex:FR1}]},
+  { nome:'Fase 2 — Desenvolvimento (limiar e VO₂máx)', sem:3, freq:5, obj:['Subir o limiar com blocos contínuos em Z4.','Elevar o VO₂máx com intervalos de 3 min em Z5.','Corrida longa até 70 min.'], criterios:['3×8 min em limiar com controlo.','5×3 min em Z5 com ritmo constante.','Corrida longa de 70 min sem dor.'], evitar:['Qualidade em dias seguidos.','Fazer os intervalos mais rápido do que o ritmo de 3 km.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','8 min',PN.limiar,'3','2 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Intervalos VO₂máx',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),cx('Intervalos de VO₂máx (Z5)','3 min',PN.vo2,'5','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60-70 min',PN.longa)]},{n:'Força e pliometria',ex:FR2}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:5, obj:['Treinar ao ritmo de prova.','Manter o VO₂máx com menos volume.','Manter a força (1 sessão por semana, volume reduzido).'], criterios:['3×10 min a ritmo de prova com controlo.','Sem dor nem fadiga acumulada.'], evitar:['Aumentar o volume nesta fase.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','10 min',PN.prova,'3','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Intervalos VO₂máx',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),cx('Intervalos de VO₂máx (Z5)','3 min',PN.vo2,'4','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60-70 min',PN.longa)]},{n:'Força (manutenção)',ex:FRM}]},
+  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume cerca de 40% e manter a intensidade curta.','Chegar fresco à prova.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.','Alterar calçado ou alimentação.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','25-30 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','5 min',PN.prova,'3','2 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
   ]},
 
 { id:'p-meia', prova:true, nome:'Meia-maratona (12 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
-  resumo:'Preparação de 12 semanas para uma meia-maratona (21,1 km), com 4 sessões por semana e corrida longa até cerca de 105 min.',
+  resumo:'Preparação de 12 semanas para uma meia-maratona (21,1 km), com 4 a 5 sessões por semana, trabalho de limiar, corrida longa até cerca de 105 min e afinação de 2 semanas.',
   quando:'Atleta que já corre 10 km confortavelmente, 3 vezes por semana, sem dor.',
-  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor articular ou óssea persistente, sobretudo na canela, pé ou anca (suspeita de lesão de stress).','Fadiga que se acumula, má qualidade do sono ou frequência cardíaca de repouso elevada.','Palpitações ou batimento irregular.'],
-  notas:[PROVA_REGRAS,'Treinar a hidratação e a nutrição nas corridas longas (cerca de 30-45 g de hidratos de carbono por hora acima de 75 min).'],
+  bandeiras:PROVA_BAND,
+  notas:[PROVA_REGRAS,'Na meia-maratona o limiar de lactato e a economia de corrida são os determinantes principais: a fase de desenvolvimento dá prioridade ao limiar e mantém só uma sessão curta de VO₂máx.',REF_BASE+' Seiler (2010): a corrida longa e fácil dá a base de durabilidade e deixa espaço para a qualidade.','Nutrição: nas corridas acima de 75 min treinar 30-60 g de hidratos de carbono por hora (Jeukendrup, 2014, Sports Med). Na prova usar o mesmo que nos treinos.','Afinação (Mujika & Padilla, 2003; Bosquet et al., 2007): 2 semanas, reduzindo o volume cerca de 30% e depois 50%, mantendo a frequência e algum ritmo de prova.'],
   fases:[
-  { nome:'Fase 1 — Base aeróbia', sem:4, freq:4, obj:['Consolidar o volume em Z2.','Introduzir variações de ritmo e força.'], criterios:['Corrida longa de 70 min sem dor.','Fartlek completo com controlo.'], evitar:['Aumentar volume mais de 10% por semana.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-45 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60-70 min',PN.longa)]},{n:'Força',ex:FB}]},
-  { nome:'Fase 2 — Construção', sem:4, freq:4, obj:['Trabalhar o limiar.','Corrida longa de 80-95 min.'], criterios:['2×10 min em limiar com controlo.','Corrida longa de 90 min sem dor.'], evitar:['Qualidade em dias seguidos.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Limiar',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em limiar (tempo run)','10 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','80-95 min',PN.longa)]},{n:'Força',ex:FF}]},
-  { nome:'Fase 3 — Específica', sem:3, freq:4, obj:['Treinar o ritmo de prova.','Corrida longa de 100-105 min com blocos a ritmo de prova.'], criterios:['3×15 min a ritmo de prova com controlo.','Corrida longa completada sem dor.'], evitar:['Aumentar o volume nesta fase.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','15 min',PN.prova,'3','3 min trote')]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-105 min (com 4×10 min a ritmo de prova)',PN.longa)]},{n:'Força',ex:FM}]},
-  { nome:'Fase 4 — Afinação', sem:1, freq:3, obj:['Reduzir o volume 40-50%.','Chegar fresco à prova.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos nos últimos dias.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','10 min',PN.prova,'2','3 min trote')]},{n:'Ativação',ex:[cx('Corrida longa (Z2)','45-50 min',PN.longa)]}]}
+  { nome:'Fase 1 — Base aeróbia e força máxima', sem:4, freq:4, obj:['Consolidar o volume em Z2.','Introduzir a força máxima e a pliometria para melhorar a economia.'], criterios:['Corrida longa de 75 min sem dor.','Fartlek completo com controlo.'], evitar:['Aumentar o volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-45 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','6×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','60-75 min',PN.longa)]},{n:'Força e pliometria',ex:FR1}]},
+  { nome:'Fase 2 — Desenvolvimento (limiar)', sem:3, freq:5, obj:['Subir o limiar com blocos contínuos em Z4.','Manter uma sessão curta de VO₂máx.','Corrida longa de 80-95 min.'], criterios:['2×15 min em limiar com controlo.','Corrida longa de 90 min sem dor.'], evitar:['Qualidade em dias seguidos.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','12 min',PN.limiar,'3','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Intervalos VO₂máx',ex:[cx('Aquecimento de corrida leve','10-15 min',PN.z2),cx('Intervalos de VO₂máx (Z5)','3 min',PN.vo2,'4','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','80-95 min',PN.longa)]},{n:'Força e pliometria',ex:FR2}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:5, obj:['Treinar o ritmo de prova.','Corrida longa de 100-105 min com blocos a ritmo de prova.','Manter a força (1 sessão por semana, volume reduzido).'], criterios:['3×15 min a ritmo de prova com controlo.','Corrida longa completada sem dor.'], evitar:['Aumentar o volume nesta fase.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','15 min',PN.prova,'3','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','10 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-105 min (com 4×10 min a ritmo de prova)',PN.longa)]},{n:'Força (manutenção)',ex:FRM}]},
+  { nome:'Fase 4 — Afinação (2.ª semana antes)', sem:1, freq:4, obj:['Reduzir o volume cerca de 30% e manter o ritmo de prova.','Última sessão de força leve.'], criterios:['Chega à semana da prova sem fadiga.'], evitar:['Treinos longos ou novos.','Alterar calçado ou alimentação.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','10 min',PN.prova,'2','3 min trote')]},{n:'Corrida longa curta',ex:[cx('Corrida longa (Z2)','60-70 min',PN.longa)]},{n:'Força (ativação)',ex:FRT}]},
+  { nome:'Fase 5 — Semana da prova', sem:1, freq:3, obj:['Reduzir o volume cerca de 50% e manter a frequência.','Dormir bem e chegar descansado.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos.','Alterar calçado, alimentação ou equipamento.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','25 min',PN.z2)]},{n:'Ritmo de prova',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de prova','6 min',PN.prova,'2','3 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
   ]},
 
 { id:'p-maratona', prova:true, nome:'Maratona (16 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
-  resumo:'Preparação de 16 semanas para uma maratona (42,2 km), com 4 a 5 sessões por semana e corrida longa até cerca de 3 h.',
+  resumo:'Preparação de 16 semanas para uma maratona (42,2 km), com 4 a 5 sessões por semana, corrida longa até cerca de 3 h, blocos a ritmo de maratona e afinação de 3 semanas.',
   quando:'Atleta que já correu uma meia-maratona ou corre regularmente 30-40 km por semana, sem dor. Avaliação médica recomendada.',
-  bandeiras:['Dor no peito, tonturas ou falta de ar anormal durante o esforço.','Dor óssea localizada que aumenta com o impacto (suspeita de lesão de stress).','Fadiga acumulada, sono mau, frequência cardíaca de repouso elevada ou perda de apetite.','Palpitações ou batimento irregular.'],
-  notas:[PROVA_REGRAS,'Nutrição: nas corridas longas treinar 30-60 g de hidratos de carbono por hora (géis, bebida), testar o que vais usar na prova. Hidratar de forma regular, sem excessos.','Na última fase (afinação de 2 semanas) reduzir o volume cerca de 30% na primeira semana e 50% na segunda, mantendo algum ritmo.'],
+  bandeiras:PROVA_BAND,
+  notas:[PROVA_REGRAS,'Na maratona pesam o limiar, a economia de corrida e a durabilidade (manter o rendimento depois de horas de esforço). A distribuição é piramidal: muito Z2, algum ritmo de maratona e pouca intensidade alta.',REF_BASE+' Jones (2024), J Physiol: a durabilidade (resiliência fisiológica) é um determinante independente; por isso as corridas longas terminam com blocos a ritmo de maratona.','Nutrição: nas corridas longas treinar 60-90 g de hidratos de carbono por hora (Jeukendrup, 2014), testar géis e bebida e ajustar a tolerância intestinal. Nos 2 dias antes da prova, 8-10 g de hidratos de carbono por kg de peso por dia (Burke et al., 2011).','Afinação de 3 semanas (Mujika & Padilla, 2003; Bosquet et al., 2007): reduzir o volume cerca de 20%, 40% e 60%, mantendo a frequência e o ritmo de prova. A perda de condição é praticamente nula e a recuperação melhora o rendimento cerca de 2-3%.'],
   fases:[
-  { nome:'Fase 1 — Base aeróbia', sem:4, freq:4, obj:['Construir volume em Z2.','Força de base para tolerar o impacto.'], criterios:['Corrida longa de 90 min sem dor.','Volume semanal estável.'], evitar:['Aumentar volume mais de 10% por semana.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','8×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','75-90 min',PN.longa)]},{n:'Força',ex:FB}]},
-  { nome:'Fase 2 — Construção', sem:6, freq:5, obj:['Trabalhar limiar e ritmo de maratona.','Corrida longa de 100 a 150 min.'], criterios:['Corrida longa de 2h30 sem dor.','Limiar de 2×15 min com controlo.'], evitar:['Qualidade em dias seguidos.','Semanas sem descarga.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45 min',PN.z2)]},{n:'Limiar',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em limiar (tempo run)','15 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-150 min',PN.longa)]},{n:'Força',ex:FF}]},
-  { nome:'Fase 3 — Específica', sem:4, freq:5, obj:['Treinar ao ritmo de maratona.','Corrida longa de 150-180 min com blocos a ritmo de prova.'], criterios:['2×40 min a ritmo de maratona com controlo.','Corrida longa de 3 h sem dor.'], evitar:['Aumentar volume e intensidade em simultâneo.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','20 min',PN.prova,'3','3 min trote')]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','150-180 min (com 2×40 min a ritmo de maratona)',PN.longa)]},{n:'Força',ex:FM}]},
-  { nome:'Fase 4 — Afinação', sem:2, freq:4, obj:['Reduzir o volume 30% e depois 50%.','Chegar fresco e confiante.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos.','Alterar calçado, alimentação ou equipamento.'],
-    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30-35 min',PN.z2)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','15 min',PN.prova,'2','3 min trote')]},{n:'Corrida longa curta',ex:[cx('Corrida longa (Z2)','60-90 min',PN.longa)]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
+  { nome:'Fase 1 — Base aeróbia e força máxima', sem:4, freq:4, obj:['Construir volume em Z2.','Introduzir a força máxima e a pliometria para melhorar a economia e tolerar o impacto.'], criterios:['Corrida longa de 90 min sem dor.','Volume semanal estável.'], evitar:['Aumentar o volume mais de 10% por semana.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','40-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Fartlek',ex:[cx('Fartlek','8×1 min',PN.fartlek)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','75-90 min',PN.longa)]},{n:'Força e pliometria',ex:FR1}]},
+  { nome:'Fase 2 — Desenvolvimento (limiar e durabilidade)', sem:6, freq:5, obj:['Subir o limiar com blocos contínuos em Z4.','Aumentar a corrida longa de 100 para 150 min.','Manter a força (1 sessão por semana).'], criterios:['Corrida longa de 2h30 sem dor.','2×15 min em limiar com controlo.'], evitar:['Qualidade em dias seguidos.','Semanas seguidas sem descarga (uma semana mais leve a cada 3-4).'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45 min',PN.z2)]},{n:'Limiar',ex:[cx('Aquecimento de corrida leve','10 min',PN.z2),cx('Corrida em limiar (tempo run)','15 min',PN.limiar,'2','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','100-150 min',PN.longa)]},{n:'Força e pliometria',ex:FR2}]},
+  { nome:'Fase 3 — Específica', sem:3, freq:5, obj:['Treinar ao ritmo de maratona.','Corrida longa de 150-180 min com blocos a ritmo de prova.','Manter a força (1 sessão por semana, volume reduzido).'], criterios:['2×40 min a ritmo de maratona com controlo.','Corrida longa de 3 h sem dor.'], evitar:['Aumentar volume e intensidade em simultâneo.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','45-50 min',PN.z2),cx('Strides (acelerações)','4×20 s',PN.stride)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','20 min',PN.prova,'3','3 min trote'),cx('Corrida regenerativa','5-10 min',PN.rega)]},{n:'Corrida regenerativa',ex:[cx('Corrida regenerativa','30-40 min',PN.rega)]},{n:'Corrida longa',ex:[cx('Corrida longa (Z2)','150-180 min (com 2×40 min a ritmo de maratona)',PN.longa)]},{n:'Força (manutenção)',ex:FRM}]},
+  { nome:'Fase 4 — Afinação (3.ª e 2.ª semanas antes)', sem:2, freq:4, obj:['Reduzir o volume cerca de 20% e depois 40%.','Manter o ritmo de maratona e a frequência.'], criterios:['Chega às últimas semanas sem fadiga.'], evitar:['Treinos longos ou novos.','Alterar calçado, alimentação ou equipamento.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','35-40 min',PN.z2)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','15 min',PN.prova,'2','3 min trote')]},{n:'Corrida longa curta',ex:[cx('Corrida longa (Z2)','75-100 min',PN.longa)]},{n:'Força (ativação)',ex:FRT}]},
+  { nome:'Fase 5 — Semana da prova', sem:1, freq:3, obj:['Reduzir o volume cerca de 60% e manter a frequência.','Dormir bem, hidratar e carregar hidratos de carbono nos 2 dias antes.'], criterios:['Chega descansado e sem dores.'], evitar:['Treinos longos ou novos.','Alterar calçado, alimentação ou equipamento.'],
+    sess:[{n:'Corrida fácil',ex:[cx('Corrida contínua leve (Z2)','30 min',PN.z2)]},{n:'Ritmo de maratona',ex:[cx('Corrida contínua leve (Z2)','10 min',PN.z2),cx('Corrida em ritmo de maratona','10 min',PN.prova,'2','3 min trote')]},{n:'Ativação',ex:[cx('Corrida contínua leve (Z2)','20 min',PN.z2),cx('Strides (acelerações)','4×15 s',PN.stride)]}]}
   ]},
 
 { id:'p-trail', prova:true, nome:'Trail running (12 semanas)', grupo:'Provas', pat:'', mod:'Funcional', g:'Cardio',
@@ -5175,7 +5435,7 @@ const PROVAS = [
     sess:[{n:'Corrida fácil',ex:[['HYROX - Corrida contínua (Zona 2)','1','25 min','—','Cardio']]},{n:'Ativação',ex:[['HYROX - Corrida 1 km (ritmo de prova)','2','1 km','2 min','Cardio'],['HYROX - Sled Push 50 m','2','25 m (leve)','90s','Pernas'],['HYROX - Wall Balls em séries','2','15','75s','Corpo inteiro']]},{n:'Roxzone e mobilidade',ex:[['HYROX - Roxzone (transição)','3','1 min','—','Corpo inteiro'],['Mobilidade torácica sentado','2','10','30s','Mobilidade']]}]}
   ]}
 ];
-['p-10k','p-meia','p-maratona','p-trail'].forEach(id=>{ const p = PROVAS.find(x=>x.id===id); p.fases[0].sess[0].ex.push(['Skipping A (elevação de joelho)','2','20 m','Voltar a andar'],['Skipping C (calcanhar ao glúteo)','2','20 m','Voltar a andar'],['Quick feet (passos rápidos)','3','15 s','30s']); });
+['p-5k','p-10k','p-meia','p-maratona','p-trail'].forEach(id=>{ const p = PROVAS.find(x=>x.id===id); p.fases[0].sess[0].ex.push(['Skipping A (elevação de joelho)','2','20 m','Voltar a andar'],['Skipping C (calcanhar ao glúteo)','2','20 m','Voltar a andar'],['Quick feet (passos rápidos)','3','15 s','30s']); });
 PROTOCOLOS.push(...PROVAS);
 
 // ---------- PROTOCOLOS: interface ----------
@@ -5333,44 +5593,43 @@ function protoISO(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padSta
 function protoMonday(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; }
 function protoPlanWeeks(p, fi0, inicioISO, provaISO){
   const base = p.fases.slice(fi0).map(f=>f.sem);
+  const n = base.length;
   const T = base.reduce((a,b)=>a+b, 0);
   const prova = protoParseISO(provaISO);
   const start = protoMonday(protoParseISO(inicioISO));
   const rm = protoMonday(prova);
-  let W = Math.round((rm - start) / 604800000) + 1;
+  const W = Math.round((rm - start) / 604800000) + 1;
   if(W < 1) return { error:'A data da prova é anterior ao início do plano.' };
-  const W0 = W;
   const notes = [];
-  const weeks = base.slice();
-  let startUsed = new Date(start);
-  const n = weeks.length;
-  if(W > T){
-    let extra = W - T;
-    if(extra > 8){
-      const drop = extra - 8;
-      startUsed.setDate(startUsed.getDate() + 7*drop);
-      notes.push(`Faltam ${W0} semanas para a prova. O plano começa só a ${formatDate(protoISO(startUsed))}, para a base não ficar demasiado longa; até lá mantém treino geral.`);
-      extra = 8; W = T + 8;
-    }
-    if(extra > 0){ weeks[0] += extra; notes.push(`Há ${extra} semana(s) de folga: foram acrescentadas à primeira fase (base).`); }
-  } else if(W < T){
-    let d = T - W;
-    const mins = [base.map((s,i)=> i===n-1 ? s : Math.max(1, Math.ceil(s/2))), base.map((s,i)=> i===n-1 ? Math.max(1, Math.ceil(s/2)) : 1), base.map(()=>1)];
-    for(const mn of mins){
-      while(d > 0){
-        let best = -1;
-        weeks.forEach((w,i)=>{ if(w > mn[i] && (best<0 || w - mn[i] > weeks[best] - mn[best])) best = i; });
-        if(best < 0) break;
-        weeks[best]--; d--;
-      }
-      if(d === 0) break;
-    }
-    if(d > 0) return { error:`Só há ${W0} semanas até à prova e o protocolo tem ${n} fases. Escolhe uma data mais tardia ou uma prova mais curta.` };
-    notes.push(`Só há ${W0} semanas até à prova (o protocolo completo tem ${T}). As fases foram encurtadas e a afinação final mantém-se.`);
+  const weeks = base.map(()=>0);
+  // Afinação final (última fase): mantém-se, só encurta se faltar pouco tempo
+  const tb = base[n-1];
+  let t = n===1 ? W : (W >= T ? tb : Math.max(1, Math.min(tb, Math.round(tb*W/T))));
+  t = Math.min(t, W);
+  weeks[n-1] = t;
+  let rest = W - t;
+  if(n > 1 && rest > 0){
+    const m = n-1;
+    const keep = Math.min(m, rest);       // nº de fases anteriores que cabem (as mais recentes)
+    const idx = []; for(let i=m-keep;i<m;i++) idx.push(i);
+    const tot = idx.reduce((a,i)=>a+base[i],0);
+    const raw = idx.map(i=>base[i]*rest/tot);
+    let fl = raw.map(v=>Math.max(1, Math.floor(v)));
+    let diff = rest - fl.reduce((a,b)=>a+b,0);
+    const ord = raw.map((v,k)=>k).sort((x,y)=>(raw[y]-Math.floor(raw[y]))-(raw[x]-Math.floor(raw[x])));
+    let g = 0;
+    while(diff > 0){ fl[ord[g % ord.length]]++; diff--; g++; }
+    g = 0;
+    while(diff < 0){ const k = fl.map((v,j)=>j).sort((x,y)=>fl[y]-fl[x])[0]; if(fl[k] <= 1) break; fl[k]--; diff++; }
+    idx.forEach((i,k)=>{ weeks[i] = fl[k]; });
   }
+  const skipped = base.map((_,i)=>i).filter(i=>weeks[i]===0);
+  if(skipped.length) notes.push('Só há ' + W + ' semana(s) até à prova: as primeiras fases (' + skipped.map(i=>p.fases[fi0+i].nome).join(', ') + ') foram omitidas para o plano acabar na data da prova.');
+  else if(W < T) notes.push('Faltam ' + W + ' semanas até à prova (o protocolo completo tem ' + T + '). As fases foram encurtadas proporcionalmente.');
+  else if(W > T) notes.push('Faltam ' + W + ' semanas até à prova (o protocolo base tem ' + T + '). As fases foram alargadas proporcionalmente.');
   const provaDay = (prova.getDay()+6)%7;
   if(provaDay <= 1) notes.push('A prova é no início da semana, por isso a última semana do plano quase não tem treino. A afinação faz-se sobretudo na semana anterior.');
-  return { inicio: protoISO(startUsed), weeks, W, W0, T, notes, short: W0 < 0.6*T, provaISO, provaDay };
+  return { inicio: protoISO(start), weeks, W, W0:W, T, notes, short: W < 0.6*T && W < T, provaISO, provaDay };
 }
 function protoPlanCheck(){
   const box = document.getElementById('proto-plan-box');
@@ -5384,7 +5643,7 @@ function protoPlanCheck(){
   const plan = protoPlanWeeks(p, fi0, document.getElementById('proto-inicio').value, prova);
   box.style.display = 'block';
   if(plan.error){ box.innerHTML = `<div style="color:var(--danger);">${esc(plan.error)}</div>`; return; }
-  box.innerHTML = `<div><strong>Plano de ${plan.weeks.reduce((a,b)=>a+b,0)} semanas</strong> (de ${esc(formatDate(plan.inicio))} até à prova a ${esc(formatDate(plan.provaISO))}):</div><ul style="margin:4px 0 0; padding-left:18px;">${p.fases.slice(fi0).map((f,i)=>`<li>${esc(f.nome)} — ${plan.weeks[i]} semanas</li>`).join('')}</ul>` + plan.notes.map(t=>`<div style="margin-top:6px; ${plan.short?'color:var(--danger);':''}">${esc(t)}</div>`).join('');
+  box.innerHTML = `<div><strong>Plano de ${plan.weeks.reduce((a,b)=>a+b,0)} semanas</strong> (de ${esc(formatDate(plan.inicio))} até à prova a ${esc(formatDate(plan.provaISO))}):</div><ul style="margin:4px 0 0; padding-left:18px;">${p.fases.slice(fi0).map((f,i)=>plan.weeks[i]?`<li>${esc(f.nome)} — ${plan.weeks[i]} semana${plan.weeks[i]>1?'s':''}</li>`:'').join('')}</ul>` + plan.notes.map(t=>`<div style="margin-top:6px; ${plan.short?'color:var(--danger);':''}">${esc(t)}</div>`).join('');
 }
 function protoModalChange(){ protoPatCheck(); protoPlanCheck(); }
 
