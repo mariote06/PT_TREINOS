@@ -332,7 +332,7 @@
     .app{ display:block; min-height:100vh; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
     .rail{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; z-index:60; flex-direction:row; padding:0 0 env(safe-area-inset-bottom); overflow:visible; border-right:0; border-top:1px solid var(--line); background:#171614; }
     .rail-nav{ flex-direction:row; width:100%; margin:0; }
-    .rail-btn{ flex:1 1 0; min-width:0; text-align:center; padding:8px 2px; min-height:58px; font-size:12px; line-height:1.2; border-left:0; border-top:3px solid transparent; border-bottom:0; white-space:normal; display:flex; align-items:center; justify-content:center; }
+    .rail-btn{ flex:1 1 0; min-width:0; text-align:center; padding:8px 2px; min-height:58px; font-size:11px; line-height:1.2; border-left:0; border-top:3px solid transparent; border-bottom:0; white-space:normal; display:flex; align-items:center; justify-content:center; }
     .rail-btn.active{ border-left:0; border-bottom:0; border-top-color:var(--ochre); }
     .rail-btn .long{ display:none; } .rail-btn .short{ display:inline; }
     .main{ padding:18px 14px 24px; max-width:none; }
@@ -391,10 +391,11 @@
     <div class="rail-nav">
       <button class="rail-btn active" data-view="hoje">Hoje</button>
       <button class="rail-btn" data-view="clientes">Clientes</button>
-      <button class="rail-btn" data-view="biblioteca">Biblioteca</button>
+      <button class="rail-btn" data-view="biblioteca"><span class="long">Biblioteca</span><span class="short">Biblio.</span></button>
       <button class="rail-btn" data-view="protocolos"><span class="long">Protocolos</span><span class="short">Protoc.</span></button>
       <button class="rail-btn" data-view="treinos">Treinos</button>
       <button class="rail-btn" data-view="ciclos">Ciclos</button>
+      <button class="rail-btn" data-view="prev"><span class="long">Prevenção</span><span class="short">Prev.</span></button>
       <button class="rail-btn" data-view="monit"><span class="long">Monitorização</span><span class="short">Monit.</span></button>
       <button class="rail-btn" data-view="backup"><span class="long">Cópia de segurança</span><span class="short">Backup</span></button>
     </div>
@@ -452,6 +453,16 @@
     </div>
 
     <!-- PROTOCOLOS -->
+    <div class="view" id="view-prev">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title">Prevenção e reabilitação</h1>
+          <div class="view-sub">Princípios, triagem de risco por cliente, programas de prevenção por região, reabilitação por fases e critérios de regresso ao desempenho.</div>
+        </div>
+      </div>
+      <div id="prev-body"></div>
+    </div>
+
     <div class="view" id="view-monit">
       <div class="view-head">
         <div>
@@ -485,6 +496,7 @@
         <div style="display:flex; gap:6px;">
           <button class="btn btn-primary" id="proto-kind-treino" onclick="protoSetKind('treino')">Protocolos de treino</button>
           <button class="btn" id="proto-kind-pat" onclick="protoSetKind('pat')">Protocolos de patologias</button>
+          <button class="btn" id="proto-kind-prev" onclick="protoSetKind('prev')">Protocolos de prevenção</button>
         </div>
         <select id="proto-grupo" onchange="renderProtocolos()"></select>
       </div>
@@ -1258,6 +1270,78 @@ function perfEnsure(list){
   return n;
 }
 
+// ---------- PREVENÇÃO DE LESÕES E REABILITAÇÃO ----------
+// Fundamentação: Potach & Meira, «Sport Injury Prevention Anatomy» (Human Kinetics, 2023) e
+// Joyce & Lewindon (eds.), «Sports Injury Prevention and Rehabilitation» (Routledge, 2016).
+// Conteúdo reescrito e resumido; as ideias são dos autores, a formulação é desta app.
+const PREV_AVISO = 'Programa de prevenção de apoio à prescrição, baseado em princípios gerais de preparação física. Não substitui a avaliação médica ou fisioterapêutica. Quem já tem uma lesão ativa deve seguir o plano de reabilitação indicado pelo médico ou fisioterapeuta.';
+const PREV_FONTE = 'Fonte: Potach & Meira (2023), Sport Injury Prevention Anatomy, cap. 2, 10 e 11; Joyce & Lewindon (2016), cap. 2, 6, 14, 15 e 18.';
+
+// exercícios de prevenção (g grupo, e equipamento, p padrão, f função, m músculo)
+const PREVX_LIB = [
+  {n:'Nórdico de isquiotibiais', g:'Pernas', e:'Peso corporal', p:'dobradica', f:'Força excêntrica (prevenção)', m:'Isquiotibiais', o:'De joelhos, tornozelos fixos (parceiro ou espaldar). Descer o tronco para a frente o mais devagar possível, com anca e tronco alinhados. Amparar com as mãos no fim e voltar.'},
+  {n:'Curl de isquiotibiais na fitball', g:'Pernas', e:'Fitball', p:'isolamento', f:'Força excêntrica (prevenção)', m:'Isquiotibiais', o:'Deitado de costas, calcanhares na bola, anca elevada. Rolar a bola para o corpo e voltar devagar, sem deixar a anca cair.'},
+  {n:'Ponte de glúteos unilateral com pé na fitball', g:'Glúteos', e:'Fitball', p:'dobradica', f:'Estabilidade / controlo do core', m:'Glúteo máximo / isquiotibiais', o:'Uma perna apoiada na bola, a outra no ar. Subir a anca mantendo a bacia nivelada.'},
+  {n:'Agachamento unilateral até ao banco', g:'Pernas', e:'Banco', p:'agachamento', f:'Força-resistência (multiarticular)', m:'Quadríceps / glúteos', o:'Sentar-se e levantar-se de um banco numa só perna. Joelho alinhado com o segundo dedo, sem cair para dentro, tronco firme.'},
+  {n:'Agachamento unilateral em plano inclinado', g:'Pernas', e:'Plano inclinado', p:'agachamento', f:'Força excêntrica (prevenção)', m:'Quadríceps', o:'Num plano com calcanhar elevado, descer devagar (3 s) numa perna, só até onde não há dor, e subir com controlo.'},
+  {n:'Abdução da anca deitado de lado', g:'Glúteos', e:'Peso corporal', p:'isolamento', f:'Estabilidade / controlo do core', m:'Glúteo médio', o:'Deitado de lado, perna de cima elevada em linha com o corpo, sem rodar a bacia. Pode usar mini band.'},
+  {n:'Abdução excêntrica da anca com resistência manual', g:'Glúteos', e:'Parceiro', p:'isolamento', f:'Força excêntrica (prevenção)', m:'Glúteo médio', o:'Deitado de lado, o parceiro empurra a perna para baixo e o cliente resiste, descendo em 3-4 s.'},
+  {n:'Elevação de gémeos unipodal', g:'Gémeos', e:'Peso corporal', p:'isolamento', f:'Força excêntrica (prevenção)', m:'Gémeos / sóleo', o:'Subir nas pontas dos pés numa perna e descer devagar (3 s), amplitude completa e controlada.'},
+  {n:'Elevação de gémeos sentado (sóleo)', g:'Gémeos', e:'Banco', p:'isolamento', f:'Força excêntrica (prevenção)', m:'Sóleo', o:'Sentado, joelho a 90°, carga sobre as coxas. Subir e descer devagar.'},
+  {n:'Pogo (saltos curtos de tornozelo)', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Potência', m:'Gémeos / sóleo', o:'Saltos rápidos e curtos só com o tornozelo, joelhos quase estendidos, mínimo tempo de contacto com o chão.'},
+  {n:'Salto em profundidade (drop jump) com aterragem controlada', g:'Pernas', e:'Caixa', p:'agachamento', f:'Potência', m:'Quadríceps / glúteos', o:'Descer de uma caixa baixa, aterrar com os joelhos alinhados e dobrados e saltar logo a seguir. Qualidade antes de altura.'},
+  {n:'Salto em comprimento com aterragem unipodal', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Potência', m:'Quadríceps / glúteos', o:'Saltar em comprimento a dois pés e aterrar numa só perna, parando 2 s. Joelho alinhado, anca para trás.'},
+  {n:'Salto vertical unipodal', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Potência', m:'Quadríceps / glúteos', o:'Saltar numa perna e aterrar na mesma, suave e silencioso. Se perder o alinhamento do joelho, reduzir.'},
+  {n:'Salto lateral unipodal (skater hop)', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Agilidade e coordenação', m:'Glúteo médio / tornozelo', o:'Saltar de lado de uma perna para a outra e parar na aterragem. Joelho alinhado, tronco estável.'},
+  {n:'Salto em afundo alternado (split squat jump)', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Potência', m:'Quadríceps / glúteos', o:'Em afundo, saltar e trocar as pernas no ar, aterrando com controlo e joelho alinhado.'},
+  {n:'Salto de barreira lateral (side hurdle jump)', g:'Pernas', e:'Barreira baixa', p:'agachamento', f:'Agilidade e coordenação', m:'Quadríceps / glúteo médio', o:'Saltar de lado por cima de uma barreira baixa, a dois pés ou a um pé, aterrar com controlo.'},
+  {n:'Desaceleração: corrida curta e travagem', g:'Pernas', e:'Cones', p:'cardio', f:'Agilidade e coordenação', m:'Quadríceps / glúteos', o:'Acelerar 10-15 m e travar em 2-3 passos, anca baixa, joelhos alinhados. Controlar a travagem.'},
+  {n:'Skip (marcha saltitada) para a frente e para o lado', g:'Pernas', e:'Peso corporal', p:'cardio', f:'Agilidade e coordenação', m:'Gémeos / ancas', o:'Skip rítmico, 20-30 m, para a frente, para trás e lateral. Aquecimento de coordenação.'},
+  {n:'Afundo em caminhada', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Mobilidade (dinâmica)', m:'Quadríceps / glúteos / flexores da anca', o:'Passo grande, descer com joelho alinhado, tronco direito, empurrar e passar à perna seguinte.'},
+  {n:'Alongamento dinâmico de isquiotibiais em apoio unipodal', g:'Mobilidade', e:'Peso corporal', p:'mobilidade', f:'Mobilidade (dinâmica)', m:'Isquiotibiais', o:'Braços abertos, inclinar o tronco para a frente com a perna de trás elevada, bacia nivelada. Alternar.'},
+  {n:'Eversão do tornozelo com elástico', g:'Gémeos', e:'Elástico', p:'isolamento', f:'Estabilidade / controlo do core', m:'Perónios', o:'Sentado, elástico à volta do pé. Rodar o pé para fora devagar e voltar com controlo (lento e depois rápido).'},
+  {n:'Inversão do tornozelo com elástico', g:'Gémeos', e:'Elástico', p:'isolamento', f:'Estabilidade / controlo do core', m:'Tibial posterior', o:'Sentado, elástico à volta do pé. Rodar o pé para dentro devagar e voltar com controlo.'},
+  {n:'Dorsiflexão do tornozelo com elástico', g:'Gémeos', e:'Elástico', p:'isolamento', f:'Estabilidade / controlo do core', m:'Tibial anterior', o:'Elástico a puxar o pé para baixo; levantar a ponta do pé e descer devagar.'},
+  {n:'Caminhada nos calcanhares', g:'Gémeos', e:'Peso corporal', p:'isolamento', f:'Estabilidade / controlo do core', m:'Tibial anterior', o:'Caminhar 15-20 m com as pontas dos pés levantadas, apoiando só os calcanhares.'},
+  {n:'Pé curto (short foot)', g:'Pés', e:'Peso corporal', p:'mobilidade', f:'Ativação e controlo motor', m:'Músculos intrínsecos do pé', o:'Em pé, encurtar o pé sem encolher os dedos, formando o arco. Manter 5 s e relaxar.'},
+  {n:'Equilíbrio unipodal de olhos fechados', g:'Pernas', e:'Peso corporal', p:'core', f:'Estabilidade / controlo do core', m:'Tornozelo e pé', o:'Equilíbrio numa perna, olhos fechados, joelho ligeiramente fletido. Subir de nível em superfície instável.'},
+  {n:'Flexão com protração escapular (push-up plus)', g:'Peito', e:'Peso corporal', p:'empurrar_h', f:'Estabilidade / controlo do core', m:'Serrátil anterior', o:'No final da flexão, empurrar o chão para afastar as omoplatas, costas ligeiramente arredondadas na parte alta.'},
+  {n:'Rotação externa do ombro a 90° com elástico', g:'Ombros', e:'Elástico', p:'puxar_h', f:'Força excêntrica (prevenção)', m:'Rotadores externos', o:'Cotovelo a 90° e ombro a 90°. Rodar o antebraço para cima e voltar devagar; repetir também rápido, para treinar a travagem do braço.'},
+  {n:'Abdução horizontal em prono (Y/T)', g:'Ombros', e:'Halteres leves', p:'puxar_h', f:'Estabilidade / controlo do core', m:'Trapézio inferior / deltoide posterior', o:'Deitado de barriga para baixo, elevar os braços em T e em Y com polegares para cima, sem encolher os ombros.'},
+  {n:'Scaption (elevação no plano da omoplata)', g:'Ombros', e:'Halteres leves', p:'empurrar_v', f:'Estabilidade / controlo do core', m:'Deltoides / supraespinhoso', o:'Elevar os braços a 30° para a frente do plano lateral, polegares para cima, até à altura dos ombros.'},
+  {n:'Transporte de carga (farmer walk)', g:'Corpo inteiro', e:'Halteres', p:'core', f:'Estabilidade / controlo do core', m:'Core / antebraço', o:'Caminhar com um haltere pesado em cada mão, ombros para trás e tronco direito. Variante com carga só de um lado.'},
+  {n:'Isométrico cervical (flexão, extensão e lateral)', g:'Pescoço', e:'Mão ou parceiro', p:'core', f:'Estabilidade / controlo do core', m:'Músculos do pescoço', o:'Empurrar a cabeça contra a mão sem a mover, 5-10 s, em cada direção. Sem dor nem tonturas.'},
+  {n:'Prancha com elevação de braço', g:'Core', e:'Peso corporal', p:'core', f:'Estabilidade / controlo do core', m:'Core', o:'Em prancha, elevar um braço sem rodar a bacia nem deixar a lombar ceder.'},
+  {n:'Chop semiajoelhado com elástico (PNF)', g:'Core', e:'Elástico', p:'core', f:'Estabilidade / controlo do core', m:'Oblíquos', o:'Semiajoelhado, puxar o elástico na diagonal, do ombro para o joelho contrário, com o tronco firme e a rodar a partir do ombro.'},
+  {n:'Extensão reversa da anca (hiperextensão inversa)', g:'Costas', e:'Banco', p:'dobradica', f:'Força e hipertrofia (multiarticular)', m:'Eretores / glúteos', o:'Barriga no banco, elevar as pernas em linha com o tronco sem arquear a lombar. Descer devagar.'},
+  {n:'Rotação do antebraço com martelo (pronação e supinação)', g:'Antebraço', e:'Martelo ou haltere', p:'isolamento', f:'Estabilidade / controlo do core', m:'Antebraço', o:'Antebraço apoiado, segurar o martelo pela ponta e rodar devagar para cima e para baixo.'},
+  {n:'Extensão do punho com haltere', g:'Antebraço', e:'Halteres leves', p:'isolamento', f:'Hipertrofia (isolamento)', m:'Extensores do punho', o:'Antebraço apoiado, palma para baixo, subir e descer o haltere só com o punho, devagar.'},
+  {n:'Flexão do punho com haltere', g:'Antebraço', e:'Halteres leves', p:'isolamento', f:'Hipertrofia (isolamento)', m:'Flexores do punho', o:'Antebraço apoiado, palma para cima, subir e descer o haltere só com o punho, devagar.'},
+  {n:'Adução da anca com elástico', g:'Pernas', e:'Elástico', p:'isolamento', f:'Estabilidade / controlo do core', m:'Adutores', o:'Elástico preso ao tornozelo, levar a perna para dentro à frente da outra, com a bacia estável.'},
+  {n:'Flexão da anca em pé com elástico', g:'Pernas', e:'Elástico', p:'isolamento', f:'Estabilidade / controlo do core', m:'Flexores da anca', o:'Em pé, elevar o joelho contra a resistência do elástico, tronco direito, sem inclinar para trás.'},
+  {n:'Afundo lateral', g:'Pernas', e:'Peso corporal', p:'agachamento', f:'Força-resistência (multiarticular)', m:'Adutores / glúteos', o:'Passo largo para o lado, anca para trás, perna de apoio dobrada e a outra estendida. Voltar com controlo.'},
+  {n:'Extensão de joelho com carga lenta', g:'Pernas', e:'Máquina', p:'isolamento', f:'Hipertrofia (isolamento)', m:'Quadríceps', o:'Subir em 3 s e descer em 3 s, sem balanço. Amplitude sem dor.'},
+  {n:'Isométrico de quadríceps na leg press', g:'Pernas', e:'Leg press', p:'agachamento', f:'Força excêntrica (prevenção)', m:'Quadríceps', o:'Manter a plataforma imóvel numa flexão do joelho de 40-60° durante 30-45 s, com carga pesada mas sem dor.'},
+  {n:'Isométrico de gémeos com joelho estendido', g:'Gémeos', e:'Máquina', p:'isolamento', f:'Força excêntrica (prevenção)', m:'Gémeos', o:'Subir às pontas dos pés e manter 30-45 s com a carga mais pesada que a dor permita.'},
+  {n:'Atividade geral leve (corrida ou bicicleta)', g:'Cardio', e:'', p:'cardio', f:'Resistência cardiovascular', m:'Sistema cardiorrespiratório', o:'5-10 min em intensidade leve, para subir a temperatura do corpo e a frequência cardíaca antes do aquecimento de prevenção.'},
+  {n:'Aceleração progressiva de 30 m', g:'Cardio', e:'', p:'cardio', f:'Agilidade e coordenação', m:'Pernas', o:'Acelerar de forma gradual ao longo de 30 m, sem chegar ao máximo. Última parte do aquecimento específico.'},
+  {n:'Peso morto romeno unilateral com haltere leve', g:'Pernas', e:'Halteres', p:'dobradica', f:'Força-resistência (multiarticular)', m:'Isquiotibiais / glúteos', o:'Equilíbrio numa perna, anca para trás, coluna neutra e bacia nivelada. Haltere leve na mão do lado oposto.'},
+  {n:'Remada com halteres', g:'Costas', e:'Halteres', p:'puxar_h', f:'Força e hipertrofia (multiarticular)', m:'Dorsais', o:'Tronco inclinado, coluna neutra, puxar os halteres ao abdómen com as omoplatas a trabalhar.'},
+  {n:'Step-up alto', g:'Pernas', e:'Caixa', p:'agachamento', f:'Força-resistência (multiarticular)', m:'Quadríceps / glúteos', o:'Caixa à altura do joelho. Subir só com a perna da frente, sem impulso da perna de trás, e descer com controlo.'},
+  {n:'Hip thrust unilateral', g:'Glúteos', e:'Banco', p:'dobradica', f:'Força e hipertrofia (multiarticular)', m:'Glúteo máximo', o:'Costas apoiadas no banco, subir a anca numa perna e manter a bacia nivelada.'}
+];
+function prevEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const have = new Set(list.map(e=>normName(e.nome)));
+  let n = 0;
+  PREVX_LIB.forEach(m=>{
+    if(have.has(normName(m.n))) return;
+    list.push({ id: uid(), nome: m.n, grupo: m.g, equip: m.e, notas: m.o, padrao: m.p, modalidade:'Funcional', musculo: m.m, funcao: m.f, patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' });
+    n++;
+  });
+  return n;
+}
+
 // ---------- RITMOS POR TEMPO DE REFERÊNCIA (VDOT, Daniels & Gilbert) ----------
 const PACE_D = { '5k':5000, '10k':10000, 'meia':21097.5, 'maratona':42195 };
 const PACE_LBL = { '5k':'5 km', '10k':'10 km', 'meia':'meia-maratona', 'maratona':'maratona' };
@@ -1469,6 +1553,51 @@ function renderMonit(){
 }
 function monitSubmit(){ monitSave(); }
 
+// ---------- CARGAS A PARTIR DO 1RM (tabela repetições-% de 1RM, NSCA) ----------
+const RM_LIFTS = [['agachamento','Agachamento'],['supino','Supino'],['terra','Peso morto'],['remada','Remada'],['press','Press de ombros'],['hip','Hip thrust']];
+const RM_PCT = {1:100,2:95,3:93,4:90,5:87,6:85,7:83,8:80,9:77,10:75,11:73,12:70,13:68,14:67,15:65};
+// [regex do nome sem acentos, exercício de referência, fator em relação ao 1RM de referência, sufixo]
+const RM_MAP = [
+  [/^agachamento com barra|^back squat|^squat \(barra\)/, 'agachamento', 1, ''],
+  [/^agachamento frontal|^front squat/, 'agachamento', 0.85, ''],
+  [/^supino (reto|plano) com barra|^supino plano \(barra\)|^supino reto \(barra\)/, 'supino', 1, ''],
+  [/^supino inclinado com barra|^supino inclinado \(barra\)/, 'supino', 0.8, ''],
+  [/^supino (reto|plano) com halteres|^supino plano \(halteres\)/, 'supino', 0.38, ' por haltere'],
+  [/^peso morto( \(barra\))?$|^dead ?lift( \(barra\))?$|^levantamento terra com barra/, 'terra', 1, ''],
+  [/levantamento terra romeno com barra|^stiff \(barra\)/, 'terra', 0.75, ''],
+  [/^remada com barra|^remada \(barra\)/, 'remada', 1, ''],
+  [/^remada unilateral com halteres/, 'remada', 0.4, ' por haltere'],
+  [/^press militar com barra|^desenvolvimento militar \(barra\)/, 'press', 1, ''],
+  [/^desenvolvimento de ombros com halteres/, 'press', 0.38, ' por haltere'],
+  [/^hip thrust com barra/, 'hip', 1, '']
+];
+function rmEst(m){ if(!m || !(Number(m.kg)>0)) return 0; const r = Math.max(1, Math.min(10, Math.round(Number(m.reps)||1))); return r===1 ? Number(m.kg) : Number(m.kg)/(1.0278 - 0.0278*r); }  // Brzycki
+function clientRM(ids){
+  const out = {};
+  RM_LIFTS.forEach(([k])=>{
+    const vals = ids.filter(Boolean).map(id=>{ const c = DATA.clients.find(x=>x.id===id); return c && c.rm ? rmEst(c.rm[k]) : 0; });
+    if(vals.length && vals.every(v=>v>0)) out[k] = Math.min(...vals);   // PT Grupo: a carga do mais fraco
+  });
+  return Object.keys(out).length ? out : null;
+}
+function rmCarga(nome, repsTxt, cargaTxt, rm){
+  if(!rm) return '';
+  const hit = RM_MAP.find(x=>x[0].test(normText(nome)));
+  if(!hit || !rm[hit[1]]) return '';
+  const rt = String(repsTxt||'');
+  if(/\d+\s*(s|min)\b/i.test(rt)) return '';
+  const nums = rt.match(/\d+/g); if(!nums) return '';
+  const r = Math.max(...nums.slice(0,2).map(Number)); if(r<1 || r>15) return '';
+  let rir = 2;
+  const m = String(cargaTxt||'').match(/RPE\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*(\d+(?:[.,]\d+)?))?/);
+  if(m){ const hi = Math.max(parseFloat(m[1].replace(',', '.')), m[2] ? parseFloat(m[2].replace(',', '.')) : 0); rir = Math.max(0, Math.min(4, Math.round(10-hi))); }
+  const pct = RM_PCT[Math.min(15, r + rir)];
+  const step = hit[3] ? 1 : 2.5;
+  const kg = Math.round(rm[hit[1]]*hit[2]*pct/100/step)*step;
+  if(kg<=0) return '';
+  return '≈ ' + kg + ' kg' + hit[3] + ' (' + pct + '% do 1RM)';
+}
+
 function exFixPadrao(e){
   if(e.padraoManual) return;
   const n = String(e.nome||''), g = e.grupo, p = e.padrao;
@@ -1518,6 +1647,7 @@ function migrateAulas(d){
   exFixAll(d.exercises);
   if(!d.mobV && (d.exercises||[]).length){ mobEnsure(d.exercises); d.mobV = 1; }
   if(!d.perfV && (d.exercises||[]).length){ perfEnsure(d.exercises); d.perfV = 1; }
+  if(!d.prevV && (d.exercises||[]).length){ prevEnsure(d.exercises); d.prevV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -2482,7 +2612,7 @@ function loadFullLibrary(){
   if(!confirm(`Adicionar ${toAdd.length} exercícios`+(toUpdate.length?` e completar notas/variantes em ${toUpdate.length} já existentes`:'')+'? Não apaga nem altera o que já escreveste.')) return;
   toAdd.forEach(e=>DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: e.notas||'', padrao: e.padrao, imagem: '', modalidade: e.modalidade||'', variantes: (e.variantes||[]).slice(), patologias: (e.patologias||[]).slice(), rx: e.rx||null }));
   toUpdate.forEach(e=>{ const x=byName.get(normName(e.nome)); if(!x.notas && e.notas) x.notas=e.notas; if(!(x.variantes||[]).length && (e.variantes||[]).length) x.variantes=e.variantes.slice(); if(!x.modalidade && e.modalidade) x.modalidade=e.modalidade; if(!x.rx && e.rx) x.rx=e.rx; if(!(x.patologias||[]).length && (e.patologias||[]).length) x.patologias=e.patologias.slice(); });
-  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1;
+  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1; prevEnsure(DATA.exercises); DATA.prevV = 1;
   exFixAll(DATA.exercises);
   saveData();
 }
@@ -2977,6 +3107,10 @@ function renderFicha(){
     <div class="field"><label>Patologias / condições (podes indicar várias; usadas nos planos automáticos e nos protocolos)</label>${patPickerHtml('f-patologia', clientPats(c))}</div>
     <div class="field"><label>Limitações, lesões ou cuidados</label><textarea id="f-limitacoes" rows="3" placeholder="Ex: desconforto no ombro direito, evitar impacto...">${esc(c.limitacoes||'')}</textarea></div>
 
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 6px;">Cargas de referência (1RM)</h2>
+    <div class="view-sub" style="margin-bottom:10px;">Escreve a carga e as repetições de um teste recente (1 repetição = 1RM). Para iniciantes, usa um teste de 5RM, que é mais seguro; a app estima o 1RM. Com estes dados, os treinos de força passam a indicar a carga em kg.</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px;">${RM_LIFTS.map(([k,n])=>`<div class="field" style="margin:0;"><label>${n}</label><div style="display:flex; gap:6px;"><input id="f-rm-${k}-kg" type="text" inputmode="decimal" placeholder="kg" value="${esc(c.rm&&c.rm[k]?c.rm[k].kg:'')}" style="width:50%;"><input id="f-rm-${k}-reps" type="text" inputmode="numeric" placeholder="reps" value="${esc(c.rm&&c.rm[k]?c.rm[k].reps:'')}" style="width:50%;"></div></div>`).join('')}</div>
+
     <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 12px;">Outros dados</h2>
     <div id="f-extras">${extrasHtml}</div>
     <button class="btn btn-sm" style="margin:4px 0 14px;" onclick="addExtraRow()">+ Adicionar campo</button>
@@ -3016,6 +3150,8 @@ function saveFicha(){
     objetivo: v('f-objetivo'), perf: v('f-perf'), nivel: v('f-nivel'), diasSemana: v('f-dias'), duracaoSessao: v('f-duracao'), limitacoes: v('f-limitacoes'), patologia: patPickerGet('f-patologia')[0] || '', patologias: patPickerGet('f-patologia'), notas: v('f-notas'),
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
+  c.rm = {};
+  RM_LIFTS.forEach(([k])=>{ const kg = parseFloat(String((document.getElementById('f-rm-'+k+'-kg')||{}).value||'').replace(',', '.')), rp = parseInt((document.getElementById('f-rm-'+k+'-reps')||{}).value) || 1; if(kg>0) c.rm[k] = { kg, reps: Math.max(1, Math.min(10, rp)) }; });
   c.extras = Array.from(document.querySelectorAll('#f-extras .extra-row')).map(r=>({ k: r.querySelector('.ex-k').value.trim(), v: r.querySelector('.ex-v').value.trim() })).filter(e=>e.k||e.v);
   let ajuste = '';
   if(clientPats(c).join(',') !== patsBefore && clientPats(c).length){
@@ -3230,7 +3366,7 @@ async function ghPush(cfg, sha){
 function applyRemote(remote){
   try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
   const d = remote.payload.data;
-  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, equip: d.equip, equipCasa: d.equipCasa });
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
   setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
   renderAll();
@@ -3333,7 +3469,7 @@ function importBackup(input){
       if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
         status.textContent = 'Importação cancelada.'; return;
       }
-      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, equip: d.equip, equipCasa: d.equipCasa });
+      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
       saveData();
       status.textContent = 'Cópia importada: ' + resumo + '.';
     }catch(e){
@@ -3824,6 +3960,7 @@ function planPickExercise(slot, ctx, usedPlan, usedSession){
   return c[0];
 }
 function buildAutoPlan(p){
+  let rmUsado = false;
   let cfg = PLAN_OBJ[p.objetivo];
   const PF = (p.objetivo==='Performance' && p.perf && PERF[p.perf] && PERF[p.perf].tpl) ? PERF[p.perf] : null;
   if(PF){ cfg = { ...cfg, series: PF.series, reps: PF.reps, rest: PF.rest, carga: PF.carga }; p = { ...p, dias: Math.min(p.dias, PF.dias) }; }
@@ -4009,10 +4146,13 @@ function buildAutoPlan(p){
       else if(!target.length && !avisos.some(a=>a.includes('«'+mk+'» não foi aplicada ('+nomeTp))) avisos.push('Metodologia «'+mk+'» não foi aplicada ('+nomeTp+'): faltam exercícios deste tipo para formar o bloco.');
     });
     if(lines.length < 3) avisos.push(`"${tpl.nome}" ficou com poucos exercícios para este equipamento.`);
+    if(p.rm){ lines.forEach(l=>{ if(l.tipo==='forca'){ const t = rmCarga(l.exercicio, l.reps, l.carga, p.rm); if(t){ l.carga = (l.carga ? l.carga + ' · ' : '') + t; rmUsado = true; } } }); }
     treinos.push({ nome: tpl.nome, exercicios: lines });
     est[tpl.nome] = Math.round(5 + total + nCx*minEach);
     if(est[tpl.nome] > p.duracao + 5) avisos.push(`"${tpl.nome}" estima ${est[tpl.nome]} min, acima dos ${p.duracao} min escolhidos. Reduz o nº de exercícios ou aumenta a duração.`);
   });
+  if(rmUsado) avisos.push('As cargas em kg partem do 1RM guardado na ficha (tabela repetições-% de 1RM e esforço do plano). São uma estimativa de partida: ajusta pela técnica e pelo esforço real.');
+  { const zona = ({ 'Força':'Zona de força (NSCA): 85% ou mais do 1RM, até 6 repetições, 2-6 séries, descanso de 2-5 min. Este plano usa 4-6 repetições com 2-3 repetições de reserva (cerca de 80%), um pouco abaixo do topo da zona, para ganhar força sem ir à falha.', 'Hipertrofia':'Zona de hipertrofia (NSCA): 67-85% do 1RM, 6-12 repetições, 3-6 séries, descanso de 30 s a 1,5 min.', 'Performance':'Zona de potência (NSCA): 75-90% do 1RM em 1-5 repetições, com intenção de velocidade máxima e descanso de 2-5 min.' })[p.objetivo]; if(zona) avisos.push(zona); }
   const nomes = treinos.map(t=>t.nome);
   const semanas = [];
   let provaInfo = null;
@@ -4104,6 +4244,7 @@ function generatePlan(){
     equipamento: document.getElementById('plan-equip').value,
     equipList: equipPickerGet('plan-equiplist'),
     perf: document.getElementById('plan-objetivo').value==='Performance' ? document.getElementById('plan-perf').value : '',
+    rm: clientRM([document.getElementById('plan-cliente').value, document.getElementById('plan-cliente2').value]),
     prova: (document.getElementById('plan-objetivo').value==='Performance' && PERF_PROTO[document.getElementById('plan-perf').value]) ? (document.getElementById('plan-prova').value || '') : '',
     limitacoes: document.getElementById('plan-limitacoes').value.trim(),
     patologia: patPickerGet('plan-patologia')[0] || '',
@@ -4431,7 +4572,7 @@ function genPtWorkout(cy, wi, local){
     const p = protoById(meta.id);
     if(p){
       const fase = Math.min(sem.fase!==undefined ? sem.fase : 0, p.fases.length-1);
-      const opt = { ...meta.opt, keys: [...new Set([...(meta.opt.keys||[]), ...keys])], report: null };
+      const opt = { ...meta.opt, rm: clientRM(cycleClientIds(cy)), keys: [...new Set([...(meta.opt.keys||[]), ...keys])], report: null };
       if(casa) opt.equip = home;
       const ws = protoMakeWorkouts(p, fase, opt);
       if(ws.length){
@@ -4449,7 +4590,7 @@ function genPtWorkout(cy, wi, local){
   const base = (meta && meta.tipo==='plano' && meta.p) ? meta.p : {
     objetivo: c.objetivo || 'Condição física geral', perf: c.perf||'', nivel: c.nivel || 'Intermédio', duracao: parseInt(c.duracaoSessao)||45,
     equipamento: 'Ginásio completo', equipList: DATA.equip===undefined ? null : DATA.equip, patologia: keys[0] || '', patologiasExtra: keys.slice(1) };
-  const pp = { ...base, dias: 1, prova: '', semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
+  const pp = { ...base, rm: clientRM(cycleClientIds(cy)), dias: 1, prova: '', semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
   if(casa){ pp.equipamento = (home && home.length) ? 'Casa, com elásticos' : 'Casa, sem material'; pp.equipList = home; }
   if(keys.length){ pp.patologia = keys[0]; pp.patologiasExtra = keys.slice(1); }
   const r = buildAutoPlan(pp);
@@ -5863,9 +6004,10 @@ function protoById(id){ return PROTOCOLOS.find(p=>p.id===id); }
 function protoSess(fa){ return fa.sess || [{n:'', ex:fa.ex}]; }
 function protoTotalSem(p){ return p.fases.reduce((a,f)=>a+f.sem,0); }
 let protoKind = 'treino';
-try{ protoKind = localStorage.getItem('ciclo_proto_kind') === 'pat' ? 'pat' : 'treino'; }catch(e){}
+try{ const _k = localStorage.getItem('ciclo_proto_kind'); protoKind = (_k==='pat' || _k==='prev') ? _k : 'treino'; }catch(e){}
 // protocolo de patologia = tem patologia associada; protocolo de treino = provas e performance
-function protoIsPat(p){ return !!p.pat; }
+function protoIsPat(p){ return !!p.pat && !p.prev; }
+function protoKindOf(p){ return p.prev ? 'prev' : (p.pat ? 'pat' : 'treino'); }
 function protoSetKind(k){
   protoKind = k;
   try{ localStorage.setItem('ciclo_proto_kind', k); }catch(e){}
@@ -5875,13 +6017,14 @@ function protoSetKind(k){
 function renderProtocolos(){
   const box = document.getElementById('protocolos-list');
   if(!box) return;
-  const isPat = protoKind === 'pat';
-  const lista = PROTOCOLOS.filter(p=>protoIsPat(p) === isPat);
-  const bt = document.getElementById('proto-kind-treino'), bp = document.getElementById('proto-kind-pat');
-  if(bt) bt.className = 'btn' + (isPat ? '' : ' btn-primary');
+  const isPat = protoKind === 'pat', isPrev = protoKind === 'prev';
+  const lista = PROTOCOLOS.filter(p=>protoKindOf(p) === protoKind);
+  const bt = document.getElementById('proto-kind-treino'), bp = document.getElementById('proto-kind-pat'), bv = document.getElementById('proto-kind-prev');
+  if(bt) bt.className = 'btn' + (protoKind==='treino' ? ' btn-primary' : '');
   if(bp) bp.className = 'btn' + (isPat ? ' btn-primary' : '');
-  const tit = document.getElementById('proto-titulo'); if(tit) tit.textContent = isPat ? 'Protocolos de patologias' : 'Protocolos de treino';
-  const sub = document.getElementById('proto-sub'); if(sub) sub.textContent = isPat ? 'Reabilitação e treino com patologias, por fases e com critérios para avançar. Cria o treino de uma fase ou o ciclo completo para um cliente.' : 'Preparação de provas e performance atlética, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.';
+  if(bv) bv.className = 'btn' + (isPrev ? ' btn-primary' : '');
+  const tit = document.getElementById('proto-titulo'); if(tit) tit.textContent = isPat ? 'Protocolos de patologias' : isPrev ? 'Protocolos de prevenção de lesões' : 'Protocolos de treino';
+  const sub = document.getElementById('proto-sub'); if(sub) sub.textContent = isPat ? 'Reabilitação e treino com patologias, por fases e com critérios para avançar. Cria o treino de uma fase ou o ciclo completo para um cliente.' : isPrev ? 'Programas de prevenção por região e por época desportiva (fora de época, pré-época e em época). Cria o treino de uma fase ou o ciclo completo para um cliente.' : 'Preparação de provas e performance atlética, por fases. Cria o treino de uma fase ou o ciclo completo para um cliente.';
   const pb = document.getElementById('proto-pat-btn'); if(pb) pb.style.display = isPat ? '' : 'none';
   const sel = document.getElementById('proto-grupo');
   if(sel && !sel.options.length){
@@ -5900,7 +6043,7 @@ function renderProtocolos(){
         <p class="proto-p"><strong>Quando usar:</strong> ${esc(p.quando)}</p>
         <div class="proto-red"><strong>Sinais de alarme — encaminhar para o médico:</strong><ul>${p.bandeiras.map(b=>`<li>${esc(b)}</li>`).join('')}</ul></div>
         ${p.notas.map(n=>`<p class="proto-p">• ${esc(n)}</p>`).join('')}
-        ${p.prova?'':`<p class="proto-p">${esc(PROTO_DOR)}</p>`}
+        ${(p.prova||p.prev)?'':`<p class="proto-p">${esc(PROTO_DOR)}</p>`}
         ${p.fases.map((fa,i)=>`
           <div class="proto-fase">
             <div class="proto-fh"><strong>${esc(fa.nome)}</strong><span>${fa.sem} semanas · ${protoSess(fa).length}×/semana</span></div>
@@ -5912,7 +6055,7 @@ function renderProtocolos(){
             ${protoSess(fa).map(se=>`${se.n?`<div class="proto-sn">${esc(se.n)}</div>`:''}<table class="proto-t2">${se.ex.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[1])}×${esc(x[2])}</td><td>${esc(x[3])}</td></tr>`).join('')}</table>`).join('')}
             <button class="btn btn-sm" onclick="protoCreateWorkoutBtn('${p.id}',${i})">Criar treino desta fase</button>
           </div>`).join('')}
-        <div class="proto-aviso">${esc(p.prova?PROVA_AVISO:PROTO_AVISO)}</div>
+        <div class="proto-aviso">${esc(p.prova?PROVA_AVISO:p.prev?PREV_AVISO:PROTO_AVISO)}</div>
         <button class="btn btn-primary" onclick="openProtoModal('${p.id}')">Criar ciclo para um cliente</button>
       </div>
     </details>`).join('');
@@ -5924,7 +6067,7 @@ function protoEnsureEx(x, p){
     if(e.modalidade==='Reabilitação' && p.pat){ e.patologias = e.patologias||[]; if(!e.patologias.includes(p.pat)) e.patologias.push(p.pat); }
     return e.id;
   }
-  const pl = PERFX_LIB.find(c=>normName(c.n)===n);
+  const pl = PERFX_LIB.find(c=>normName(c.n)===n) || PREVX_LIB.find(c=>normName(c.n)===n);
   if(pl){
     e = { id: uid(), nome: pl.n, grupo: pl.g, equip: pl.e, notas: pl.o, padrao: pl.p, modalidade: 'Funcional', musculo: pl.m, funcao: pl.f, patologias: [], variantes: [], imagem:'', videoLink:'', videoData:'' };
     DATA.exercises.push(e); return e.id;
@@ -6237,7 +6380,7 @@ function protoMakeWorkouts(p, fi, opt){
   const fa = p.fases[fi];
   return ses.map(se=>{
     const w = { id: uid(), nome: `${p.nome.split(' (')[0]} — ${fa.nome}${se.n?' — '+se.n:''}`, patologia: keys[0] || p.pat || '', patologias: [...new Set([...keys, p.pat].filter(Boolean))], protocolo: p.id,
-      exercicios: protoTerrainRows(protoEqList(se.ex.map(x=>protoScaleEx(x, level)).map(x=>p.prova ? protoObjEx(x, opt && opt.obj) : x), p, opt, keys, fa.nome), se, p, fi, opt && opt.terreno).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: protoPaceStr(x[0], opt && opt.paces, p.id, opt && opt.terreno) || (p.prova ? '' : 'Dor ≤ 3/10'), descanso: x[3], met: '' })) };
+      exercicios: protoTerrainRows(protoEqList(se.ex.map(x=>protoScaleEx(x, level)).map(x=>p.prova ? protoObjEx(x, opt && opt.obj) : x), p, opt, keys, fa.nome), se, p, fi, opt && opt.terreno).map(x=>({ exId: protoEnsureEx(x, p), series: x[1], reps: x[2], carga: protoPaceStr(x[0], opt && opt.paces, p.id, opt && opt.terreno) || rmCarga(x[0], x[2], '', opt && opt.rm) || ((p.prova||p.prev) ? '' : 'Dor ≤ 3/10'), descanso: x[3], met: '' })) };
     DATA.workouts.push(w);
     return w;
   });
@@ -6305,7 +6448,7 @@ function protoCreateCycle(){
   const report = [];
   const obj = document.getElementById('proto-obj').value || (DATA.clients.find(c=>c.id===clientId)||{}).objetivo || '';
   { const cl0 = DATA.clients.find(x=>x.id===clientId); const rd = (document.getElementById('proto-ref-d')||{}).value, rt = (document.getElementById('proto-ref-t')||{}).value; if(cl0 && rd && rt && paceParse(rt)){ cl0.refD = rd; cl0.refT = rt; } }
-  const opt = { keys, adapt, level, report, obj, equip: equipPickerGet('proto-equiplist'), paces: protoPacesGet(), terreno: (document.getElementById('proto-terreno')||{}).value || 'estrada' };
+  const opt = { keys, adapt, level, report, obj, equip: equipPickerGet('proto-equiplist'), rm: clientRM([clientId, clientId2]), paces: protoPacesGet(), terreno: (document.getElementById('proto-terreno')||{}).value || 'estrada' };
   let inicio = inicio0;
   let sems = p.fases.slice(fi0).map(f=>f.sem);
   const provaISO = p.prova ? document.getElementById('proto-prova').value : '';
@@ -6361,6 +6504,571 @@ function esc(str){
   return div.innerHTML;
 }
 
+// ---------- PROTOCOLOS DE PREVENÇÃO (por época desportiva) e de REABILITAÇÃO (lesão muscular, tendinopatia patelar) ----------
+// Estrutura por época, como no capítulo de desenho de programas: fora de época (mais volume, 4 modos de exercício),
+// pré-época (3 sessões, equilíbrio entre força e pliometria) e em época (2 sessões curtas, para manter).
+const PREV_AQ = 'Aquecimento em 3 passos antes de cada sessão: 5-10 min de atividade geral leve, depois 1-2 séries de 10 de 3-5 exercícios de prevenção (sem fadiga) e, por fim, movimentos específicos da modalidade (3-5 repetições de 30 m).';
+const PREV_NOTA_FREQ = 'Frequência de referência do capítulo de desenho de programas (exemplo do LCA): fora de época 4 sessões por semana, pré-época 3, em época 2. Em clientes de PT com menos tempo, 2 sessões por semana continuam a ser úteis, desde que mantidas todo o ano.';
+const PREVPROT = [
+{ id:'prev-isquio', prev:true, nome:'Prevenção de lesão dos isquiotibiais', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Reforço excêntrico dos isquiotibiais, glúteos e adutores, com pliometria e corrida progressiva. Os isquiotibiais lesionam-se sobretudo na travagem rápida, quando o músculo alonga e produz força ao mesmo tempo.',
+  quando:'Corredores, praticantes de futebol, ténis, padel, atletismo e qualquer pessoa com treino de velocidade. Prioritário em quem já teve uma lesão dos isquiotibiais (lesão anterior é o maior fator de risco).',
+  bandeiras:['Dor súbita e aguda atrás da coxa com estalo ou equimose: parar e avaliar (lesão aguda).','Dor que não melhora em poucos dias ou fica pior com a corrida.','Dor no início do tendão junto à nádega com a posição sentada.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'O nórdico de isquiotibiais é o exercício com mais evidência de redução de lesões. Começar com poucas repetições e progredir devagar: dá dores musculares fortes nos primeiros dias.','Os isquiotibiais não trabalham sozinhos: glúteo máximo e adutor magno ajudam a estender a anca. Por isso o programa inclui ponte, peso morto unilateral e adutores.','Fadiga aumenta o risco: evitar fazer exercícios de sprint ou aterragens com o músculo já cansado.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (base de força)', sem:4, freq:3,
+    obj:['Criar tolerância ao trabalho excêntrico.','Força dos isquiotibiais, glúteos e adutores.','Aprender a aterrar e a travar com controlo.'],
+    criterios:['Nórdico com amplitude controlada, sem dor.','Peso morto unilateral com bacia nivelada.','Sem dor muscular intensa na semana seguinte.'],
+    evitar:['Sprint máximo antes de terminar a fase.','Alongamentos balísticos (em balanço).','Treino excêntrico no dia anterior a um treino de velocidade.'],
+    sess:[
+    { n:'Sessão A', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Alongamento dinâmico de isquiotibiais em apoio unipodal','1','10','—','Mobilidade'],['Agachamento com barra','3','8','90s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Nórdico de isquiotibiais','2','6','90s','Pernas'],['Prancha lateral','2','30s','45s','Core'],['Elevação de gémeos unipodal','2','12','45s','Gémeos']] },
+    { n:'Sessão B', ex:[['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Salto em afundo alternado (split squat jump)','2','8','60s','Pernas'],['Pogo (saltos curtos de tornozelo)','2','10','45s','Pernas'],['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Curl de isquiotibiais na fitball','3','8','60s','Pernas'],['Copenhagen plank','2','20s','45s','Core'],['Abdução da anca deitado de lado','2','15','30s','Glúteos']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (força, velocidade e travagem)', sem:4, freq:3,
+    obj:['Aumentar a carga e a velocidade do trabalho excêntrico.','Introduzir corrida rápida progressiva e travagens.','Manter a força de glúteos e adutores.'],
+    criterios:['Nórdico até 8 repetições com controlo.','Corrida a 80-90% do esforço sem desconforto atrás da coxa.','Travagem em 2-3 passos sem perder a técnica.'],
+    evitar:['Sprints máximos sem aquecimento completo.','Duas sessões intensas de velocidade em dias seguidos.','Treinar com dor.'],
+    sess:[
+    { n:'Sessão A', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Salto em profundidade (drop jump) com aterragem controlada','2','8','75s','Pernas'],['Agachamento com barra','3','6','90s','Pernas'],['Nórdico de isquiotibiais','3','6','90s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas']] },
+    { n:'Sessão B', ex:[['Pogo (saltos curtos de tornozelo)','2','10','45s','Pernas'],['Salto lateral unipodal (skater hop)','2','8','60s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Curl de isquiotibiais na fitball','3','10','60s','Pernas'],['Copenhagen plank','2','25s','45s','Core'],['Prancha lateral','2','35s','45s','Core'],['Elevação de gémeos unipodal','3','12','45s','Gémeos']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter a força e a tolerância excêntrica com pouco volume.','Incluir a prevenção no aquecimento dos treinos.','Evitar paragens longas.'],
+    criterios:['Dor ausente nos treinos e jogos.','Sessões curtas (15-25 min) cumpridas toda a semana.'],
+    evitar:['Deixar a prevenção de lado em semanas cheias de jogos.','Fazer excêntricos pesados na véspera de um jogo.'],
+    sess:[
+    { n:'Sessão A (antes do treino)', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Alongamento dinâmico de isquiotibiais em apoio unipodal','1','10','—','Mobilidade'],['Nórdico de isquiotibiais','2','6','60s','Pernas'],['Prancha lateral','1','30s','30s','Core'],['Salto vertical unipodal','1','8','45s','Pernas'],['Desaceleração: corrida curta e travagem','2','4','45s','Pernas']] },
+    { n:'Sessão B (curta)', ex:[['Peso morto romeno unilateral com haltere leve','2','8','60s','Pernas'],['Copenhagen plank','1','20s','30s','Core'],['Curl de isquiotibiais na fitball','2','8','45s','Pernas'],['Elevação de gémeos unipodal','2','12','30s','Gémeos']] }
+    ]}
+  ]},
+
+{ id:'prev-joelho', prev:true, nome:'Prevenção de lesão do LCA e do joelho (aterragens e mudanças de direção)', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Força de glúteos, isquiotibiais e quadríceps, com pliometria e técnica de aterragem e travagem. O risco do ligamento cruzado anterior aumenta com aterragens rígidas, joelho a cair para dentro (valgo) e pouca flexão do joelho.',
+  quando:'Desportos com saltos, travagens e mudanças de direção (futebol, basquetebol, voleibol, padel, ténis, andebol). Especialmente útil em atletas do sexo feminino nestas modalidades e em quem já teve lesão do joelho.',
+  bandeiras:['Joelho que falha, bloqueia ou incha.','Dor que aumenta ao saltar ou travar.','Lesão do joelho recente sem alta clínica: usar o protocolo de reabilitação em vez deste.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'Na aterragem, procurar joelho alinhado com o segundo e terceiro dedos, anca para trás, joelho e anca bem fletidos e aterragem silenciosa. Se o atleta não consegue aterrar bem sem fadiga, não progride a pliometria.','Os programas conhecidos (11+, PEP e outros) combinam corrida, força, pliometria e equilíbrio e demoram cerca de 20 min; os que passam de 30 min por sessão associaram-se a menor risco do que os de 15 min ou menos.','Na reabilitação do LCA, a lesão anterior mantém-se como fator de risco: continuar a força e a pliometria depois do regresso ao desporto.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (volume de força)', sem:4, freq:3,
+    obj:['Força de quadríceps, glúteos e isquiotibiais.','Alinhamento do joelho em exercícios unilaterais.','Pliometria de baixo impacto com aterragem perfeita.'],
+    criterios:['Agachamento unilateral até ao banco sem valgo.','Aterragem em dois apoios silenciosa e alinhada.','Sem dor no joelho.'],
+    evitar:['Saltos com fadiga.','Aumentar altura ou distância antes de ter qualidade.','Treino sem aquecimento.'],
+    sess:[
+    { n:'Sessão A', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Agachamento com barra','3','8','90s','Pernas'],['Afundo lateral','2','8','60s','Pernas'],['Nórdico de isquiotibiais','2','6','90s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Prancha lateral','2','30s','45s','Core'],['Abdução excêntrica da anca com resistência manual','2','10','45s','Glúteos']] },
+    { n:'Sessão B', ex:[['Salto em comprimento com aterragem unipodal','2','6','75s','Pernas'],['Salto vertical unipodal','2','6','75s','Pernas'],['Salto lateral unipodal (skater hop)','2','8','60s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Elevação de gémeos unipodal','2','12','45s','Gémeos'],['Equilíbrio unipodal de olhos fechados','2','30s','30s','Pernas']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (pliometria e travagem)', sem:4, freq:3,
+    obj:['Pliometria mais intensa com aterragem unipodal.','Travagem e mudança de direção com controlo.','Força máxima moderada nos exercícios principais.'],
+    criterios:['Aterragem unipodal sem valgo nem perda de equilíbrio.','Travagem em 2-3 passos sem o joelho cair para dentro.','Sem dor após as sessões.'],
+    evitar:['Fazer pliometria em dias seguidos.','Mudanças de direção bruscas com fadiga muito alta.'],
+    sess:[
+    { n:'Sessão A', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Salto em profundidade (drop jump) com aterragem controlada','2','8','75s','Pernas'],['Salto em comprimento com aterragem unipodal','2','6','75s','Pernas'],['Agachamento com barra','3','6','90s','Pernas'],['Afundo lateral','2','8','60s','Pernas'],['Nórdico de isquiotibiais','3','6','90s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas']] },
+    { n:'Sessão B', ex:[['Salto lateral unipodal (skater hop)','2','8','60s','Pernas'],['Salto de barreira lateral (side hurdle jump)','2','8','60s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Prancha lateral','2','35s','45s','Core'],['Abdução da anca deitado de lado','2','15','30s','Glúteos']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter força e qualidade de aterragem com pouco volume.','Integrar a prevenção no aquecimento.'],
+    criterios:['Sem dor.','Sessões de 15-25 min cumpridas.'],
+    evitar:['Abandonar o programa a meio da época.'],
+    sess:[
+    { n:'Sessão A (antes do treino)', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Agachamento unilateral até ao banco','2','6','60s','Pernas'],['Nórdico de isquiotibiais','1','6','60s','Pernas'],['Salto vertical unipodal','1','6','45s','Pernas'],['Salto lateral unipodal (skater hop)','1','8','45s','Pernas'],['Desaceleração: corrida curta e travagem','2','4','45s','Pernas']] },
+    { n:'Sessão B (curta)', ex:[['Peso morto romeno unilateral com haltere leve','2','8','60s','Pernas'],['Prancha lateral','2','30s','30s','Core'],['Abdução excêntrica da anca com resistência manual','1','10','30s','Glúteos']] }
+    ]}
+  ]},
+
+{ id:'prev-tornozelo', prev:true, nome:'Prevenção de entorses do tornozelo', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Força dos perónios e do tibial, gémeos, controlo do pé e equilíbrio, com saltos laterais e aterragens. A entorse típica acontece quando o pé vira para dentro mais do que os ligamentos toleram, muitas vezes ao aterrar ou mudar de direção.',
+  quando:'Desportos de saltos e mudanças de direção, corrida em terreno irregular e quem já teve uma entorse (lesão anterior aumenta o risco de repetir).',
+  bandeiras:['Dor ao carregar o peso após uma entorse recente: avaliar antes de treinar.','Inchaço persistente ou sensação de instabilidade frequente.','Dor óssea ao toque (suspeita de fratura).'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'A prevenção da entorse trata a força rápida dos músculos que travam a inversão do pé. Por isso há exercícios lentos e rápidos com elástico.','Aterrar na parte da frente do pé aumenta a carga no tornozelo; ensinar a aterragem completa, com anca e joelho a absorver.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (força e controlo)', sem:4, freq:3,
+    obj:['Força dos músculos à volta do tornozelo e do pé.','Equilíbrio unipodal estável.','Aterragem controlada em dois apoios.'],
+    criterios:['Equilíbrio unipodal de olhos fechados 30 s.','Elevação de gémeos unipodal controlada, sem dor.','Sem inchaço após as sessões.'],
+    evitar:['Treino com tornozelo inchado.','Saltos laterais antes de ter equilíbrio estável.'],
+    sess:[
+    { n:'Sessão A', ex:[['Eversão do tornozelo com elástico','2','15','30s','Gémeos'],['Inversão do tornozelo com elástico','2','15','30s','Gémeos'],['Dorsiflexão do tornozelo com elástico','2','15','30s','Gémeos'],['Elevação de gémeos unipodal','3','12','45s','Gémeos'],['Equilíbrio unipodal de olhos fechados','3','30s','30s','Pernas'],['Pé curto (short foot)','2','5 x 5s','30s','Pés'],['Agachamento unilateral até ao banco','3','8','75s','Pernas']] },
+    { n:'Sessão B', ex:[['Caminhada nos calcanhares','2','20 m','30s','Gémeos'],['Elevação de gémeos sentado (sóleo)','3','12','45s','Gémeos'],['Pogo (saltos curtos de tornozelo)','2','10','45s','Pernas'],['Salto em comprimento com aterragem unipodal','2','6','75s','Pernas'],['Abdução da anca deitado de lado','2','15','30s','Glúteos'],['Prancha lateral','2','30s','45s','Core']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (saltos laterais e direção)', sem:4, freq:3,
+    obj:['Saltos laterais e aterragens unipodais.','Travagem e mudança de direção com o pé controlado.','Força rápida dos perónios.'],
+    criterios:['Salto lateral unipodal com paragem estável na aterragem.','Sem entorses nem dor nas sessões.'],
+    evitar:['Treino em superfícies muito irregulares antes de ter controlo no plano.'],
+    sess:[
+    { n:'Sessão A', ex:[['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Eversão do tornozelo com elástico','2','15','30s','Gémeos'],['Salto lateral unipodal (skater hop)','3','8','60s','Pernas'],['Salto de barreira lateral (side hurdle jump)','2','8','60s','Pernas'],['Elevação de gémeos unipodal','3','12','45s','Gémeos'],['Equilíbrio unipodal de olhos fechados','2','45s','30s','Pernas']] },
+    { n:'Sessão B', ex:[['Pogo (saltos curtos de tornozelo)','2','10','45s','Pernas'],['Salto em profundidade (drop jump) com aterragem controlada','2','6','75s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Prancha lateral','2','35s','45s','Core']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter a força e o controlo do pé com pouco volume.'],
+    criterios:['Sem entorses nem dor.'],
+    evitar:['Abandonar o trabalho de equilíbrio e elásticos.'],
+    sess:[
+    { n:'Sessão A (antes do treino)', ex:[['Eversão do tornozelo com elástico','1','15','30s','Gémeos'],['Equilíbrio unipodal de olhos fechados','1','30s','30s','Pernas'],['Elevação de gémeos unipodal','2','12','30s','Gémeos'],['Salto lateral unipodal (skater hop)','1','8','45s','Pernas']] }
+    ]}
+  ]},
+
+{ id:'prev-ombro', prev:true, nome:'Prevenção de lesões do ombro, cotovelo e pescoço (lançamentos e raquetes)', grupo:'Prevenção', g:'Ombros', mod:'Funcional',
+  resumo:'Força dos rotadores, estabilizadores da omoplata, antebraço e pescoço, com trabalho excêntrico rápido para travar o braço. Pensado para quem lança, serve ou remata muitas vezes, e para treino de força com muito supino e press.',
+  quando:'Ténis, padel, voleibol, natação, andebol, lançadores, trepadores e treino de ginásio com muito empurrar acima da cabeça. Útil quando há dor recorrente no ombro sem diagnóstico de lesão estrutural.',
+  bandeiras:['Dor noturna ou em repouso no ombro.','Formigueiro ou perda de força no braço.','Ombro que sai do sítio (luxação) ou bloqueia.','Dor súbita após queda: avaliar antes de treinar.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'Ao lançar, o braço precisa de travar a sua própria velocidade. Os rotadores externos e os músculos de trás da omoplata trabalham em excêntrico; por isso incluir rotações externas lentas e rápidas.','Mover a omoplata é tão importante como o ombro: protração (flexão com plus), elevação (scaption) e músculos de trás (Y/T, face pull).'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (força e estabilidade)', sem:4, freq:3,
+    obj:['Força dos rotadores e estabilizadores da omoplata.','Resistência do antebraço e do pescoço.','Boa técnica nos exercícios de empurrar e puxar.'],
+    criterios:['Rotação externa a 90° controlada, 15 repetições, sem dor.','Flexão com plus sem a omoplata a sair do sítio.'],
+    evitar:['Treinar com dor aguda.','Aumentar a carga e a velocidade de lançamento ao mesmo tempo.'],
+    sess:[
+    { n:'Sessão A', ex:[['Rotação externa do ombro a 90° com elástico','3','12','45s','Ombros'],['Abdução horizontal em prono (Y/T)','3','10','45s','Ombros'],['Scaption (elevação no plano da omoplata)','2','12','45s','Ombros'],['Flexão com protração escapular (push-up plus)','3','10','60s','Peito'],['Remada com halteres','3','10','60s','Costas'],['Transporte de carga (farmer walk)','2','30 m','60s','Corpo inteiro'],['Isométrico cervical (flexão, extensão e lateral)','2','8s','30s','Pescoço']] },
+    { n:'Sessão B', ex:[['Face pull com elástico','3','12','45s','Ombros'],['Desenvolvimento de ombros com halteres','3','8','75s','Ombros'],['Rotação do antebraço com martelo (pronação e supinação)','2','12','30s','Antebraço'],['Extensão do punho com haltere','2','15','30s','Antebraço'],['Flexão do punho com haltere','2','15','30s','Antebraço'],['Prancha com elevação de braço','2','8','45s','Core']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (força rápida e travagem do braço)', sem:4, freq:3,
+    obj:['Trabalho excêntrico rápido dos rotadores externos.','Potência de ombro e tronco com medicine ball.','Mais volume específico do gesto.'],
+    criterios:['Rotação externa rápida sem dor.','Lançamentos com técnica estável.'],
+    evitar:['Sobrecarga de lançamentos depois de uma pausa: subir o número de lançamentos por semanas.'],
+    sess:[
+    { n:'Sessão A', ex:[['Rotação externa do ombro a 90° com elástico','3','12','45s','Ombros'],['Lançamento de medicine ball acima da cabeça','3','6','60s','Corpo inteiro'],['Abdução horizontal em prono (Y/T)','3','10','45s','Ombros'],['Flexão com protração escapular (push-up plus)','3','12','60s','Peito'],['Remada com barra','3','8','75s','Costas'],['Isométrico cervical (flexão, extensão e lateral)','2','10s','30s','Pescoço']] },
+    { n:'Sessão B', ex:[['Face pull com elástico','3','12','45s','Ombros'],['Press militar com barra','3','6','90s','Ombros'],['Chop semiajoelhado com elástico (PNF)','3','10','45s','Core'],['Transporte de carga (farmer walk)','2','30 m','60s','Corpo inteiro'],['Extensão do punho com haltere','2','15','30s','Antebraço']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter força e controlo do ombro com sessões curtas.'],
+    criterios:['Sem dor no gesto.'],
+    evitar:['Treino pesado do ombro na véspera de competir.'],
+    sess:[
+    { n:'Sessão A (antes do treino)', ex:[['Rotação externa do ombro a 90° com elástico','2','12','30s','Ombros'],['Abdução horizontal em prono (Y/T)','2','10','30s','Ombros'],['Face pull com elástico','2','12','30s','Ombros'],['Isométrico cervical (flexão, extensão e lateral)','1','8s','30s','Pescoço']] }
+    ]}
+  ]},
+
+{ id:'prev-core', prev:true, nome:'Prevenção de dor lombar: tronco e controlo da coluna', grupo:'Prevenção', g:'Core', mod:'Funcional',
+  resumo:'Resistência e controlo do tronco contra extensão, flexão lateral e rotação, mais força das ancas. Em vez de mexer a coluna, o tronco aprende a mantê-la estável enquanto as ancas e os ombros trabalham.',
+  quando:'Desportos com rotações repetidas e muita corrida (hóquei, golfe, ténis, remo), treino de força com muito peso morto e agachamento, e profissões com muito tempo sentado.',
+  bandeiras:['Dor lombar com formigueiro, perda de força ou dormência na perna.','Dor noturna, febre ou perda de peso inexplicada.','Dor depois de queda ou pancada forte.','Alteração do controlo da bexiga ou intestino: urgência médica.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'Método do caso de estudo de hóquei (Rosenblatt): identificar fatores de risco (pouca resistência a extensão, flexão lateral e rotação), medir com testes simples, definir critérios e treinar com circuito curto (cerca de 12 min, 2 vezes por semana). A reavaliação mostrou melhorias claras no controlo da rotação.','Usar um objeto ou um feedback externo ajuda: por exemplo, fazer a prancha com um rolo de espuma sobre as costas e não o deixar cair.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (resistência e controlo)', sem:4, freq:3,
+    obj:['Resistência do core nas posições de prancha.','Controlo de rotação do tronco.','Força de ancas.'],
+    criterios:['Prancha lateral 60-90 s por lado.','Prancha com elevação de braço sem rodar a bacia.','Sem dor lombar após as sessões.'],
+    evitar:['Abdominais em flexão repetida com muita carga, se houver dor.','Rodar a coluna com carga elevada.'],
+    sess:[
+    { n:'Sessão A', ex:[['Bird dog','2','8','30s','Core'],['Prancha lateral','3','30s','30s','Core'],['Prancha com elevação de braço','2','8','30s','Core'],['Pallof press','3','10','45s','Core'],['Ponte de glúteos com pausa','3','10','45s','Glúteos'],['Peso morto','3','8','90s','Costas'],['Transporte de carga (farmer walk)','2','30 m','60s','Corpo inteiro']] },
+    { n:'Sessão B', ex:[['Chop semiajoelhado com elástico (PNF)','3','10','45s','Core'],['Extensão reversa da anca (hiperextensão inversa)','3','10','60s','Costas'],['Copenhagen plank','2','20s','45s','Core'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Prancha frontal','3','40s','45s','Core']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (potência de tronco)', sem:4, freq:3,
+    obj:['Potência rotacional com medicine ball.','Mais tempo sob tensão no core.','Manter a coluna estável com carga maior.'],
+    criterios:['Prancha lateral 90 s por lado.','Lançamentos com rotação a partir da anca, sem forçar a lombar.'],
+    evitar:['Aumentar a carga no peso morto e as rotações rápidas na mesma semana.'],
+    sess:[
+    { n:'Sessão A', ex:[['Prancha lateral','3','45s','30s','Core'],['Pallof press','3','12','45s','Core'],['Lançamento de medicine ball acima da cabeça','3','6','60s','Corpo inteiro'],['Peso morto','3','6','90s','Costas'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Prancha com elevação de braço','3','8','45s','Core']] },
+    { n:'Sessão B', ex:[['Chop semiajoelhado com elástico (PNF)','3','12','45s','Core'],['Extensão reversa da anca (hiperextensão inversa)','3','12','60s','Costas'],['Transporte de carga (farmer walk)','3','30 m','60s','Corpo inteiro'],['Copenhagen plank','2','25s','45s','Core']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter a resistência e o controlo do tronco com sessões curtas (cerca de 12 min).'],
+    criterios:['Sem dor lombar.'],
+    evitar:['Deixar o circuito de tronco de fora em semanas cheias.'],
+    sess:[
+    { n:'Circuito curto', ex:[['Prancha lateral','2','40s','20s','Core'],['Prancha com elevação de braço','2','8','20s','Core'],['Pallof press','2','10','30s','Core'],['Bird dog','2','8','20s','Core']] }
+    ]}
+  ]},
+
+{ id:'prev-anca', prev:true, nome:'Prevenção de dor na virilha e na anca', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Força dos adutores, abdutores, flexores e extensores da anca, com controlo da bacia. As dores de virilha ligadas aos adutores aparecem em desportos com chutos e mudanças de direção.',
+  quando:'Futebol, hóquei, ténis, corrida com mudanças de direção e quem tem dor repetida na virilha. A lesão anterior é fator de risco.',
+  bandeiras:['Dor de virilha com febre, ou dor na anca em repouso ou à noite.','Estalidos dolorosos ou bloqueios da anca.','Dor depois de queda ou pancada.','Inchaço na virilha ou na bolsa.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'Evitar alongamentos fortes e balísticos da virilha em caso de dor no tendão dos adutores: a compressão pode agravar. O reforço é o ponto central.','O Copenhagen é exigente: começar só com a perna de baixo apoiada e progredir para a versão completa.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (força da anca)', sem:4, freq:3,
+    obj:['Força dos adutores e abdutores.','Controlo da bacia no apoio unipodal.','Força dos extensores e flexores da anca.'],
+    criterios:['Copenhagen 20-30 s sem dor.','Prancha lateral sem deixar cair a bacia.'],
+    evitar:['Alongamentos fortes da virilha em caso de dor.','Chutos máximos antes de terminar a fase.'],
+    sess:[
+    { n:'Sessão A', ex:[['Afundo em caminhada','1','10','—','Pernas'],['Copenhagen plank','3','20s','45s','Core'],['Adução da anca com elástico','3','12','30s','Pernas'],['Abdução da anca deitado de lado','3','15','30s','Glúteos'],['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Flexão da anca em pé com elástico','2','12','30s','Pernas']] },
+    { n:'Sessão B', ex:[['Afundo lateral','3','8','60s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Prancha lateral','2','30s','30s','Core'],['Marcha lateral com mini band','3','12','45s','Glúteos']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (velocidade e direção)', sem:4, freq:3,
+    obj:['Força rápida dos adutores e flexores.','Mudanças de direção e chutos progressivos.'],
+    criterios:['Copenhagen 30 s sem dor.','Mudança de direção sem dor na virilha.'],
+    evitar:['Mudanças de direção bruscas com a virilha irritada.'],
+    sess:[
+    { n:'Sessão A', ex:[['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Copenhagen plank','3','25s','45s','Core'],['Salto lateral unipodal (skater hop)','2','8','60s','Pernas'],['Afundo lateral','3','8','60s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas']] },
+    { n:'Sessão B', ex:[['Adução da anca com elástico','3','12','30s','Pernas'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Prancha lateral','3','35s','30s','Core']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter a força da anca com sessões curtas.'],
+    criterios:['Sem dor na virilha.'],
+    evitar:['Cortar o Copenhagen em semanas de muitos jogos.'],
+    sess:[
+    { n:'Sessão A (antes do treino)', ex:[['Copenhagen plank','2','20s','30s','Core'],['Adução da anca com elástico','1','12','30s','Pernas'],['Afundo lateral','2','8','45s','Pernas']] }
+    ]}
+  ]},
+
+{ id:'prev-corredor', prev:true, nome:'Prevenção no corredor: canelas, tendão de Aquiles e pé', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Força dos gémeos, sóleo, pé e anca com pliometria suave, para o corredor tolerar o impacto repetido. Num treino de 30 min correm-se cerca de 6000 passos, e com a corrida 4 dias por semana são mais de 24 000 por semana: o tecido precisa de se adaptar de forma gradual.',
+  quando:'Corredores de estrada e trail, praticantes de caminhada longa e quem aumentou a corrida há pouco tempo. Prioritário em quem tem história de periostite tibial, tendinopatia de Aquiles ou fascite plantar.',
+  bandeiras:['Dor localizada num ponto do osso da perna que aumenta a cada passo e à noite (suspeita de fratura de stress).','Dor súbita atrás do tornozelo com estalo.','Inchaço ou calor persistentes.'],
+  notas:[PREV_AQ, PREV_NOTA_FREQ, 'Os tendões adaptam-se à carga, mas precisam de 2-3 dias para recuperar de uma carga alta. Evitar saltos fortes ou corridas longas em dias seguidos e subir a carga de forma gradual, sobretudo após pausas, mudança de ténis ou de piso.','O sóleo tem muitas fibras lentas e trabalha com o joelho fletido: fazer elevações de gémeos com joelho estendido e fletido.','Subir carga ao correr: ver os protocolos de corrida da app (5 km, 10 km, meia, maratona) e a regra do aumento progressivo.'],
+  fases:[
+  { nome:'Fase 1 — Fora de época (capacidade do tendão e da tíbia)', sem:4, freq:3,
+    obj:['Força de gémeos e sóleo.','Controlo do pé e da anca.','Pliometria de impacto baixo.'],
+    criterios:['Elevações de gémeos unipodais controladas, 12 repetições por perna.','Sem dor na tíbia ou no tendão ao fim do treino.'],
+    evitar:['Aumentar volume de corrida e de saltos na mesma semana.','Alongamentos fortes de gémeos em degrau se a dor for na inserção do tendão.'],
+    sess:[
+    { n:'Sessão A', ex:[['Elevação de gémeos unipodal','3','12','45s','Gémeos'],['Elevação de gémeos sentado (sóleo)','3','12','45s','Gémeos'],['Pé curto (short foot)','2','5 x 5s','30s','Pés'],['Dorsiflexão do tornozelo com elástico','2','15','30s','Gémeos'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Prancha lateral','2','30s','45s','Core']] },
+    { n:'Sessão B', ex:[['Pogo (saltos curtos de tornozelo)','2','10','45s','Pernas'],['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Abdução da anca deitado de lado','2','15','30s','Glúteos'],['Caminhada nos calcanhares','2','20 m','30s','Gémeos']] }
+    ]},
+  { nome:'Fase 2 — Pré-época (força e energia elástica)', sem:4, freq:3,
+    obj:['Mais carga nos gémeos e sóleo.','Saltos curtos e skips para melhorar a elasticidade.','Corrida em ritmo suave e progressivo.'],
+    criterios:['Elevação de gémeos unipodal com carga extra, sem dor.','Pogo e skips sem dor no dia seguinte.'],
+    evitar:['Duas sessões de impacto em dias seguidos.'],
+    sess:[
+    { n:'Sessão A', ex:[['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Elevação de gémeos unipodal','3','10','60s','Gémeos'],['Elevação de gémeos sentado (sóleo)','3','10','60s','Gémeos'],['Agachamento com barra','3','6','90s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Copenhagen plank','2','20s','45s','Core']] },
+    { n:'Sessão B', ex:[['Pogo (saltos curtos de tornozelo)','3','10','45s','Pernas'],['Salto vertical unipodal','2','6','75s','Pernas'],['Pé curto (short foot)','2','5 x 5s','30s','Pés'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Prancha lateral','2','35s','45s','Core']] }
+    ]},
+  { nome:'Fase 3 — Em época (manutenção)', sem:4, freq:2,
+    obj:['Manter a força dos gémeos e da anca com pouco volume.'],
+    criterios:['Sem dor na corrida.'],
+    evitar:['Deixar a força de lado quando o volume de corrida sobe.'],
+    sess:[
+    { n:'Sessão A (curta)', ex:[['Elevação de gémeos unipodal','2','12','30s','Gémeos'],['Elevação de gémeos sentado (sóleo)','2','12','30s','Gémeos'],['Prancha lateral','2','30s','30s','Core'],['Pogo (saltos curtos de tornozelo)','1','10','30s','Pernas']] }
+    ]}
+  ]}
+];
+
+// ---------- REABILITAÇÃO: lesão muscular e tendinopatia patelar (por fases, com critérios) ----------
+const REABPROT = [
+{ id:'reab-isquio', nome:'Lesão muscular dos isquiotibiais (após alta para exercício)', grupo:'Coxa', pat:'isquio', g:'Pernas',
+  resumo:'Reabilitação da distensão dos isquiotibiais em três etapas: carga aguda muito baixa, carga progressiva e regresso ao treino e ao desempenho. Avança por critérios e não por calendário. O regresso ao desporto de sprint exige força e simetria, não apenas ausência de dor.',
+  quando:'Distensão dos isquiotibiais já avaliada por médico ou fisioterapeuta, sem rotura grave. A fase aguda (primeiros dias) é sobretudo clínica; este protocolo cobre a recuperação funcional.',
+  bandeiras:['Hematoma extenso ou dor muito forte em repouso: avaliar de novo.','Dor que piora de semana para semana.','Formigueiro ou perda de força na perna.','Dor que persiste após o tempo habitual para a gravidade da lesão.'],
+  notas:['A reparação do músculo segue fases bem definidas (hemorragia, inflamação, reparação e remodelação, maturação), mas a recuperação funcional não acompanha o relógio da cicatrização: é por critérios.','Tempos médios de recuperação em estudos de futebolistas (1.º grau cerca de 17 dias, 2.º cerca de 22, 3.º cerca de 73) são apenas orientadores: cada lesão é diferente.','Treinar só com carga sentada e concêntrica pode alterar o comprimento das fibras e aumentar o risco de recidiva. O exercício excêntrico é essencial.','Treinar à volta da lesão: manter o resto do corpo, o cardio e as capacidades que a lesão não impede, desde o início.','Regresso à corrida graduado: 1 dia de corrida e 1 de descanso, depois 2:1 e, mais tarde, 3:1. Depois da recuperação, manter a prevenção (protocolo de prevenção dos isquiotibiais).'],
+  fases:[
+  { nome:'Fase 1 — Carga aguda (isométricos sem dor)', sem:2, freq:5,
+    obj:['Manter o músculo ativo sem agravar a lesão.','Recuperar marcha, escadas e agachamento sem dor.','Manter condição física com o resto do corpo.'],
+    criterios:['Marcha, escadas e agachamento só com peso corporal sem dor.','Menos rigidez de manhã.','Extensão ativa do joelho sem dor com ≥ 75% da força do lado são.','Ponte unilateral isométrica sem dor a 90°, 45° e < 30° de flexão do joelho.'],
+    evitar:['Alongamento forte.','Sprint, saltos e excêntricos rápidos.','Dor acima de 3/10 durante o exercício.'],
+    ex:[['Bicicleta estática em intensidade leve','1','10 min','—','Cardio'],['Ponte de glúteos com pausa','3','6 x 6s','45s','Glúteos','Isométrico: subir e manter 6 s, sem dor. Aumentar progressivamente a carga e o ângulo.'],['Extensão de joelho com carga lenta','3','12','45s','Pernas'],['Prancha frontal','3','30s','45s','Core'],['Remada com halteres','3','10','60s','Costas'],['Elevação de gémeos sentado (sóleo)','3','12','45s','Gémeos']] },
+  { nome:'Fase 2 — Carga progressiva (excêntrico e função)', sem:4, freq:4,
+    obj:['Aumentar a carga, a velocidade e a complexidade de forma gradual.','Introduzir o excêntrico dos isquiotibiais.','Estabilizar o tronco durante o esforço da perna.','Voltar à corrida de forma graduada.'],
+    criterios:['Sem reação (dor ou rigidez) nas 24 h seguintes.','Amplitude completa sem dor.','Força ≥ 85% do lado são.','Corrida: 10 × 50 m a 80% da velocidade máxima com acelerações e travagens previsíveis.','Simetria ≥ 80% no peso morto unilateral e no step-up.'],
+    evitar:['Sprint máximo.','Aumentar a carga e a velocidade ao mesmo tempo.','Exercícios só concêntricos e sentados.'],
+    sess:[
+    { n:'Sessão A (força)', ex:[['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Curl de isquiotibiais na fitball','3','8','60s','Pernas'],['Nórdico de isquiotibiais','2','4','90s','Pernas','Começar com poucas repetições e amplitude parcial; aumentar de forma gradual.'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Prancha lateral','2','30s','45s','Core']] },
+    { n:'Sessão B (função)', ex:[['Bicicleta estática em intensidade leve','1','10 min','—','Cardio'],['Afundo lateral','3','8','60s','Pernas'],['Step-up alto','3','8','60s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas','Baixa intensidade, só técnica de travagem.'],['Copenhagen plank','2','20s','45s','Core'],['Elevação de gémeos unipodal','3','12','45s','Gémeos']] }
+    ]},
+  { nome:'Fase 3 — Regresso ao treino e ao desempenho', sem:4, freq:3,
+    obj:['Força e capacidade próximas das do lado são ou da linha de base.','Velocidade progressiva até ao sprint.','Treino completo na modalidade, com fadiga e sob pressão.'],
+    criterios:['Treino completo com intensidade de jogo, com valores iguais aos de antes da lesão (velocidade, salto, distância).','Força e capacidade ≥ 90% do lado são ou da linha de base.','O atleta confia na perna e não a protege.'],
+    evitar:['Voltar à competição sem uma semana completa de treino.','Saltar o excêntrico quando a dor desaparece.'],
+    sess:[
+    { n:'Sessão A (força e potência)', ex:[['Nórdico de isquiotibiais','3','6','90s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','6','90s','Pernas'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Salto vertical unipodal','2','6','75s','Pernas'],['Prancha lateral','2','35s','45s','Core']] },
+    { n:'Sessão B (velocidade e função)', ex:[['Skip (marcha saltitada) para a frente e para o lado','2','30 m','—','Pernas'],['Desaceleração: corrida curta e travagem','4','4','60s','Pernas'],['Salto em afundo alternado (split squat jump)','2','8','60s','Pernas'],['Curl de isquiotibiais na fitball','3','10','60s','Pernas'],['Copenhagen plank','2','25s','45s','Core']] }
+    ]}
+  ]},
+
+{ id:'reab-patelar', nome:'Tendinopatia patelar (dor no tendão abaixo da rótula)', grupo:'Joelho', pat:'patelar', g:'Pernas',
+  resumo:'Carga progressiva do tendão patelar: isométricos pesados para acalmar a dor, força lenta e pesada, energia elástica e regresso aos saltos. O tendão responde à carga, mas precisa de 2-3 dias para recuperar de um esforço alto.',
+  quando:'Dor localizada no tendão patelar, típica de quem salta e trava muito (basquetebol, voleibol, atletismo), sem rotura. Dor súbita com estalo: pedir avaliação urgente.',
+  bandeiras:['Dor súbita e intensa com incapacidade de estender o joelho (suspeita de rotura): urgência.','Joelho inchado, quente ou bloqueado.','Dor noturna em repouso.','Dor que aumenta de forma persistente.'],
+  notas:['Os tendões têm três tipos de dias de carga: alta (saltos, corridas intensas), média e baixa. Os dias de carga alta devem ter intervalos de 3-4 dias; os isométricos podem ser feitos até 4 vezes por semana, no máximo.','Fases do tendão: reativa (aguda, tratar com muita redução de carga e isométricos), de reparação (força pesada e lenta com cuidado) e degenerativa (carga pesada valiosa, desde que as cargas agravantes estejam controladas).','Mexer na carga e nos fatores modificáveis (volume de saltos, calçado, piso, força do quadríceps e da anca) tende a dar mais resultado do que insistir em fatores difíceis de mudar.','Aterrar em avanço de antepé aumenta a carga no tendão patelar; ensinar aterragem completa e travagem controlada.','Regresso aos saltos: começar por saltar de um degrau para baixo (menos carga), depois de dois para um pé, e por fim aterrar de altura.'],
+  fases:[
+  { nome:'Fase 1 — Isométricos (acalmar a dor)', sem:3, freq:4,
+    obj:['Reduzir a dor e manter a força do quadríceps.','Reduzir os saltos e as travagens fortes.','Manter o cardio e o resto do corpo.'],
+    criterios:['Dor ≤ 3/10 durante e depois do isométrico.','Dor estável no dia seguinte.','Agachamento a dois pés sem dor.'],
+    evitar:['Saltos, sprints e travagens fortes.','Agachamentos profundos com muita carga.','Treino pesado do quadríceps em dias seguidos.'],
+    ex:[['Bicicleta estática em intensidade leve','1','10 min','—','Cardio'],['Isométrico de quadríceps na leg press','4','30s','90s','Pernas','Ângulos de 40-60° de flexão do joelho, carga pesada mas sem dor.'],['Ponte de glúteos unilateral com pé na fitball','3','8','60s','Glúteos'],['Elevação de gémeos unipodal','3','12','45s','Gémeos'],['Prancha lateral','2','30s','45s','Core']] },
+  { nome:'Fase 2 — Força pesada e lenta', sem:6, freq:3,
+    obj:['Força do quadríceps e do tendão com carga pesada e lenta.','Força dos glúteos e dos isquiotibiais.','Dias de carga alta espaçados.'],
+    criterios:['Agachamento unilateral em plano inclinado sem dor ou com dor ≤ 3/10 estável.','Dor estável 24-48 h depois.','Sem reação nos saltos curtos de teste.'],
+    evitar:['Dois dias de carga alta seguidos.','Saltos pesados.'],
+    sess:[
+    { n:'Sessão A (carga alta)', ex:[['Agachamento unilateral em plano inclinado','3','8','90s','Pernas','Descer em 3 s e subir em 3 s, só até onde não há dor.'],['Extensão de joelho com carga lenta','3','8','75s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Elevação de gémeos unipodal','3','12','45s','Gémeos']] },
+    { n:'Sessão B (carga baixa)', ex:[['Isométrico de quadríceps na leg press','3','30s','90s','Pernas'],['Hip thrust unilateral','3','8','60s','Glúteos'],['Prancha lateral','2','35s','45s','Core'],['Pé curto (short foot)','2','5 x 5s','30s','Pés']] }
+    ]},
+  { nome:'Fase 3 — Energia elástica e regresso', sem:4, freq:3,
+    obj:['Reintroduzir saltos e travagens de forma gradual.','Aterragem controlada.','Voltar ao treino completo da modalidade.'],
+    criterios:['Pogo, saltos curtos e aterragens sem reação no dia seguinte.','Treino completo sem dor.','Força e saltos próximos do lado são ou da linha de base.'],
+    evitar:['Aumentar saltos e corridas na mesma semana.','Sessões de alta carga em dias seguidos.'],
+    sess:[
+    { n:'Sessão A (carga alta)', ex:[['Pogo (saltos curtos de tornozelo)','3','10','45s','Pernas'],['Salto em comprimento com aterragem unipodal','2','6','75s','Pernas'],['Agachamento unilateral até ao banco','3','8','75s','Pernas'],['Desaceleração: corrida curta e travagem','3','4','60s','Pernas'],['Prancha lateral','2','35s','45s','Core']] },
+    { n:'Sessão B (carga baixa)', ex:[['Extensão de joelho com carga lenta','3','8','75s','Pernas'],['Peso morto romeno unilateral com haltere leve','3','8','75s','Pernas'],['Elevação de gémeos unipodal','3','12','45s','Gémeos']] }
+    ]}
+  ]}
+];
+PROTOCOLOS.push(...PREVPROT, ...REABPROT);
+PATOLOGIAS.isquio = { nome:'Lesão muscular dos isquiotibiais', contra:'sprint, saltos e alongamento forte nas primeiras fases', dias:3, series:3, reps:['8-12','10-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:10, maq:true, grp:'Músculo-esqueléticas',
+  ex:/sprint|skipping|salto|jump|burpee|box|pliometr/,
+  avisos:['Lesão muscular dos isquiotibiais: começar com isométricos sem dor, avançar para excêntrico e velocidade por critérios (sem reação em 24 h, amplitude completa, força ≥ 85% do lado são) e só depois voltar ao sprint.','Dor súbita e forte atrás da coxa, hematoma extenso ou dor em repouso precisam de avaliação médica.'] };
+PATOLOGIAS.patelar = { nome:'Tendinopatia patelar', contra:'saltos, sprints e travagens fortes, agachamento profundo pesado', dias:3, series:3, reps:['8-12','10-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:10, maq:true, grp:'Ombro e joelho',
+  ex:/salto|jump|burpee|skipping|corda|box|pliometr|sprint|corrida|pistol|wall ball|agachamento profundo|agachamento completo/,
+  avisos:['Tendinopatia patelar: o tendão responde a carga. Reduzir saltos e travagens fortes, usar isométricos e força lenta e pesada, e espaçar os dias de carga alta (3-4 dias).','Dor súbita e intensa com incapacidade de estender o joelho pode indicar rotura e exige avaliação médica.'] };
+
+// ---------- SECÇÃO «PREVENÇÃO E REABILITAÇÃO» (interface) ----------
+const PREV_REG = [['cervical','Pescoço'],['ombro','Ombro'],['cotovelo','Cotovelo e punho'],['tronco','Coluna e tronco'],['anca','Anca e virilha'],['coxa','Coxa (isquiotibiais, quadríceps)'],['joelho','Joelho'],['tornozelo','Tornozelo e pé'],['canela','Canela e tendão de Aquiles']];
+const PREV_REG_PROTO = { cervical:'prev-ombro', ombro:'prev-ombro', cotovelo:'prev-ombro', tronco:'prev-core', anca:'prev-anca', coxa:'prev-isquio', joelho:'prev-joelho', tornozelo:'prev-tornozelo', canela:'prev-corredor' };
+const PREV_TIPOS = [['muscular','Muscular'],['tendao','Tendão'],['ligamento','Ligamento ou articulação'],['osso','Osso (fratura de stress)'],['outro','Outro']];
+const PREV_ESTADOS = [['ativa','Ativa'],['reab','Em reabilitação'],['recuperada','Recuperada']];
+const PREV_AQ_EX = {
+  coxa:['Nórdico de isquiotibiais','Prancha lateral','Agachamento unilateral até ao banco','Elevação de gémeos unipodal','Copenhagen plank'],
+  joelho:['Afundo em caminhada','Agachamento unilateral até ao banco','Salto lateral unipodal (skater hop)','Nórdico de isquiotibiais','Abdução da anca deitado de lado'],
+  tornozelo:['Eversão do tornozelo com elástico','Elevação de gémeos unipodal','Equilíbrio unipodal de olhos fechados','Pé curto (short foot)'],
+  ombro:['Rotação externa do ombro a 90° com elástico','Abdução horizontal em prono (Y/T)','Flexão com protração escapular (push-up plus)','Isométrico cervical (flexão, extensão e lateral)'],
+  cervical:['Isométrico cervical (flexão, extensão e lateral)','Abdução horizontal em prono (Y/T)','Flexão com protração escapular (push-up plus)'],
+  cotovelo:['Rotação do antebraço com martelo (pronação e supinação)','Extensão do punho com haltere','Flexão do punho com haltere','Rotação externa do ombro a 90° com elástico'],
+  tronco:['Prancha lateral','Prancha com elevação de braço','Bird dog','Pallof press'],
+  anca:['Copenhagen plank','Adução da anca com elástico','Abdução da anca deitado de lado','Afundo lateral'],
+  canela:['Elevação de gémeos unipodal','Elevação de gémeos sentado (sóleo)','Pé curto (short foot)','Pogo (saltos curtos de tornozelo)']
+};
+// teste: tipo 'min' (passa se valor ≥ critério), 'max' (passa se valor ≤ critério), 'sn' (sim = problema)
+const PREV_TESTES = [
+  { k:'flex', nome:'Resistência dos flexores do tronco (sentado a 55-60°, sem apoio)', tipo:'min', crit:150, unid:'s', reg:['tronco'], txt:'Referência do caso de estudo de hóquei de elite: mais de 2,5 min (150 s). Em clientes gerais, usar como comparação ao longo do tempo.' },
+  { k:'side', nome:'Prancha lateral (média dos dois lados)', tipo:'min', crit:120, unid:'s', reg:['tronco','anca'], txt:'Referência do mesmo caso de estudo: mais de 2 min. Comparar também os dois lados e reavaliar após 4 semanas.' },
+  { k:'arm', nome:'Prancha com elevação de braço (n.º de compensações)', tipo:'max', crit:0, unid:'erros', reg:['tronco'], txt:'Observar rotação da bacia, ombro a subir ou lombar a ceder. Zero compensações é o critério do caso de estudo.' },
+  { k:'ham', nome:'Rácio isquiotibiais excêntricos / quadríceps concêntricos (dinamómetro)', tipo:'min', crit:0.9, unid:'rácio', reg:['coxa','joelho'], txt:'Um rácio abaixo de 0,9 associou-se a maior risco de lesão do LCA. Só com dinamómetro isocinético.' },
+  { k:'sim', nome:'Simetria entre pernas (salto unipodal, 3 saltos, step-up), %', tipo:'min', crit:90, unid:'%', reg:['joelho','coxa','tornozelo'], txt:'Diferença entre lados inferior a 10% (simetria ≥ 90%). Menor lado ÷ maior lado × 100.' },
+  { k:'valgo', nome:'Aterragem com joelho a cair para dentro ou pouco fletido', tipo:'sn', reg:['joelho'], txt:'Observar uma aterragem de salto em vídeo ou ao vivo: valgo e pouca flexão do joelho aumentam o risco de lesão do LCA.' },
+  { k:'dorsi', nome:'Dorsiflexão do tornozelo ou extensão da anca limitadas', tipo:'sn', reg:['canela','tornozelo','anca'], txt:'Mobilidade limitada nestas articulações associa-se a tendinopatia de Aquiles, fascite plantar e dor patelar.' },
+  { k:'pico', nome:'Aumento recente e rápido da carga (treino, corrida, jogos) ou regresso após pausa', tipo:'sn', reg:['canela','tornozelo','joelho','ombro'], txt:'Picos de carga depois de períodos de pouco treino estão ligados a tendinopatias e fraturas de stress.' },
+  { k:'mono', nome:'Semanas muito iguais e carga alta (monotonia > 2,0)', tipo:'sn', reg:[], txt:'Variar a carga ao longo da semana reduz o risco de lesão e doença (conceito de Foster citado no livro).' }
+];
+const PREV_RTP = [
+  { f:'A — da carga aguda à carga progressiva', it:['Dor ausente nas atividades do dia a dia.','Amplitude de movimento sem dor com ≥ 75% do lado são.','Contração isométrica sem dor em amplitude interna, média e externa.','Sinais inflamatórios resolvidos (sem inchaço, calor ou rigidez matinal marcada).'] },
+  { f:'B — do treino de reabilitação ao treino da modalidade', it:['Sem reação (dor ou rigidez) nas 24 h a seguir à reabilitação.','Amplitude completa sem dor.','Força sem dor ≥ 85% do lado são.','Tarefas desportivas de baixa velocidade iniciadas (corrida leve, pontapés, lançamentos suaves).'] },
+  { f:'C — do treino à competição', it:['Treino completo em intensidade de competição, com marcadores iguais aos da linha de base (velocidade, salto, distância).','Força, potência e capacidade ≥ 90% do lado são ou da linha de base.','Resistência à fadiga muscular e metabólica própria da modalidade.','Confiança e técnica: o atleta usa a zona lesionada sem a proteger.'] }
+];
+const PREV_RTP_TESTES = [['isom','Força isométrica (kg ou N)','maior'],['salto','Salto unipodal (cm)','maior'],['hop','3 saltos unipodais em distância (m)','maior'],['step','Step-up ou peso morto unilateral (kg ou repetições)','maior'],['rom','Amplitude de movimento (graus)','maior']];
+const PREV_PRINC = [
+  ['O que é prevenção', 'Prevenir lesões é reduzir a probabilidade e a gravidade, não eliminar. Uma lesão é um dano numa estrutura (músculo, tendão, ligamento, osso) que prejudica a função. O objetivo é que o atleta continue a treinar e a competir durante anos.'],
+  ['Trauma e sobrecarga', 'A lesão acontece quando a força aplicada passa a tolerância do tecido: de uma só vez (entorse, rotura, luxação) ou ao longo do tempo por falta de recuperação (tendinopatia, fratura de stress). As lesões traumáticas podem ser por contacto direto, indireto ou sem contacto (por exemplo, travar e rodar).'],
+  ['Fatores de risco', 'Força aplicada, técnica (valgo do joelho, aterragem na ponta do pé), progressão da carga (rápida de mais ou lenta de mais), nível de condição física, experiência na modalidade e, acima de tudo, lesão anterior. Conhecer o mecanismo é o primeiro passo para escolher o exercício.'],
+  ['Duas formas de proteger', '1) Reduzir o stress que chega ao tecido: escolher bons padrões de movimento e gerir a fadiga. 2) Aumentar o que o tecido tolera: força, trabalho excêntrico, mais capacidade. Ligamentos adaptam-se pouco, por isso protege-se sobretudo pelo controlo do movimento; músculos e tendões respondem ao treino.'],
+  ['Especificidade, sobrecarga e progressão', 'O corpo adapta-se ao que lhe é pedido (princípio SAID): se o gesto é travar e saltar, o programa tem de incluir travagem e saltos. Sem sobrecarga não há adaptação; sem progressão há estagnação; progressão demasiado rápida aumenta o risco.'],
+  ['Excêntrico, velocidade e travagem', 'A maior parte das lesões acontece quando o músculo trava o corpo (desaceleração, aterragem, mudança de direção). Treinar o músculo a alongar com força (excêntrico) e à velocidade da modalidade é uma proteção específica. Treinar só devagar não prepara para o gesto rápido.'],
+  ['Desenho do programa em 5 passos', '1) Análise de necessidades (modalidade, anatomia, história de lesões, objetivos). 2) Seleção: cerca de 4 a 6 exercícios de força, 3 a 4 pliométricos e até 4 especiais (agilidade, flexibilidade, aeróbio). 3) Frequência: fora de época 4 sessões por semana, pré-época 3, em época 2. 4) Timing: no aquecimento antes do treino ou em sessões próprias fora de época. 5) Intensidade e volume: força com carga alta (cerca de 80% de 1 RM ou mais) e complexidade crescente; no total, pelo menos cerca de 30 min por semana.'],
+  ['Aquecimento em 3 passos', 'Geral (5 a 10 min leves), de prevenção (1 a 2 séries de 10 de 3 a 5 exercícios, sem fadiga) e específico da modalidade (por exemplo, 3 a 5 repetições de 30 m). O alongamento estático antes do esforço reduz temporariamente a potência e não é necessário se a amplitude já chega para a modalidade; quando se faz, fica melhor depois da atividade.'],
+  ['Modelo de risco por atleta', 'Escolher a lesão frequente da modalidade, perceber o mecanismo, identificar o fator de risco físico, escolher um teste simples e um critério, treinar e voltar a testar. Exemplo: ACL e rácio de força dos isquiotibiais; lombar e resistência do tronco.'],
+  ['Gestão da carga e da fadiga', 'Fadiga reduz força, reação e controlo articular. Variar a carga durante a semana, evitar semanas todas iguais e acompanhar a resposta do atleta (CMJ, sono e bem-estar na aba Monitorização) reduz o risco.'],
+  ['Reabilitação como reacondicionamento', 'Em vez de esperar que a lesão sare para treinar, treinar em volta da lesão desde cedo, respeitando a cicatrização. O cérebro aprende padrões de movimento: manter exercícios funcionais com a carga certa preserva a qualidade do movimento. Evita-se decidir só pelo calendário: avança-se por critérios.'],
+  ['Regresso ao desempenho, não só ao jogo', 'Voltar ao treino é fácil; manter-se a competir é mais difícil. O regresso deve exigir movimento sem dor próprio da modalidade, força e potência recuperadas, resistência à fadiga e confiança. A prevenção continua depois do regresso: a lesão anterior é o maior fator de risco.']
+];
+
+// ---------- dados por cliente ----------
+function prevData(cid){ DATA.prev = DATA.prev || {}; if(!DATA.prev[cid]) DATA.prev[cid] = { hist:[], t:{}, rtp:{}, sim:{} }; const d = DATA.prev[cid]; d.hist = d.hist||[]; d.t = d.t||{}; d.rtp = d.rtp||{}; d.sim = d.sim||{}; return d; }
+function prevReabFor(reg, tipo){
+  if(reg==='coxa' && tipo==='muscular') return 'reab-isquio';
+  if(reg==='joelho' && tipo==='tendao') return 'reab-patelar';
+  if(reg==='joelho' && tipo==='ligamento') return 'lca';
+  if(reg==='joelho') return 'joelho-patelofemoral';
+  if(reg==='tornozelo' && tipo==='ligamento') return 'entorse';
+  if(reg==='canela' && tipo==='tendao') return 'aquiles';
+  if(reg==='ombro' && tipo==='tendao') return 'ombro-subacromial';
+  if(reg==='tronco') return 'lombalgia';
+  if(reg==='cervical') return 'cervicalgia';
+  return '';
+}
+let prevTab = 'principios';
+try{ prevTab = localStorage.getItem('ciclo_prev_tab') || 'principios'; }catch(e){}
+let prevCid = '';
+function prevSetTab(t){ prevTab = t; try{ localStorage.setItem('ciclo_prev_tab', t); }catch(e){} renderPrev(); }
+function prevSetCid(v){ prevCid = v; renderPrev(); }
+function prevGoProto(id, kind){
+  protoKind = kind; try{ localStorage.setItem('ciclo_proto_kind', kind); }catch(e){}
+  const sel = document.getElementById('proto-grupo'); if(sel) sel.innerHTML = '';
+  document.querySelector('.rail-btn[data-view="protocolos"]').click();
+  renderProtocolos();
+  setTimeout(()=>{ const d = document.querySelector('#protocolos-list details[data-id="'+id+'"]'); if(d){ d.open = true; d.scrollIntoView({block:'start'}); } }, 50);
+}
+function prevCliSel(){
+  if(!DATA.clients.length) return '<div class="view-sub">Adiciona um cliente para usar esta secção.</div>';
+  if(!prevCid || !DATA.clients.some(c=>c.id===prevCid)) prevCid = DATA.clients[0].id;
+  return `<div class="field"><label>Cliente</label><select onchange="prevSetCid(this.value)">${DATA.clients.map(c=>`<option value="${c.id}" ${c.id===prevCid?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div>`;
+}
+function prevAddHist(){
+  const g = id=>document.getElementById(id).value;
+  const d = prevData(prevCid);
+  d.hist.push({ id: uid(), reg: g('prev-h-reg'), tipo: g('prev-h-tipo'), data: g('prev-h-data'), estado: g('prev-h-estado'), nota: g('prev-h-nota').trim() });
+  saveData();
+}
+function prevDelHist(id){ const d = prevData(prevCid); d.hist = d.hist.filter(h=>h.id!==id); if(d.rtp) delete d.rtp[id]; saveData(); }
+function prevSetEstado(id, v){ const h = prevData(prevCid).hist.find(x=>x.id===id); if(h){ h.estado = v; saveData(); } }
+function prevSetT(k, v){ const d = prevData(prevCid); const s = String(v).trim().replace(',', '.'); if(s==='') delete d.t[k]; else d.t[k] = s; saveData(); }
+function prevTesteRes(t, v){
+  if(v===undefined || v==='') return null;
+  if(t.tipo==='sn') return v==='sim' ? 'falha' : 'ok';
+  const n = parseFloat(v); if(isNaN(n)) return null;
+  return (t.tipo==='min' ? n>=t.crit : n<=t.crit) ? 'ok' : 'falha';
+}
+function prevRegioes(cid){
+  const d = prevData(cid), out = {};
+  const add = (r, why)=>{ (out[r] = out[r] || []).push(why); };
+  d.hist.forEach(h=>add(h.reg, 'lesão anterior' + (h.estado==='recuperada' ? ' (recuperada: prevenir recidiva)' : ' (' + (PREV_ESTADOS.find(e=>e[0]===h.estado)||[])[1].toLowerCase() + ')')));
+  PREV_TESTES.forEach(t=>{ if(prevTesteRes(t, d.t[t.k])==='falha') t.reg.forEach(r=>add(r, 'abaixo do critério: ' + t.nome.split(' (')[0])); });
+  return out;
+}
+function prevCreateAquecimento(){
+  const regs = [...document.querySelectorAll('.prev-aq-reg:checked')].map(c=>c.value);
+  if(!regs.length){ alert('Escolhe pelo menos uma região.'); return; }
+  const fake = { g:'Pernas', mod:'Funcional' };
+  const seen = new Set();
+  const lista = [];
+  regs.forEach(r=>(PREV_AQ_EX[r]||[]).forEach(n=>{ if(!seen.has(n) && lista.length<5){ seen.add(n); lista.push(n); } }));
+  const rows = [
+    ['Atividade geral leve (corrida ou bicicleta)', '1', '5-10 min', '—', 'Cardio', 'Intensidade leve, para subir a temperatura e a frequência cardíaca.'],
+    ...lista.map(n=>[n, '2', /plank|prancha|isom|equil[ií]brio|short foot|p[eé] curto|pallof|bird/i.test(n) ? '20-30s' : '10', '30s', 'Pernas']),
+    ['Aceleração progressiva de 30 m', '3', '30 m', '45s', 'Cardio', 'Aumentar a velocidade de forma gradual, sem chegar ao máximo.']
+  ];
+  const nomes = regs.map(r=>(PREV_REG.find(x=>x[0]===r)||[])[1]).join(', ');
+  const w = { id: uid(), nome: 'Aquecimento de prevenção — ' + nomes, patologia:'', patologias:[], protocolo:'prev-aq',
+    exercicios: rows.map(x=>({ exId: protoEnsureEx(x, fake), series: x[1], reps: x[2], carga: '', descanso: x[3], met: '' })) };
+  DATA.workouts.push(w);
+  saveData();
+  alert('Treino criado: «' + w.nome + '». Está no separador Treinos.');
+}
+
+// ---------- apresentação ----------
+function prevTabsHtml(){
+  const tabs = [['principios','Princípios'],['triagem','Triagem e risco'],['programas','Programas de prevenção'],['reab','Reabilitação'],['rtp','Regresso ao desempenho']];
+  return '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">' + tabs.map(([k,l])=>`<button class="btn ${prevTab===k?'btn-primary':''}" onclick="prevSetTab('${k}')">${l}</button>`).join('') + '</div>';
+}
+function prevHtmlPrincipios(){
+  return `<div class="view-sub" style="margin-bottom:10px;">Resumo dos princípios dos dois livros de referência, reescrito para a prescrição. Serve de base aos protocolos desta secção.</div>` +
+    PREV_PRINC.map(([t,x])=>`<details class="proto"><summary><span class="proto-t">${esc(t)}</span></summary><div class="proto-body"><p class="proto-p">${esc(x)}</p></div></details>`).join('') +
+    `<div class="proto-aviso">${esc(PREV_FONTE)}</div>`;
+}
+function prevHtmlTriagem(){
+  const sel = prevCliSel();
+  if(!DATA.clients.length) return sel;
+  const d = prevData(prevCid);
+  const opts = arr=>arr.map(([k,l])=>`<option value="${k}">${esc(l)}</option>`).join('');
+  const hist = d.hist.length ? d.hist.slice().sort((a,b)=>String(b.data||'').localeCompare(String(a.data||''))).map(h=>{
+    const rp = prevReabFor(h.reg, h.tipo);
+    return `<div class="list-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--line);">
+      <div style="flex:1; min-width:200px;"><strong>${esc((PREV_REG.find(r=>r[0]===h.reg)||[])[1]||h.reg)}</strong> · ${esc((PREV_TIPOS.find(t=>t[0]===h.tipo)||[])[1]||'')}${h.data?' · '+esc(formatDate(h.data)):''}${h.nota?'<div class="view-sub" style="font-size:12.5px;">'+esc(h.nota)+'</div>':''}</div>
+      <div class="field" style="margin:0; width:170px;"><select onchange="prevSetEstado('${h.id}', this.value)">${PREV_ESTADOS.map(([k,l])=>`<option value="${k}" ${h.estado===k?'selected':''}>${l}</option>`).join('')}</select></div>
+      ${rp && protoById(rp) && h.estado!=='recuperada' ? `<button class="btn btn-sm" onclick="prevGoProto('${rp}','pat')">Protocolo de reabilitação</button>` : ''}
+      <button class="btn btn-sm" onclick="prevDelHist('${h.id}')">Apagar</button></div>`;
+  }).join('') : '<div class="view-sub">Sem lesões registadas para este cliente.</div>';
+  const testes = PREV_TESTES.map(t=>{
+    const v = d.t[t.k], r = prevTesteRes(t, v);
+    const cor = r==='ok' ? '#3a9d5d' : r==='falha' ? '#c0533a' : 'transparent';
+    const critTxt = t.tipo==='sn' ? '' : (t.tipo==='min' ? '≥ ' : '≤ ') + String(t.crit).replace('.', ',') + ' ' + t.unid;
+    const inp = t.tipo==='sn'
+      ? `<div class="field" style="margin:0; width:110px;"><select onchange="prevSetT('${t.k}', this.value)"><option value="">—</option><option value="nao" ${v==='nao'?'selected':''}>Não</option><option value="sim" ${v==='sim'?'selected':''}>Sim</option></select></div>`
+      : `<div class="field" style="margin:0; width:110px;"><input type="text" inputmode="decimal" value="${esc(v===undefined?'':String(v).replace('.', ','))}" onchange="prevSetT('${t.k}', this.value)" placeholder="${esc(t.unid)}"></div>`;
+    return `<div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap; padding:8px 0; border-top:1px solid var(--line);">
+      <div style="flex:1; min-width:220px;"><strong>${esc(t.nome)}</strong>${critTxt?' <span class="view-sub">(critério '+critTxt+')</span>':''}<div class="view-sub" style="font-size:12.5px;">${esc(t.txt)}</div></div>
+      ${inp}<span style="width:12px; height:12px; border-radius:50%; background:${cor}; margin-top:6px;" title="${r==='ok'?'Dentro do critério':r==='falha'?'Fora do critério':''}"></span></div>`;
+  }).join('');
+  const regs = prevRegioes(prevCid);
+  const regKeys = Object.keys(regs);
+  const prio = regKeys.length ? regKeys.map(r=>{
+    const pid = PREV_REG_PROTO[r], p = pid && protoById(pid);
+    return `<div style="padding:8px 0; border-top:1px solid var(--line);"><strong>${esc((PREV_REG.find(x=>x[0]===r)||[])[1])}</strong> — ${esc(regs[r].join('; '))}${p?`<div style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-sm btn-primary" onclick="openProtoModal('${pid}')">Criar ciclo: ${esc(p.nome.split(' (')[0])}</button><button class="btn btn-sm" onclick="prevGoProto('${pid}','prev')">Ver protocolo</button></div>`:''}</div>`;
+  }).join('') : '<div class="view-sub">Sem regiões a destacar. Regista lesões anteriores e testes para a app propor programas.</div>';
+  return sel + `
+    <h3 style="margin:14px 0 6px;">Regiões a priorizar</h3>${prio}
+    <h3 style="margin:18px 0 6px;">Lesões anteriores e atuais</h3>
+    <div class="view-sub">A lesão anterior é o maior fator de risco para voltar a lesionar e para lesionar outra zona. Mesmo recuperada, convém manter a prevenção.</div>
+    ${hist}
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-top:10px;">
+      <div class="field" style="margin:0;"><label>Região</label><select id="prev-h-reg">${opts(PREV_REG)}</select></div>
+      <div class="field" style="margin:0;"><label>Tipo de lesão</label><select id="prev-h-tipo">${opts(PREV_TIPOS)}</select></div>
+      <div class="field" style="margin:0;"><label>Data</label><input id="prev-h-data" type="date"></div>
+      <div class="field" style="margin:0;"><label>Estado</label><select id="prev-h-estado">${opts(PREV_ESTADOS)}</select></div>
+      <div class="field" style="margin:0;"><label>Nota</label><input id="prev-h-nota" type="text" placeholder="Opcional"></div></div>
+    <div style="margin-top:8px;"><button class="btn btn-primary" onclick="prevAddHist()">Adicionar lesão</button></div>
+    <h3 style="margin:18px 0 6px;">Testes e fatores de risco</h3>
+    <div class="view-sub">Liga cada teste ao critério. Valores fora do critério destacam a região no topo. Os critérios vêm dos livros e alguns de estudos com atletas de elite: ajusta à população do cliente e usa a avaliação clínica quando necessário.</div>
+    ${testes}
+    <div class="proto-aviso">${esc(PREV_FONTE)}</div>`;
+}
+function prevHtmlProgramas(){
+  const aq = `<details class="proto" open><summary><span class="proto-t">Aquecimento de prevenção em 3 passos</span><span class="proto-m">Geral, de prevenção e específico</span></summary><div class="proto-body">
+    <p class="proto-p">${esc(PREV_AQ)}</p>
+    <p class="proto-p"><strong>Cria um treino de aquecimento</strong> com as regiões que queres proteger:</p>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">${PREV_REG.map(([k,l])=>`<label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" class="prev-aq-reg" value="${k}"> ${esc(l)}</label>`).join('')}</div>
+    <button class="btn btn-primary" onclick="prevCreateAquecimento()">Criar treino de aquecimento</button></div></details>`;
+  const progs = PREVPROT.map(p=>{
+    const f = p.fases.map(fa=>`<tr><td>${esc(fa.nome.replace(/^Fase \d — /,''))}</td><td>${protoSess(fa).length}×/semana</td><td>${protoSess(fa).reduce((a,s)=>a+s.ex.length,0)} exercícios</td></tr>`).join('');
+    return `<details class="proto"><summary><span class="proto-t">${esc(p.nome)}</span><span class="proto-m">${p.fases.length} fases por época desportiva</span></summary><div class="proto-body">
+      <p class="proto-p">${esc(p.resumo)}</p><p class="proto-p"><strong>Quando usar:</strong> ${esc(p.quando)}</p>
+      <table class="proto-t2">${f}</table>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;"><button class="btn btn-primary" onclick="openProtoModal('${p.id}')">Criar ciclo para um cliente</button><button class="btn" onclick="prevGoProto('${p.id}','prev')">Ver exercícios e critérios</button></div>
+    </div></details>`;
+  }).join('');
+  return `<div class="view-sub" style="margin-bottom:10px;">Programas por região e por época desportiva. Cada um cria o treino de uma fase ou o ciclo completo, com ajuste às patologias e ao equipamento do cliente.</div>${aq}${progs}<div class="proto-aviso">${esc(PREV_AVISO)}</div>`;
+}
+function prevHtmlReab(){
+  const tabela = (cab, linhas)=>`<table class="proto-t2"><tr>${cab.map(c=>`<td><strong>${esc(c)}</strong></td>`).join('')}</tr>${linhas.map(l=>`<tr>${l.map(c=>`<td style="white-space:normal;">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  const btn = (id,kind)=>protoById(id) ? `<button class="btn btn-sm" onclick="prevGoProto('${id}','${kind||'pat'}')">${esc(protoById(id).nome.split(' (')[0])}</button>` : '';
+  return `<div class="view-sub" style="margin-bottom:10px;">Modelos de reabilitação por tipo de tecido, com fases e critérios de saída. Avança-se por critérios, não por calendário.</div>
+  <details class="proto" open><summary><span class="proto-t">Lesão muscular (distensão)</span><span class="proto-m">3 fases: carga aguda, carga progressiva, regresso ao desempenho</span></summary><div class="proto-body">
+    <p class="proto-p">Mecanismo típico: alongamento rápido do músculo com força (travagem), geralmente na junção músculo-tendão. Reparação em fases: hemorragia (horas), inflamação (alguns dias), reparação e remodelação (1-3 semanas) e maturação (meses), mas o músculo pode estar funcional antes de estar totalmente remodelado.</p>
+    ${tabela(['Fase','Objetivo','Critérios para sair'], [
+      ['1. Carga aguda','Proteger sem desligar o músculo: isométricos sem dor, atividade do resto do corpo.','Marcha, escadas e agachamento sem dor; menos rigidez matinal; extensão ativa do joelho sem dor com ≥ 75% do lado são; ponte unilateral isométrica sem dor.'],
+      ['2. Carga progressiva','Aumentar carga, volume, velocidade e complexidade; excêntrico; tronco estável; regresso graduado à corrida.','Sem reação nas 24 h; amplitude completa; força ≥ 85% do lado são; 10 × 50 m a 80% da velocidade máxima; simetria ≥ 80% em peso morto unilateral e step-up.'],
+      ['3. Regresso ao treino e ao desempenho','Força, capacidade, velocidade e técnica; treino completo sob fadiga e pressão.','Treino à intensidade de competição com marcadores iguais aos prévios; força ≥ 90% do lado são ou da linha de base; confiança do atleta.']
+    ])}
+    <p class="proto-p"><strong>Corrida:</strong> começar com 1 dia de corrida e 1 de descanso, passar a 2:1 e depois a 3:1, controlando a resposta no dia seguinte.</p>
+    <p class="proto-p"><strong>Prevenção da recidiva:</strong> recuperar a amplitude; aquecimento completo; excêntrico; trabalhar os sinergistas (glúteo máximo, adutor magno); condicionamento à velocidade da modalidade.</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">${btn('reab-isquio')}${btn('prev-isquio','prev')}</div></div></details>
+  <details class="proto"><summary><span class="proto-t">Tendinopatia</span><span class="proto-m">Estádios e gestão da carga</span></summary><div class="proto-body">
+    <p class="proto-p">O tendão armazena e devolve energia elástica, e responde à carga. A tendinopatia é uma resposta que não se adapta a um excesso de carga, muitas vezes após um pico de carga a seguir a um período de pouco treino. A regeneração depois de uma carga alta demora 2-3 dias.</p>
+    ${tabela(['Estádio','Gestão da carga','Exercício'], [
+      ['Reativo (agudo, mais jovem)','Reduzir muito a carga e as atividades agravantes (1 a 3 semanas); voltar devagar; vigiar a irritabilidade.','Só isométricos, se houver exercício. Má resposta a carga pesada.'],
+      ['De reparação','Evitar atividades agravantes durante 8-12 semanas; corrigir fatores modificáveis; depois, carga em ciclos de 3 dias.','Carga pesada valiosa, com cuidado nas respostas às 24-48 h.'],
+      ['Degenerativo','Pausa curta (por exemplo, 7 dias) e reintroduzir; ciclos de carga de 3-4 dias.','Carga pesada valiosa, enquanto as cargas agravantes estiverem controladas.']
+    ])}
+    <p class="proto-p"><strong>Dias de carga:</strong> alta (saltos, corrida intensa), média e baixa. Os dias de carga alta devem intercalar com dias de carga média e baixa, e a carga que antes era alta pode passar a média ou baixa à medida que o tendão adapta.</p>
+    <p class="proto-p"><strong>Isométricos:</strong> usar carga alta, no máximo 4 sessões por semana (só uma vez em dias seguidos), imediatamente a seguir às atividades de carga alta. Exemplos do livro: elevações de gémeos isométricas com joelho estendido e fletido (Aquiles), leg press isométrica a vários ângulos ou agachamento unilateral em plano inclinado (patelar).</p>
+    <p class="proto-p"><strong>Evitar compressão:</strong> na inserção do tendão de Aquiles, evitar as descidas do calcanhar abaixo do degrau; na virilha, evitar o alongamento forte dos adutores.</p>
+    <p class="proto-p"><strong>Regresso:</strong> andar antes de correr, passadas rápidas a cada 3 dias antes de aumentar velocidade e distância. Para os saltos, passar de duplo apoio a apoio único, de degrau a altura, e treinar a travagem tal como a aceleração.</p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">${btn('reab-patelar')}${btn('aquiles')}${btn('prev-corredor','prev')}</div></div></details>
+  <details class="proto"><summary><span class="proto-t">Ligamento e articulação: reacondicionamento</span><span class="proto-m">Treinar em volta da lesão, com critérios</span></summary><div class="proto-body">
+    <p class="proto-p">Em lesões graves (por exemplo, LCA), não basta curar a estrutura: o músculo pode ficar inibido (inibição muscular artrogénica) e a perda de força rápida pode manter-se meses. O reacondicionamento procura devolver força, potência e coordenação, de modo a preparar o atleta para as exigências reais da modalidade.</p>
+    <ul>
+      <li>Construir o plano de trás para a frente: começar pelo objetivo final e voltar até à lesão.</li>
+      <li>Treinar o que o atleta pode fazer, desde o início, em vez de se focar no que não pode.</li>
+      <li>Treino de velocidade e agilidade multidirecional (aceleração, desaceleração, mudança de direção) em vez de «corrida contínua» como marco de regresso.</li>
+      <li>Manter o programa de sustentabilidade depois do regresso: força, potência e coordenação durante a época; evitar pausas longas do treino de força.</li>
+      <li>Para regressos à competição: critérios, controlo do volume e comunicação entre fisioterapeuta, treinador e atleta.</li>
+    </ul>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">${btn('lca')}${btn('entorse')}${btn('prev-joelho','prev')}${btn('prev-tornozelo','prev')}</div></div></details>
+  <div class="proto-aviso">${esc(PREV_FONTE)} ${esc(PROTO_AVISO)}</div>`;
+}
+function prevSetRtp(lid, key, on){ const d = prevData(prevCid); d.rtp[lid] = d.rtp[lid] || {}; if(on) d.rtp[lid][key] = 1; else delete d.rtp[lid][key]; saveData(); }
+function prevSetSim(lid, k, side, v){ const d = prevData(prevCid); d.sim[lid] = d.sim[lid] || {}; d.sim[lid][k] = d.sim[lid][k] || {}; const s = String(v).trim().replace(',', '.'); if(s==='') delete d.sim[lid][k][side]; else d.sim[lid][k][side] = s; saveData(); }
+function prevSimPct(a, b){ const x = parseFloat(a), y = parseFloat(b); if(!(x>0) || !(y>0)) return null; return Math.round(Math.min(x,y)/Math.max(x,y)*100); }
+function prevHtmlRtp(){
+  const sel = prevCliSel();
+  if(!DATA.clients.length) return sel;
+  const d = prevData(prevCid);
+  const act = d.hist.filter(h=>h.estado!=='recuperada');
+  if(!act.length) return sel + '<div class="view-sub">Este cliente não tem lesões ativas ou em reabilitação. Regista uma lesão na aba Triagem e risco.</div>';
+  const geral = `<div class="view-sub" style="margin:8px 0;">O regresso ao desporto deve exigir: movimento sem dor próprio da modalidade, força e potência iguais ou superiores às prévias, resistência à fadiga muscular e metabólica, e confiança na técnica. Decidir por critérios, com o médico ou fisioterapeuta, e não pelo calendário.</div>`;
+  const corPct = p=> p===null ? '' : p>=90 ? '#3a9d5d' : p>=80 ? '#c9a227' : '#c0533a';
+  return sel + geral + act.map(h=>{
+    const rp = prevReabFor(h.reg, h.tipo);
+    const chk = d.rtp[h.id] || {}, sm = d.sim[h.id] || {};
+    const fases = PREV_RTP.map((fa,i)=>`<div style="margin-top:10px;"><strong>${esc(fa.f)}</strong>${fa.it.map((it,j)=>{ const key = i+'_'+j; return `<label style="display:flex; gap:8px; align-items:flex-start; margin:4px 0;"><input type="checkbox" ${chk[key]?'checked':''} onchange="prevSetRtp('${h.id}','${key}',this.checked)"><span>${esc(it)}</span></label>`; }).join('')}</div>`).join('');
+    const feitos = fases && PREV_RTP.map((fa,i)=>fa.it.filter((_,j)=>chk[i+'_'+j]).length + '/' + fa.it.length);
+    const lin = PREV_RTP_TESTES.map(([k,l])=>{
+      const s = sm[k] || {}, p = prevSimPct(s.les, s.sao);
+      return `<div style="display:grid; grid-template-columns:1fr 1fr 64px; gap:8px; align-items:center; margin:8px 0;"><span style="grid-column:1/-1;">${esc(l)}</span><div class="field" style="margin:0;"><input type="text" inputmode="decimal" placeholder="lesionado" value="${esc(s.les===undefined?'':String(s.les).replace('.', ','))}" onchange="prevSetSim('${h.id}','${k}','les',this.value)"></div><div class="field" style="margin:0;"><input type="text" inputmode="decimal" placeholder="são" value="${esc(s.sao===undefined?'':String(s.sao).replace('.', ','))}" onchange="prevSetSim('${h.id}','${k}','sao',this.value)"></div><strong style="color:${corPct(p)};">${p===null?'—':p+'%'}</strong></div>`;
+    }).join('');
+    return `<details class="proto" open><summary><span class="proto-t">${esc((PREV_REG.find(r=>r[0]===h.reg)||[])[1]||h.reg)} · ${esc((PREV_TIPOS.find(t=>t[0]===h.tipo)||[])[1]||'')}</span><span class="proto-m">Fases: A ${feitos[0]} · B ${feitos[1]} · C ${feitos[2]}${h.data?' · desde '+esc(formatDate(h.data)):''}</span></summary><div class="proto-body">
+      ${fases}
+      <div style="margin-top:14px;"><strong>Simetria entre lados</strong><div class="view-sub" style="font-size:12.5px;">Introduz o valor do lado lesionado e do lado são. ≥ 90% (diferença < 10%) é a referência para a competição; ≥ 85% para voltar ao treino da modalidade.</div>${lin}</div>
+      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">${rp && protoById(rp) ? `<button class="btn btn-sm" onclick="prevGoProto('${rp}','pat')">Protocolo de reabilitação</button>`:''}${PREV_REG_PROTO[h.reg] ? `<button class="btn btn-sm" onclick="prevGoProto('${PREV_REG_PROTO[h.reg]}','prev')">Prevenção da recidiva</button>`:''}</div>
+    </div></details>`;
+  }).join('') + `<div class="proto-aviso">${esc(PREV_FONTE)}</div>`;
+}
+function renderPrev(){
+  const box = document.getElementById('prev-body'); if(!box) return;
+  const fn = { principios:prevHtmlPrincipios, triagem:prevHtmlTriagem, programas:prevHtmlProgramas, reab:prevHtmlReab, rtp:prevHtmlRtp }[prevTab] || prevHtmlPrincipios;
+  const open = [...box.querySelectorAll('details[open]')].map(d=>d.querySelector('.proto-t') ? d.querySelector('.proto-t').textContent : '');
+  const scroll = window.scrollY;
+  const ae = document.activeElement;
+  box.innerHTML = prevTabsHtml() + fn();
+  if(open.length) box.querySelectorAll('details').forEach(d=>{ const t = d.querySelector('.proto-t'); if(t) d.open = open.includes(t.textContent); });
+  window.scrollTo(0, scroll);
+}
+
 function renderAll(){
   applyPatCustom();
   renderFicha();
@@ -6372,6 +7080,7 @@ function renderAll(){
   renderProtocolos();
   renderCycles();
   renderMonit();
+  renderPrev();
   renderHoje();
 }
 renderAll();
