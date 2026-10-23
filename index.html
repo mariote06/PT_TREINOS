@@ -2710,18 +2710,19 @@ function renderLibrary(){
       <div class="list">` + groups[g].map(e=>`
         <div class="list-row">
           <div style="width:42px; height:42px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--surface-raised); border-radius:var(--radius-s); border:1px solid var(--line);">
-            ${e.imagem ? `<img src="${esc(e.imagem)}" alt="${esc(e.nome)}" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-s);">` : patternIcon(e.padrao)}
+            ${e.imagem ? `<img src="${esc(e.imagem)}" alt="${esc(e.nome)}" style="width:100%; height:100%; object-fit:cover; border-radius:var(--radius-s);">` : (esqExSvg(e, true) || patternIcon(e.padrao))}
           </div>
           <div class="list-row-main">
             <div class="list-row-title">${esc(e.nome)}${(pCur && contraAlert(e,pCur)) ? ` <span class="tag" style="color:var(--danger); border-color:var(--danger);" title="Evitar: ${esc(contraAlert(e,pCur))}">⚠ Contraindicado em ${esc(PATOLOGIAS[pCur].nome)}</span>` : ''}</div>
             <div class="list-row-meta">${esc(exModalidade(e))}${(e.patologias||[]).length ? ' · Indicado para: '+e.patologias.map(k=>esc((PATOLOGIAS[k]||{}).nome||k)).join(', ') : ''} · ${e.equip ? esc(e.equip) : 'Sem equipamento especificado'}${e.padrao ? ' · '+PATTERN_LABELS[e.padrao] : ''} · Músculo: ${esc(exMusculo(e))} · Função: ${esc(exFuncao(e))}${e.notas ? ' · '+esc(e.notas) : ''}</div>
-            ${exLinhasHtml(e)}${exBiomHtml(e)}
+            ${exLinhasHtml(e)}${exEsqHtml(e)}${exBiomHtml(e)}
             ${openVariants.has(e.id) ? `<div style="margin-top:8px;"><div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">${(e.variantes||[]).map((v,i)=>`<span style="display:inline-flex; align-items:center; gap:4px; background:var(--surface-raised); border:1px solid var(--line); border-radius:99px; padding:2px 8px; font-size:12px;">${esc(v)} <button onclick="removeVariant('${e.id}',${i})" style="background:none; border:0; color:var(--chalk-dim); cursor:pointer; padding:0 2px;" aria-label="Remover variante">×</button></span>`).join('') || '<span class="view-sub">Sem variantes ainda.</span>'}</div><input type="text" placeholder="Nova variante + Enter" onkeydown="if(event.key==='Enter'){addVariant('${e.id}',this)}" style="width:100%; max-width:320px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:6px 8px; border-radius:var(--radius-s); font-size:13px;"></div>` : ''}
           </div>
           <div class="list-row-actions">
+            ${esqModelo(e) ? `<button class="btn btn-ghost btn-sm" onclick="toggleEsqEx('${e.id}')">Esquema</button>` : ''}
             <button class="btn btn-ghost btn-sm" onclick="toggleBiom('${e.id}')">Biomecânica</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleVariants('${e.id}')">Variantes (${(e.variantes||[]).length})</button>
-            ${e.videoData ? `<button class="btn btn-ghost btn-sm" onclick="openVideoPlayer('${e.id}')">▶ Ver vídeo</button>` : `<a class="btn btn-ghost btn-sm" href="${e.videoLink ? esc(e.videoLink) : techLink(e.nome)}" target="_blank" rel="noopener">Ver técnica ↗</a>`}
+            ${e.videoData ? `<button class="btn btn-ghost btn-sm" onclick="openVideoPlayer('${e.id}')">▶ Ver vídeo</button>` : (e.videoLink ? `<a class="btn btn-ghost btn-sm" href="${esc(e.videoLink)}" target="_blank" rel="noopener">Vídeo ↗</a>` : '')}
             <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteExercise('${e.id}')">Remover</button>
           </div>
         </div>`).join('') + `</div>
@@ -7686,6 +7687,154 @@ function renderEsq(){
   }
   box.innerHTML = h + '</div>';
 }
+
+// ---------- DESENHOS POR EXERCÍCIO: modelo de ossos com cinemática simples + modelos por movimento ----------
+const ESQ_L = { T:32, H:9, TH:20, SH:20, FT:9, UA:14, FA:14 };
+function esqFK(p){
+  const r = d=>d*Math.PI/180, S = Math.sin, C = Math.cos, L = ESQ_L;
+  const leg = (th, sh)=>{ const k = [L.TH*S(r(th)), L.TH*C(r(th))]; return { k, f:[k[0] + L.SH*S(r(sh)), k[1] + L.SH*C(r(sh))] }; };
+  const l1 = leg(p.th||0, p.sh||0);
+  const hx = p.x, hy = (p.y!=null) ? p.y : (p.floor||96) - l1.f[1];
+  const t = p.t||0;
+  const neck = [hx + L.T*S(r(t)), hy - L.T*C(r(t))];
+  const head = [neck[0] + L.H*S(r(t)), neck[1] - L.H*C(r(t))];
+  const knee = [hx + l1.k[0], hy + l1.k[1]], foot = [hx + l1.f[0], hy + l1.f[1]];
+  const j = { head, neck, hip:[hx,hy], knee, foot, toe:[foot[0]+L.FT, foot[1]] };
+  if(!p.noarm){
+    const u = p.u||0, w = p.w||0;
+    j.elbow = [neck[0] + L.UA*S(r(u)), neck[1] + L.UA*C(r(u))];
+    j.hand = [j.elbow[0] + L.FA*S(r(w)), j.elbow[1] + L.FA*C(r(w))];
+  }
+  if(p.th2!=null){ const l2 = leg(p.th2, p.sh2||0); j.knee2 = [hx + l2.k[0], hy + l2.k[1]]; j.foot2 = [hx + l2.f[0], hy + l2.f[1]]; j.toe2 = [j.foot2[0]+L.FT, j.foot2[1]]; }
+  if(p.prop==='hand' && j.hand) j.plate = j.hand;
+  if(p.prop==='neck') j.plate = [neck[0], neck[1]-2];
+  if(p.prop==='hip') j.plate = [hx, hy-3];
+  if(p.prop==='chest' && j.hand) j.plate = j.hand;
+  return j;
+}
+const ESQ_TPL = {
+  lunge:{ a:{x:58,t:4,th:30,sh:-5,th2:-30,sh2:-30}, b:{x:62,t:4,th:85,sh:-5,th2:-10,sh2:-80}, floor:1 },
+  stepup:{ a:{x:54,t:6,th:55,sh:-8,floor:82,th2:0,sh2:0}, b:{x:82,t:0,th:0,sh:0,floor:82,th2:60,sh2:-20}, lines:[[60,85,106,85,6]] },
+  hipthrust:{ a:{x:64,th:100,sh:0,t:-72,u:70,w:100,prop:'hip'}, b:{x:60,th:70,sh:0,t:-84,u:70,w:100,prop:'hip'}, lines:[[4,78,38,78,6]], floor:1 },
+  bridge:{ a:{x:60,y:90,th:130,sh:-18,t:-90,u:70,w:100}, b:{x:60,y:81,th:105,sh:0,t:-78,u:70,w:100}, floor:1 },
+  pushup:{ a:{x:62,y:79,t:-70.6,th:70.6,sh:70.6,u:0,w:0}, b:{x:62,y:88,t:-82,th:82,sh:82,u:50,w:-70}, floor:1 },
+  tricepspush:{ a:{x:60,t:0,th:0,sh:0,u:4,w:100,prop:'hand'}, b:{x:60,t:0,th:0,sh:0,u:4,w:4,prop:'hand'}, floor:1 },
+  crunch:{ a:{x:70,t:-90,th:120,sh:-10,u:130,w:190}, b:{x:70,t:-55,th:120,sh:-10,u:130,w:190}, floor:1 },
+  calf:{ a:{x:60,t:0,th:0,sh:0,u:0,w:0}, b:{x:60,y:48,t:0,th:0,sh:0,u:0,w:0}, floor:1 },
+  legcurl:{ a:{x:62,y:80,t:-90,th:88,sh:88,noarm:1}, b:{x:62,y:80,t:-90,th:88,sh:170,noarm:1}, lines:[[8,88,84,88,6]] },
+  legext:{ a:{x:38,y:70,t:-8,th:92,sh:2,u:30,w:0}, b:{x:38,y:70,t:-8,th:92,sh:88,u:30,w:0}, lines:[[16,78,52,78,5],[20,44,22,76,4]] },
+  kbswing:{ a:{x:44,t:62,th:12,sh:-10,u:-5,w:-5,prop:'hand'}, b:{x:58,t:0,th:0,sh:0,u:88,w:88,prop:'hand'}, floor:1 },
+  jump:{ a:{x:60,t:30,th:75,sh:-30,u:-40,w:-40}, b:{x:60,y:44,t:0,th:5,sh:8,u:170,w:170}, floor:1 },
+  frontraise:{ a:{x:60,t:0,th:0,sh:0,u:0,w:0,prop:'hand'}, b:{x:60,t:0,th:0,sh:0,u:90,w:90,prop:'hand'}, floor:1 },
+  pallof:{ a:{x:50,t:0,th:0,sh:0,u:35,w:135,prop:'hand'}, b:{x:50,t:0,th:0,sh:0,u:88,w:88,prop:'hand'}, anchor:[116,50], floor:1 },
+  goblet:{ a:{x:60,t:0,th:0,sh:0,u:40,w:150,prop:'chest'}, b:{x:48,t:38,th:98,sh:-28,u:40,w:150,prop:'chest'}, floor:1 },
+  rdl:{ a:{x:58,t:0,th:0,sh:0,u:0,w:0,prop:'hand'}, b:{x:44,t:72,th:12,sh:-5,u:0,w:0,prop:'hand'}, floor:1 },
+  lateral:{ front:true, a:12, b:90 }
+};
+// regras: nome sem acentos -> modelo (ESQ_TPL ou padrão existente em ESQ_POSE)
+const ESQ_REGRAS = [
+  [/elevacao lateral|elevacoes laterais|lateral raise|abducao (de )?ombros?/, 'lateral'],
+  [/elevacao frontal|front raise/, 'frontraise'],
+  [/pallof/, 'pallof'],
+  [/swing/, 'kbswing'],
+  [/salto|jump|pliom/, 'jump'],
+  [/flexoes|flexao de bracos|push.?up/, 'pushup'],
+  [/afundo|lunge|passada|bulgaro|split squat/, 'lunge'],
+  [/step.?up|subidas? (a|ao|na) (caixa|banco)|subir e descer/, 'stepup'],
+  [/hip thrust/, 'hipthrust'],
+  [/ponte|bridge/, 'bridge'],
+  [/leg curl|mesa flexora|cadeira flexora|flexora/, 'legcurl'],
+  [/extensao (de )?(joelho|pernas?|quadriceps)|extensora|leg extension/, 'legext'],
+  [/elevacao de (gemeos|calcanhares)|calf|gemeos/, 'calf'],
+  [/pushdown|tricipe|triceps|extensao de cotovelo|testa|frances/, 'tricepspush'],
+  [/crunch|abdominal|sit.?up/, 'crunch'],
+  [/goblet|taca/, 'goblet'],
+  [/stiff|romeno|\brdl\b/, 'rdl'],
+  [/peso morto|deadlift|terra\b|good morning|bom dia/, 'dobradica'],
+  [/agachamento|squat/, 'agachamento'],
+  [/supino|press de peito|chest press|bench/, 'empurrar_h'],
+  [/press (de ombros|militar)|desenvolvimento|shoulder press|overhead press/, 'empurrar_v'],
+  [/remada alta/, null],
+  [/remada|\brow\b/, 'puxar_h'],
+  [/puxada|pulldown|barra fixa|pull.?up|chin.?up/, 'puxar_v'],
+  [/rosca|curl|biceps|martelo|hammer/, 'isolamento'],
+  [/prancha|plank/, 'core'],
+  [/corrida|\brun\b|sprint|skipping/, 'cardio']
+];
+const ESQ_PADROES_OK = ['agachamento','dobradica','empurrar_h','empurrar_v','puxar_h','puxar_v','core'];
+function esqModelo(e){
+  const n = normText(e.nome || '');
+  if(/leg press|prensa/.test(n)) return null;
+  if(e.padrao==='mobilidade' || e.grupo==='Mobilidade') return null;
+  for(const [re, k] of ESQ_REGRAS) if(re.test(n)) { if(k===null) return null; if((e.padrao==='cardio' || e.grupo==='Cardio') && !['cardio','jump','kbswing'].includes(k)) continue; if(/leg curl|flexora|nordic/.test(n) && k!=='legcurl') continue; return { k, exato:true }; }
+  if(ESQ_PADROES_OK.includes(e.padrao)) return { k:e.padrao, exato:false };
+  return null;
+}
+function esqPoses(k){
+  if(ESQ_TPL[k]){
+    const T = ESQ_TPL[k];
+    if(T.front) return { front:true, a:T.a, b:T.b };
+    return { a:esqFK(T.a), b:esqFK(T.b), lines:T.lines||[], floor:!!T.floor, anchor:T.anchor||null };
+  }
+  const P = ESQ_POSE[k]; if(!P) return null;
+  const lines = [];
+  if(P.bench) lines.push([8,60,74,60,5]);
+  if(P.barra) lines.push([28,8,92,8,4]);
+  return { a:P.a, b:P.b, lines, floor:!!P.floor, anchor:null };
+}
+function esqPts(j){ const o = []; ['head','neck','hip','knee','foot','toe','elbow','hand','knee2','foot2','toe2','elbow2','hand2'].forEach(k=>{ if(j[k]) o.push(j[k]); }); return o; }
+function esqFigFit(j, bb, cell, P, plate){
+  // cell = [largura, altura] da caixa; bb = limites comuns de ambas as poses
+  const w = bb.x1 - bb.x0 + 20, h = bb.y1 - bb.y0 + 20;
+  const s = Math.min(cell[0]/w, cell[1]/h, 1.25);
+  const tx = (cell[0] - (bb.x1 - bb.x0)*s)/2 - bb.x0*s, ty = (cell[1] - (bb.y1 - bb.y0)*s)/2 - bb.y0*s;
+  const pt = a=>a.map(v=>v.toFixed(1)).join(',');
+  const sw = (3.2/s).toFixed(2);
+  let g = `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)}) scale(${s.toFixed(3)})" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">`;
+  if(P.floor) g += `<line x1="${bb.x0-6}" y1="${(bb.fy).toFixed(1)}" x2="${bb.x1+6}" y2="${(bb.fy).toFixed(1)}" stroke-width="${(1.2/s).toFixed(2)}" stroke-opacity=".4"/>`;
+  (P.lines||[]).forEach(l=>{ g += `<line x1="${l[0]}" y1="${l[1]}" x2="${l[2]}" y2="${l[3]}" stroke-width="${(l[4]/s*1).toFixed(2)}" stroke-opacity=".35"/>`; });
+  g += `<circle cx="${j.head[0].toFixed(1)}" cy="${j.head[1].toFixed(1)}" r="6.5"/><polyline points="${pt(j.neck)} ${pt(j.hip)}"/><polyline points="${pt(j.hip)} ${pt(j.knee)} ${pt(j.foot)} ${pt(j.toe)}"/>`;
+  if(j.elbow) g += `<polyline points="${pt(j.neck)} ${pt(j.elbow)} ${pt(j.hand)}"/>`;
+  if(j.knee2) g += `<polyline stroke-opacity=".55" points="${pt(j.hip)} ${pt(j.knee2)} ${pt(j.foot2)} ${pt(j.toe2)}"/>`;
+  if(j.elbow2) g += `<polyline stroke-opacity=".55" points="${pt(j.neck)} ${pt(j.elbow2)} ${pt(j.hand2)}"/>`;
+  if(P.anchor && j.hand) g += `<line x1="${j.hand[0].toFixed(1)}" y1="${j.hand[1].toFixed(1)}" x2="${P.anchor[0]}" y2="${P.anchor[1]}" stroke="var(--ochre, #c9a227)" stroke-width="${(1.6/s).toFixed(2)}" stroke-dasharray="${(4/s).toFixed(1)} ${(3/s).toFixed(1)}"/>`;
+  if(plate && j.plate) g += `<circle cx="${j.plate[0].toFixed(1)}" cy="${j.plate[1].toFixed(1)}" r="${(4.6/Math.max(s,0.8)).toFixed(2)}" fill="var(--ochre, #c9a227)" stroke="none"/>`;
+  return g + '</g>';
+}
+function esqFront(alpha, plate, cell){
+  const h = (side)=>{ const a = alpha*Math.PI/180, x = 60 + side*28*Math.sin(a), y = 26 + 28*Math.cos(a); return [x,y]; };
+  const hl = h(-1), hr = h(1);
+  let g = `<g transform="scale(${(cell[1]/100).toFixed(3)}) translate(${((cell[0]/(cell[1]/100) - 120)/2).toFixed(1)},0)" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><line x1="0" y1="96" x2="120" y2="96" stroke-width="1.2" stroke-opacity=".4"/><circle cx="60" cy="15" r="6.5"/><polyline points="60,22 60,58"/><polyline points="54,96 60,58 66,96"/><polyline points="${hl} 60,26 ${hr}"/>`;
+  if(plate) g += `<circle cx="${hl[0]}" cy="${hl[1]}" r="4.2" fill="var(--ochre, #c9a227)" stroke="none"/><circle cx="${hr[0]}" cy="${hr[1]}" r="4.2" fill="var(--ochre, #c9a227)" stroke="none"/>`;
+  return g + '</g>';
+}
+function esqPlate(e){ const q = normText(e.equip||''); return !(q==='' || q==='peso corporal'); }
+function esqBBox(P){
+  const pts = [...esqPts(P.a), ...esqPts(P.b)]; (P.lines||[]).forEach(l=>{ pts.push([l[0],l[1]],[l[2],l[3]]); }); if(P.anchor) pts.push(P.anchor);
+  const xs = pts.map(p=>p[0]), ys = pts.map(p=>p[1]);
+  const fy = Math.max(...[P.a.foot, P.b.foot, P.a.foot2, P.b.foot2, P.a.hand, P.b.hand].filter(Boolean).map(p=>p[1]), 0);
+  const y1 = Math.max(Math.max(...ys), P.floor ? 96 : 0);
+  return { x0:Math.min(...xs), x1:Math.max(...xs), y0:Math.min(...ys), y1, fy: P.floor ? 96 : y1 };
+}
+function esqExSvg(e, mini){
+  const m = esqModelo(e); if(!m) return '';
+  const plate = esqPlate(e);
+  const P = esqPoses(m.k); if(!P) return '';
+  if(mini){
+    if(P.front) return `<svg viewBox="0 0 120 100" width="42" height="42" style="color:var(--chalk)">${esqFront(P.b, plate, [120,100])}</svg>`;
+    const bb = esqBBox(P);
+    return `<svg viewBox="0 0 120 100" width="42" height="42" style="color:var(--chalk)">${esqFigFit(P.b, bb, [120,100], P, plate)}</svg>`;
+  }
+  const legenda = m.exato ? 'Esquema do movimento' : 'Esquema do padrão (aproximado)';
+  const arrow = `<g stroke="var(--ochre, #c9a227)" stroke-width="2.4" fill="none" stroke-linecap="round"><line x1="124" y1="50" x2="152" y2="50"/><polyline points="146,44 152,50 146,56"/></g>`;
+  let body;
+  if(P.front) body = `<g>${esqFront(P.a, plate, [120,100])}</g>${arrow}<g transform="translate(160,0)">${esqFront(P.b, plate, [120,100])}</g>`;
+  else { const bb = esqBBox(P); body = `<g>${esqFigFit(P.a, bb, [120,100], P, plate)}</g>${arrow}<g transform="translate(160,0)">${esqFigFit(P.b, bb, [120,100], P, plate)}</g>`; }
+  return `<div style="margin-top:8px;"><svg viewBox="0 0 280 100" style="width:100%; max-width:340px; display:block; color:var(--chalk);" role="img" aria-label="${esc(e.nome)}">${body}</svg><div class="view-sub" style="font-size:11.5px;">${legenda}: início → fim${plate ? '. A bola indica a carga.' : '.'}</div></div>`;
+}
+const openEsqEx = new Set();
+function toggleEsqEx(id){ if(openEsqEx.has(id)) openEsqEx.delete(id); else openEsqEx.add(id); renderLibrary(); }
+function exEsqHtml(e){ return openEsqEx.has(e.id) ? esqExSvg(e, false) : ''; }
 
 function renderAll(){
   applyPatCustom();
