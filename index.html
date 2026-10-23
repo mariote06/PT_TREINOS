@@ -530,6 +530,8 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="openPlanModal()">⚡ Gerar plano</button>
           <button class="btn" onclick="openAulasModal()">Aulas de grupo</button>
+          <button class="btn" onclick="document.getElementById('cycle-file').click()">Importar ciclo</button>
+          <input id="cycle-file" type="file" accept=".json,application/json" style="display:none;" onchange="importCycleFile(this)">
           <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com IA</button>
           <button class="btn btn-primary" onclick="openCycleModal()">+ Novo ciclo</button>
         </div>
@@ -3494,6 +3496,69 @@ function importBackup(input){
     }
   };
   reader.onerror = ()=>{ status.textContent = 'Não consegui ler o ficheiro.'; };
+  reader.readAsText(file);
+}
+
+
+// ---------- IMPORTAR CICLO (ficheiro JSON, junta aos dados sem substituir) ----------
+function importCycleFile(input){
+  const file = input.files[0]; input.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let r;
+    try{ r = JSON.parse(reader.result); }catch(e){ alert('Este ficheiro não é um JSON válido.'); return; }
+    if(!r || r.tipo!=='ciclo' || !r.ciclo || !Array.isArray(r.treinos) || !Array.isArray(r.semanas)){
+      alert('Este ficheiro não é um ciclo para importar.'); return;
+    }
+    const nomeCli = (r.cliente && r.cliente.nome) || '';
+    let cl = DATA.clients.find(c=>normText(c.nome)===normText(nomeCli));
+    if(!cl){
+      const n = normText(nomeCli).split(/\s+/);
+      cl = DATA.clients.find(c=>{ const m = normText(c.nome).split(/\s+/); return n.length>1 && m[0]===n[0] && m[m.length-1]===n[n.length-1]; });
+    }
+    const cyNome = r.ciclo.nome || 'Ciclo importado';
+    const msg = `Importar «${cyNome}» (${r.semanas.length} semanas)?\n\nCliente: ${cl ? cl.nome : nomeCli + ' (novo cliente)'}\n\nOs dados atuais mantêm-se; o ciclo e os treinos são acrescentados.`;
+    if(!confirm(msg)) return;
+    if(!cl){
+      cl = { id: uid(), nome: nomeCli || 'Cliente importado', cat: (r.cliente && r.cliente.tipo==='normal') ? 'normal' : 'pt', notas: '' };
+      DATA.clients.push(cl);
+    }
+    const extraNotas = [r.ciclo.contextoClinico ? 'Contexto: ' + r.ciclo.contextoClinico : '', (r.ciclo.evitar||[]).length ? 'Evitar: ' + r.ciclo.evitar.join('; ') : ''].filter(Boolean).join('\n');
+    if(extraNotas && !(cl.notas||'').includes(r.ciclo.contextoClinico||'§')) cl.notas = ((cl.notas||'') + (cl.notas ? '\n' : '') + extraNotas).trim();
+    const nomeT = {}; r.treinos.forEach(t=>nomeT[t.id] = t.nome);
+    const ptCli = isPtClient(cl);
+    const semanas = r.semanas.map((s, wi)=>{
+      const ids = {};
+      Object.keys(s.prescricao||{}).forEach(k=>{
+        const id = uid();
+        DATA.workouts.push({
+          id, nome: `${cyNome} — ${nomeT[k] || ('Treino ' + k)}`,
+          exercicios: (s.prescricao[k]||[]).filter(x=>x.ativo!==false && x.series>0).map(x=>({
+            exId: findOrCreateExercise(x.nome),
+            series: String(x.series), reps: String(x.reps||''),
+            carga: String([x.carga, x.notas].filter(Boolean).join(' — ')),
+            descanso: String(x.descanso||''), met: x.bloco==='Aquecimento' ? 'aquecimento' : ''
+          })).filter(l=>l.exId)
+        });
+        ids[k] = id;
+      });
+      const dias = DIAS.map(()=>({ workoutId: '' }));
+      (s.dias||[]).forEach(d=>{
+        const idx = DIAS.findIndex(n=>normText(n).slice(0,3)===normText(d.dia).slice(0,3));
+        if(idx>=0 && ids[d.treino]){ dias[idx].workoutId = ids[d.treino]; if(ptCli){ dias[idx].pt = true; dias[idx].ptHora = ''; } }
+      });
+      const prog = [s.fase, s.intensidade].filter(Boolean).join(' — ') + (wi===0 && (r.ciclo.criteriosProgressao||[]).length ? ' · Progressão: ' + r.ciclo.criteriosProgressao.join('; ') : '');
+      return { numero: s.semana || wi+1, progressao: prog, dias };
+    });
+    const cy = { id: uid(), nome: cyNome, clientId: cl.id, clientId2: '', inicio: r.ciclo.inicio || new Date().toISOString().slice(0,10),
+      numSemanas: semanas.length, semanas, provaData: '', meta: null, localPT: 'ginasio' };
+    DATA.cycles.push(cy);
+    try{ ptApplyLocal(cy, false); }catch(e){}
+    saveData();
+    alert('Ciclo importado: ' + cyNome + ' (' + cl.nome + ').');
+  };
+  reader.onerror = ()=>alert('Não consegui ler o ficheiro.');
   reader.readAsText(file);
 }
 
