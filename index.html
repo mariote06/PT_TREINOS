@@ -2937,6 +2937,7 @@ function renderWorkouts(){
       ${treinosSelMode ? `<label style="padding:4px 10px 0 0; cursor:pointer;"><input type="checkbox" ${treinosSel.has(w.id)?'checked':''} onchange="treinoSelToggle('${w.id}', this.checked)" style="width:20px; height:20px;"></label>` : ''}
       <div class="list-row-main">
         <div class="list-row-title">${esc(w.nome)}</div>
+        ${(w.evid||[]).length ? `<div class="list-row-meta" style="color:var(--accent, #c9a227);">Critérios de PT aplicados: ${(w.evid||[]).map(esc).join('; ')}.</div>` : ''}
         <div class="list-row-meta">${w.exercicios.map(l=>`${esc(exerciseName(l.exId))}${l.variante?' ('+esc(l.variante)+')':''} — ${l.series}x${l.reps}${l.carga?' @ '+esc(l.carga):''}${l.met?' ['+esc(l.met)+']':''}`).join(' · ')}</div>
       ${openBiomW.has(w.id) ? biomWHtml(w) : ''}
       </div>
@@ -3702,7 +3703,7 @@ function importResult(r, clientId, pick, clientId2, meta){
   r.treinos.forEach(t=>{
     const id = uid();
     workoutIds[t.nome] = id;
-    DATA.workouts.push({
+    const wk = {
       id,
       nome: `${cycleName} — ${t.nome}`,
       exercicios: (t.exercicios||[]).map(x=>({
@@ -3713,7 +3714,14 @@ function importResult(r, clientId, pick, clientId2, meta){
         descanso: String(x.descanso||'60s'),
         met: String(x.met||'')
       })).filter(l=>l.exId)
-    });
+    };
+    DATA.workouts.push(wk);
+    try{
+      const cl = DATA.clients.find(x=>x.id===clientId) || {}, pm = (meta && meta.p) || {};
+      const ks = [...new Set([...(typeof clientPats==='function' ? clientPats(cl) : []), pm.patologia, ...(pm.patologiasExtra||[])].filter(k=>k && PATOLOGIAS[k]))];
+      if(ks.length && !wk.patologias){ wk.patologias = ks; wk.patologia = ks[0]; }
+      ptEvidencia(wk, { obj: pm.objetivo || cl.objetivo || '', nivel: pm.nivel || cl.nivel || 'Intermédio', wi: 0, geral: true, keys: ks });
+    }catch(e){}
   });
 
   const semanas = r.semanas.map((s, i)=>{
@@ -4600,6 +4608,7 @@ function genPtWorkout(cy, wi, local){
         const pObj = (p.prova || p.grupo==='Performance') ? 'Performance' : (p.pat ? 'Reabilitação' : 'Condição física geral');
         const pPerf = ({'p-5k':'corrida5k','p-10k':'corrida10k','p-meia':'meia','p-maratona':'maratona','p-trail':'trail'})[p.id] || '';
         ptAddMobility(keep, pObj, pPerf, keys, casa, home, wi);
+        if(protoKindOf(p)==='treino' && !p.prova) ptEvidencia(keep, { obj: (meta.opt && meta.opt.obj) || c.objetivo || pObj, nivel: (meta.opt && meta.opt.level) || c.nivel || 'Intermédio', wi });
         return keep.id;
       }
     }
@@ -4618,6 +4627,7 @@ function genPtWorkout(cy, wi, local){
   DATA.workouts.push({ id, nome: `${cy.nome} — PT S${sem.numero} (${lab})`, patologias: keys, patologia: keys[0]||'',
     exercicios: (t.exercicios||[]).map(x=>({ exId: findOrCreateExercise(x.exercicio), series: String(x.series||3), reps: String(x.reps||'10'), carga: String(x.carga||''), descanso: String(x.descanso||'60s'), met: String(x.met||'') })).filter(l=>l.exId) });
   ptAddMobility(DATA.workouts[DATA.workouts.length-1], base.objetivo, base.perf || '', keys, casa, home, wi);
+  ptEvidencia(DATA.workouts[DATA.workouts.length-1], { obj: base.objetivo, nivel: base.nivel, wi });
   return id;
 }
 function workoutUsedAnywhere(id){ return DATA.cycles.some(cy=>cy.semanas.some(w=>w.dias.some(d=>d.workoutId===id))); }
@@ -4950,7 +4960,7 @@ function renderCycles(){
           <div style="font-weight:600; font-size:17px;">${esc(cycle.nome)}</div>
           <div class="view-sub">${esc(cycleNames(cycle))}${cycle.clientId2 ? ' (PT Grupo)' : ''}${(cycle.patologias||[]).filter(k=>PATOLOGIAS[k]).length ? ' · '+cycle.patologias.filter(k=>PATOLOGIAS[k]).map(k=>esc(PATOLOGIAS[k].nome)).join(' + ') : ''}${cycle.inicio ? ' · início '+formatDate(cycle.inicio) : ''}</div>
         </div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
           <button class="btn btn-sm" onclick="openAdjust('${cycle.id}')">⚙ Ajustar plano</button>
           <button class="btn btn-sm" onclick="shareCycle('${cycle.id}')">🔗 Enviar ao cliente</button>
           <button class="btn btn-sm" onclick="exportCyclePDF('${cycle.id}')">📄 Exportar PDF</button>
@@ -6487,6 +6497,7 @@ function protoCreateCycle(){
     if(i < fi0) return;
     const nSem = sems[i - fi0];
     const ws = protoMakeWorkouts(p, i, opt);
+    if(protoKindOf(p)==='treino' && !p.prova){ try{ ws.forEach(w=>ptEvidencia(w, { obj: obj || p.nome, nivel: level, wi: 0, geral: true, keys })); }catch(e){} }
     ws.forEach(w=>allW.push(w.id));
     for(let s=1; s<=nSem; s++){
       const dias = layoutDays(protoFitSessions(ws.map(w=>w.id), nFit), dayPick, [clientId, clientId2].some(i=>i && isPtClient(DATA.clients.find(x=>x.id===i))));
@@ -7427,6 +7438,7 @@ function biomWHtml(w){
     const prev = a.sug.map(t=>{ const e = biomPick(t, w); return e ? esc(BIOM_TIPO_NOME[t]) + ': ' + esc(e.nome) : null; }).filter(Boolean);
     if(prev.length) h += `<div style="margin-top:6px;">Sugestão: ${prev.join('; ')}.</div><div style="margin-top:6px;"><button class="btn btn-sm btn-primary" onclick="biomEquilibrar('${w.id}')">Equilibrar o treino</button></div>`;
   }
+  h += `<div style="margin-top:8px;"><button class="btn btn-sm" onclick="ptEvidenciaManual('${w.id}')">Aplicar critérios de PT (ordem, descanso, RIR, aquecimento)</button></div>`;
   return h + '</div>';
 }
 function biomEquilibrar(id){
@@ -7440,6 +7452,107 @@ function biomEquilibrar(id){
   w.nome = String(w.nome).replace(/ \(equilibrado\)$/, '') + ' (equilibrado)';
   saveData();
   alert('Acrescentei ' + n + ' exercício(s) de 2 séries, escolhidos com carga lombar baixa e sem contraindicações do treino.');
+}
+
+// ---------- TREINOS DE PT: critérios de Hough e Schoenfeld (Advanced Personal Training, 2.ª ed.) ----------
+function ptRestSec(s){
+  const t = String(s||'').toLowerCase(); const nums = t.match(/\d+(?:[.,]\d+)?/g); if(!nums) return 0;
+  const n = parseFloat(nums[nums.length-1].replace(',', '.'));
+  return /min|'/.test(t) ? n*60 : n;
+}
+function ptObjTipo(obj, nome){
+  const t = normText((obj||'') + ' ' + (nome||''));
+  if(/forca|performance|potencia/.test(t)) return 'forca';
+  if(/hipertrofia|tonifica|massa/.test(t)) return 'hip';
+  return 'saude';
+}
+function ptRaiseEx(){
+  const nome = 'Aquecimento geral leve (3-5 min)';
+  let e = DATA.exercises.find(x=>x.nome===nome);
+  if(!e){ e = { id: uid(), nome, grupo:'Cardio', equip:'', notas:'Bicicleta, passadeira, remo ou marcha ativa a ritmo fácil, a falar sem esforço. Sobe a temperatura antes de mobilizar e ativar.', padrao:'cardio', modalidade:'Funcional', imagem:'', videoLink:'', videoData:'', variantes:[], patologias:[] }; DATA.exercises.push(e); }
+  return e;
+}
+function ptEvidencia(w, opt){
+  if(!w || !(w.exercicios||[]).length) return;
+  if(w.exercicios.some(l=>l.met==='aquecimento')) return;   // já aplicado
+  opt = opt || {};
+  const tipo = ptObjTipo(opt.obj, w.nome);
+  const nivel = opt.nivel || 'Intermédio';
+  const wi = opt.wi || 0;
+  const ex = l=>DATA.exercises.find(x=>x.id===l.exId) || {};
+  const all = w.exercicios;
+  let a = 0; while(a<all.length && all[a].mob===1) a++;
+  let b = all.length; while(b>a && all[b-1].mob===1) b--;
+  let pre = all.slice(0, a), core = all.slice(a, b), pos = all.slice(b);
+  const strength = core.filter(l=>{ const e = ex(l); return e.padrao && e.padrao!=='cardio' && e.padrao!=='mobilidade' && !l.met; });
+  if(strength.length < 3) return;     // só treinos de força e hipertrofia
+  const notas = [];
+  const COMP = ['agachamento','dobradica','empurrar_h','empurrar_v','puxar_h','puxar_v'];
+  const isComp = e=>COMP.includes(e.padrao) && !/Estabilidade|Reabilita|Mobilidade/.test(exFuncao(e));
+  const prio = l=>{ const e = ex(l); if(l.met || e.padrao==='cardio') return 3; if(isComp(e)) return 0; if(e.padrao==='isolamento' || COMP.includes(e.padrao)) return 1; if(e.padrao==='core') return 2; return 3; };
+  // 1. equilíbrio empurrar/puxar e joelho/anca (Quadro 7.5)
+  const tmp = { ...w, exercicios: core, patologias: opt.keys || w.patologias || [] };
+  const an = biomAnalise(tmp);
+  let add = 0;
+  ['puxar','posterior'].forEach(t=>{
+    if(add>=2 || !an.sug.includes(t)) return;
+    const e = biomPick(t, tmp); if(!e) return;
+    core.push({ exId: e.id, series: '2', reps: '10-12', carga: '', descanso: '60s', met: '' }); add++;
+    notas.push('Acrescentado ' + e.nome + ' para equilibrar ' + (t==='puxar' ? 'empurrar e puxar' : 'joelho e anca'));
+  });
+  // 2. ordem: compostos, isolamento, core
+  const ord = core.map((l,i)=>[l,i]).sort((x,y)=>prio(x[0])-prio(y[0]) || x[1]-y[1]).map(x=>x[0]);
+  if(ord.some((l,i)=>l!==core[i])) notas.push('Ordem: exercícios compostos primeiro, depois isolamento e core');
+  core = ord;
+  // 3. teto de séries por músculo e sessão
+  const cap = nivel==='Iniciante' ? 5 : 10, soma = {}; let cut = 0;
+  core.forEach(l=>{
+    const e = ex(l); if(l.met || e.padrao==='cardio') return;
+    const m = (typeof exMusculo==='function' ? exMusculo(e) : e.grupo) || e.grupo || '';
+    const n = parseInt(l.series) || 1; const ja = soma[m] || 0;
+    if(ja + n > cap){ const novo = Math.max(1, cap - ja); if(novo < n){ l.series = String(novo); cut++; } }
+    soma[m] = ja + (parseInt(l.series) || 1);
+  });
+  if(cut) notas.push('Séries limitadas a ' + cap + ' por músculo e sessão');
+  // 4. descanso e esforço (RIR)
+  const rec = { forca:{ c:180, i:90 }, hip:{ c:120, i:90 }, saude:{ c:120, i:90 } }[tipo];
+  let restUp = 0, rirN = 0;
+  core.forEach(l=>{
+    const e = ex(l); if(l.met || e.padrao==='cardio' || e.padrao==='mobilidade') return;
+    const alvo = isComp(e) ? (nivel==='Iniciante' ? Math.min(rec.c,120) : rec.c) : (e.padrao==='core' ? 60 : rec.i);
+    if(ptRestSec(l.descanso) < alvo){ l.descanso = alvo>=120 ? (alvo/60) + ' min' : alvo + 's'; restUp++; }
+    const mr = String(l.carga||'').match(/^RPE\s*(\d+(?:[.,]\d+)?)(?:\s*-\s*(\d+(?:[.,]\d+)?))?/i);
+    if(mr && !/RIR/i.test(l.carga)){ const lo = parseFloat(mr[1].replace(',', '.')), hi = mr[2] ? parseFloat(mr[2].replace(',', '.')) : lo; const r1 = Math.max(0, Math.round(10-hi)), r2 = Math.max(0, Math.round(10-lo)); l.carga = l.carga + ' (RIR ' + (r1===r2 ? r1 : r1 + '-' + r2) + ')'; rirN++; }
+    if(!String(l.carga||'').trim()){
+      let t = tipo==='forca' ? 'RIR 2' : 'RIR 2-3';
+      if(nivel==='Iniciante') t = 'RIR 3-4';
+      if(wi>0 && isComp(e)) t += tipo==='forca' ? ' · +2-5% de carga face à semana anterior' : (tipo==='hip' ? ' · sobe a carga ou 1 repetição face à semana anterior' : '');
+      if(opt.geral && isComp(e) && tipo!=='saude') t += ' · quando cumprires todas as repetições com esta margem, sobe 2-5% a carga';
+      l.carga = t; rirN++;
+    }
+  });
+  if(restUp) notas.push('Descanso entre séries ajustado ao objetivo (compostos ' + (rec.c/60) + ' min)');
+  if(rirN) notas.push('Esforço indicado também em repetições de reserva (RIR)');
+  // 5. aquecimento RAMP: elevar, ativar e mobilizar (bloco existente), potenciar
+  const first = core.find(l=>isComp(ex(l)) && !l.met && !/peso corporal|^$/i.test(ex(l).equip||''));
+  if(first){
+    const i = core.indexOf(first);
+    core.splice(i, 0, { exId: first.exId, series: '2', reps: '6-8', carga: '50-60% da carga de trabalho, RIR acima de 5', descanso: '30s', met: 'aquecimento' });
+    notas.push('Séries de aquecimento no primeiro exercício (potenciar)');
+  }
+  if(!pre.some(l=>l.exId===ptRaiseEx().id)){
+    pre = [{ exId: ptRaiseEx().id, series: '1', reps: '3-5 min', carga: 'RPE 3-4 (consegues falar)', descanso: '—', met: '', mob: 1 }, ...pre];
+    notas.push('Aquecimento RAMP: elevar, ativar e mobilizar, potenciar');
+  }
+  w.exercicios = [...pre, ...core, ...pos];
+  w.evid = notas;
+}
+function ptEvidenciaManual(id){
+  const w = DATA.workouts.find(x=>x.id===id); if(!w) return;
+  if(w.exercicios.some(l=>l.met==='aquecimento')){ alert('Os critérios já estão aplicados a este treino.'); return; }
+  ptEvidencia(w, { obj: w.nome, nivel: 'Intermédio', wi: 0 });
+  if(!w.evid){ alert('Este treino tem menos de 3 exercícios de força, por isso não alterei nada.'); return; }
+  saveData(); alert('Critérios aplicados. Vê o resumo por baixo do nome do treino.');
 }
 
 function renderAll(){
