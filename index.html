@@ -438,10 +438,12 @@
           <div class="view-sub">Exercícios disponíveis para montar os treinos.</div>
         </div>
         <div style="display:flex; gap:8px;">
+          <button class="btn" onclick="toggleEsq()">Esquemas</button>
           <button class="btn" onclick="loadFullLibrary()">Carregar biblioteca completa</button>
           <button class="btn btn-primary" onclick="openExerciseModal()">+ Novo exercício</button>
         </div>
       </div>
+      <div id="lib-esq" style="display:none;"></div>
       <div class="select-line">
         <input id="lib-search" type="search" placeholder="Pesquisar exercício, equipamento ou linha miofascial (ex.: SBL, espiral)…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
         <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Corrida</option><option>Reabilitação</option></select>
@@ -530,8 +532,6 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="openPlanModal()">⚡ Gerar plano</button>
           <button class="btn" onclick="openAulasModal()">Aulas de grupo</button>
-          <button class="btn" onclick="document.getElementById('cycle-file').click()">Importar ciclo</button>
-          <input id="cycle-file" type="file" accept=".json,application/json" style="display:none;" onchange="importCycleFile(this)">
           <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com IA</button>
           <button class="btn btn-primary" onclick="openCycleModal()">+ Novo ciclo</button>
         </div>
@@ -3496,69 +3496,6 @@ function importBackup(input){
     }
   };
   reader.onerror = ()=>{ status.textContent = 'Não consegui ler o ficheiro.'; };
-  reader.readAsText(file);
-}
-
-
-// ---------- IMPORTAR CICLO (ficheiro JSON, junta aos dados sem substituir) ----------
-function importCycleFile(input){
-  const file = input.files[0]; input.value = '';
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    let r;
-    try{ r = JSON.parse(reader.result); }catch(e){ alert('Este ficheiro não é um JSON válido.'); return; }
-    if(!r || r.tipo!=='ciclo' || !r.ciclo || !Array.isArray(r.treinos) || !Array.isArray(r.semanas)){
-      alert('Este ficheiro não é um ciclo para importar.'); return;
-    }
-    const nomeCli = (r.cliente && r.cliente.nome) || '';
-    let cl = DATA.clients.find(c=>normText(c.nome)===normText(nomeCli));
-    if(!cl){
-      const n = normText(nomeCli).split(/\s+/);
-      cl = DATA.clients.find(c=>{ const m = normText(c.nome).split(/\s+/); return n.length>1 && m[0]===n[0] && m[m.length-1]===n[n.length-1]; });
-    }
-    const cyNome = r.ciclo.nome || 'Ciclo importado';
-    const msg = `Importar «${cyNome}» (${r.semanas.length} semanas)?\n\nCliente: ${cl ? cl.nome : nomeCli + ' (novo cliente)'}\n\nOs dados atuais mantêm-se; o ciclo e os treinos são acrescentados.`;
-    if(!confirm(msg)) return;
-    if(!cl){
-      cl = { id: uid(), nome: nomeCli || 'Cliente importado', cat: (r.cliente && r.cliente.tipo==='normal') ? 'normal' : 'pt', notas: '' };
-      DATA.clients.push(cl);
-    }
-    const extraNotas = [r.ciclo.contextoClinico ? 'Contexto: ' + r.ciclo.contextoClinico : '', (r.ciclo.evitar||[]).length ? 'Evitar: ' + r.ciclo.evitar.join('; ') : ''].filter(Boolean).join('\n');
-    if(extraNotas && !(cl.notas||'').includes(r.ciclo.contextoClinico||'§')) cl.notas = ((cl.notas||'') + (cl.notas ? '\n' : '') + extraNotas).trim();
-    const nomeT = {}; r.treinos.forEach(t=>nomeT[t.id] = t.nome);
-    const ptCli = isPtClient(cl);
-    const semanas = r.semanas.map((s, wi)=>{
-      const ids = {};
-      Object.keys(s.prescricao||{}).forEach(k=>{
-        const id = uid();
-        DATA.workouts.push({
-          id, nome: `${cyNome} — ${nomeT[k] || ('Treino ' + k)}`,
-          exercicios: (s.prescricao[k]||[]).filter(x=>x.ativo!==false && x.series>0).map(x=>({
-            exId: findOrCreateExercise(x.nome),
-            series: String(x.series), reps: String(x.reps||''),
-            carga: String([x.carga, x.notas].filter(Boolean).join(' — ')),
-            descanso: String(x.descanso||''), met: x.bloco==='Aquecimento' ? 'aquecimento' : ''
-          })).filter(l=>l.exId)
-        });
-        ids[k] = id;
-      });
-      const dias = DIAS.map(()=>({ workoutId: '' }));
-      (s.dias||[]).forEach(d=>{
-        const idx = DIAS.findIndex(n=>normText(n).slice(0,3)===normText(d.dia).slice(0,3));
-        if(idx>=0 && ids[d.treino]){ dias[idx].workoutId = ids[d.treino]; if(ptCli){ dias[idx].pt = true; dias[idx].ptHora = ''; } }
-      });
-      const prog = [s.fase, s.intensidade].filter(Boolean).join(' — ') + (wi===0 && (r.ciclo.criteriosProgressao||[]).length ? ' · Progressão: ' + r.ciclo.criteriosProgressao.join('; ') : '');
-      return { numero: s.semana || wi+1, progressao: prog, dias };
-    });
-    const cy = { id: uid(), nome: cyNome, clientId: cl.id, clientId2: '', inicio: r.ciclo.inicio || new Date().toISOString().slice(0,10),
-      numSemanas: semanas.length, semanas, provaData: '', meta: null, localPT: 'ginasio' };
-    DATA.cycles.push(cy);
-    try{ ptApplyLocal(cy, false); }catch(e){}
-    saveData();
-    alert('Ciclo importado: ' + cyNome + ' (' + cl.nome + ').');
-  };
-  reader.onerror = ()=>alert('Não consegui ler o ficheiro.');
   reader.readAsText(file);
 }
 
@@ -7298,7 +7235,7 @@ const PADRAO_BIOM = {
 function libPadraoPanel(k){
   const P = PADRAO_BIOM[k]; if(!P) return '';
   return `<div style="border-left:4px solid var(--accent, #c9a227); background:rgba(128,128,128,.08); padding:12px 14px; border-radius:4px; margin-bottom:14px; font-size:13.5px; line-height:1.55;">
-    <div style="font-weight:600;">${esc(PATTERN_LABELS[k]||k)}: biomecânica do padrão</div>
+    <div style="font-weight:600;">${esc(PATTERN_LABELS[k]||k)}: biomecânica do padrão</div>${esqPoseSvg(k)}
     <div><b>Plano:</b> ${esc(P.plano)}</div><div><b>Cargas:</b> ${esc(P.carga)}</div><div><b>Alavanca:</b> ${esc(P.alavanca)}</div>
     <div><b>Progressão:</b> ${esc(P.prog)}</div><div><b>Erros comuns:</b> ${esc(P.erro)}</div>
     <div class="view-sub" style="margin-top:6px;">Fontes: Watkins, McGinnis, Oatis. Valores e razões referidos são de ordem de grandeza e variam entre pessoas.</div></div>`;
@@ -7321,8 +7258,8 @@ function libChainPanel(k){
   const pool = DATA.exercises.filter(e=>exLinhas(e).includes(k));
   const isMob = e=>e.padrao==='mobilidade' || e.grupo==='Mobilidade';
   const pick = (arr, n)=>arr.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).slice(0, n).map(e=>esc(e.nome)).join(', ') || '—';
-  return `<div style="border-left:4px solid var(--accent, #c9a227); background:rgba(128,128,128,.08); padding:12px 14px; border-radius:4px; margin-bottom:14px; font-size:13.5px; line-height:1.55;">
-    <div style="font-weight:600;">${esc(L.nome)} (${k})</div>
+  return `<div style="border-left:4px solid ${ESQ_COR[k]}; background:rgba(128,128,128,.08); padding:12px 14px; border-radius:4px; margin-bottom:14px; font-size:13.5px; line-height:1.55;">
+    <div style="font-weight:600;">${esc(L.nome)} (${k})</div>${esqLinhasSvg(k)}
     <div><b>Trilho:</b> ${esc(L.trilho)}</div>
     <div><b>Função:</b> ${esc(L.f)}</div>
     <div><b>Pista para avaliar:</b> ${esc(L.pista)}</div>
@@ -7618,6 +7555,136 @@ function ptEvidenciaManual(id){
   ptEvidencia(w, { obj: w.nome, nivel: 'Intermédio', wi: 0 });
   if(!w.evid){ alert('Este treino tem menos de 3 exercícios de força, por isso não alterei nada.'); return; }
   saveData(); alert('Critérios aplicados. Vê o resumo por baixo do nome do treino.');
+}
+
+// ---------- ESQUEMAS: linhas miofasciais e padrões de movimento ----------
+const ESQ_COR = { SBL:'#d2563f', SFL:'#3f86cc', LL:'#3a9d5d', SPL:'#a779c4', FFL:'#d6a017', BFL:'#1fa3a3', DFL:'#9a7a4a', SBAL:'#de6f9c', DBAL:'#6577d9', SFAL:'#86b330', DFAL:'#e8802f' };
+// trajetos [x,y] por vista; mirror = desenha também o lado oposto; dash = tracejado (linha profunda)
+const ESQ_LINHAS = {
+  SBL:{ lado:[[96,302],[56,300],[54,288],[55,255],[57,215],[54,186],[50,162],[52,140],[53,110],[55,70],[58,40],[64,16],[76,8],[84,18]], costas:[[56,300],[56,288],[56,255],[56,215],[56,186],[58,160],[66,140],[66,100],[66,60],[67,36],[70,10]], mirror:true },
+  SFL:{ lado:[[98,296],[84,288],[80,255],[86,215],[88,186],[86,160],[86,130],[88,100],[88,80],[80,50],[70,30]], frente:[[56,298],[56,260],[56,215],[56,185],[58,158],[62,130],[62,98],[64,66],[72,44],[78,26]], mirror:true },
+  LL:{ lado:[[68,292],[68,255],[70,215],[69,186],[68,160],[62,150],[74,138],[62,126],[74,114],[62,102],[74,90],[62,78],[69,60],[69,48],[70,28]], frente:[[48,296],[48,215],[47,160],[44,120],[40,96],[46,56],[56,30]], costas:[[48,296],[48,215],[47,160],[44,120],[40,96],[46,56],[56,30]], mirror:true },
+  SPL:{ lado:[[56,40],[62,70],[80,100],[86,140],[84,190],[80,240],[78,288]], frente:[[58,26],[74,40],[96,64],[84,100],[66,132],[50,160],[48,200],[50,240],[56,284],[64,298]], mirror:true },
+  FFL:{ lado:[[84,70],[86,110],[84,150],[78,175]], frente:[[34,68],[52,90],[66,120],[70,156],[80,185],[80,212]], mirror:true },
+  BFL:{ lado:[[60,70],[54,120],[50,160],[62,200],[70,236],[72,262]], costas:[[36,66],[52,100],[64,130],[70,150],[88,170],[90,200],[90,230]], mirror:true },
+  DFL:{ lado:[[78,296],[70,262],[72,215],[72,185],[68,160],[66,122],[68,100],[70,60],[72,40]], frente:[[66,298],[64,262],[66,215],[67,185],[69,160],[70,120],[70,92],[70,60],[70,40]], dash:true },
+  SBAL:{ lado:[[66,44],[64,70],[70,120],[74,160]], costas:[[60,44],[40,56],[26,76],[20,118],[17,160]], mirror:true },
+  DBAL:{ lado:[[64,70],[66,100],[72,130],[74,160]], costas:[[64,72],[44,76],[30,96],[22,120],[19,160]], mirror:true, dash:true },
+  SFAL:{ frente:[[48,66],[36,76],[28,100],[22,130],[20,162]], mirror:true },
+  DFAL:{ frente:[[56,80],[40,88],[32,110],[28,135],[26,162]], mirror:true, dash:true }
+};
+function esqCorpo(v){
+  if(v==='lado') return `<circle cx="70" cy="22" r="13"/><path d="M62 36 L56 60 L56 110 L52 150 L50 165 L54 215 L56 255 L54 285 L52 298 L98 300 L96 292 L74 288 L80 250 L86 215 L88 170 L84 130 L88 80 L78 46 L78 36 Z"/><path d="M70 62 L73 112 L75 160" stroke-width="9" stroke-linecap="round" fill="none" stroke-opacity=".25"/>`;
+  const L = [[60,35],[60,46],[36,56],[27,72],[19,118],[16,160],[26,162],[32,120],[40,92],[44,130],[46,156],[47,215],[48,285],[44,300],[67,300],[67,215],[70,168]];
+  const R = L.slice(0, -1).reverse().map(p=>[140-p[0], p[1]]);
+  return `<circle cx="70" cy="22" r="13"/><path d="M` + L.concat(R).map(p=>p.join(' ')).join(' L') + ` Z"/>`;
+}
+function esqTrajeto(pts, mir, cor, dash, w){
+  const f = a=>a.map(p=>(mir ? 140-p[0] : p[0]) + ',' + p[1]).join(' ');
+  return `<polyline points="${f(pts)}" fill="none" stroke="${cor}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${dash ? ' stroke-dasharray="5 4"' : ''}/>`;
+}
+function esqLinhasSvg(sel){
+  const ks = sel ? [sel] : Object.keys(ESQ_LINHAS);
+  const vistas = [['frente','Frente'],['lado','Lado'],['costas','Costas']];
+  const w = sel ? 3.6 : 2.4;
+  const g = vistas.map(([v, nome], i)=>{
+    let s = `<g transform="translate(${i*150},4)"><g fill="currentColor" fill-opacity=".07" stroke="currentColor" stroke-opacity=".4" stroke-width="1.2">${esqCorpo(v)}</g>`;
+    let n = 0;
+    ks.forEach(k=>{
+      const L = ESQ_LINHAS[k]; if(!L || !L[v]) return;
+      n++;
+      s += esqTrajeto(L[v], false, ESQ_COR[k], L.dash, w);
+      if(L.mirror && v!=='lado') s += esqTrajeto(L[v], true, ESQ_COR[k], L.dash, w);
+    });
+    s += `<text x="70" y="324" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity=".7">${nome}${sel && !n ? ' (sem trajeto visível)' : ''}</text></g>`;
+    return s;
+  }).join('');
+  return `<svg viewBox="0 0 450 334" style="width:100%; max-width:480px; display:block; margin:0 auto; color:var(--chalk);" role="img" aria-label="Esquema das linhas miofasciais">${g}</svg>`;
+}
+// Poses (perfil) para os padrões de movimento
+const ESQ_POSE = {
+  agachamento:{ a:{head:[60,14],neck:[60,24],hip:[60,56],knee:[62,74],foot:[60,92],toe:[70,92],elbow:[64,32],hand:[62,28],plate:[60,26]},
+                b:{head:[70,26],neck:[66,34],hip:[46,68],knee:[76,64],foot:[62,92],toe:[72,92],elbow:[68,40],hand:[66,36],plate:[66,35]}, floor:1 },
+  dobradica:{ a:{head:[60,14],neck:[60,24],hip:[58,56],knee:[60,74],foot:[58,92],toe:[68,92],elbow:[58,42],hand:[58,58],plate:[58,60]},
+              b:{head:[84,36],neck:[76,40],hip:[42,54],knee:[48,74],foot:[46,92],toe:[56,92],elbow:[76,54],hand:[76,70],plate:[76,72]}, floor:1 },
+  empurrar_h:{ a:{head:[18,52],neck:[26,54],hip:[62,54],knee:[78,66],foot:[76,92],toe:[86,92],elbow:[36,54],hand:[30,44],plate:[30,42]},
+               b:{head:[18,52],neck:[26,54],hip:[62,54],knee:[78,66],foot:[76,92],toe:[86,92],elbow:[30,32],hand:[30,16],plate:[30,14]}, bench:1, floor:1 },
+  empurrar_v:{ a:{head:[58,24],neck:[60,34],hip:[60,62],knee:[62,78],foot:[60,94],toe:[70,94],elbow:[54,46],hand:[60,34],plate:[60,32]},
+               b:{head:[58,24],neck:[60,34],hip:[60,62],knee:[62,78],foot:[60,94],toe:[70,94],elbow:[64,22],hand:[64,5],plate:[64,3]}, floor:1 },
+  puxar_h:{ a:{head:[84,36],neck:[76,40],hip:[42,54],knee:[48,74],foot:[46,92],toe:[56,92],elbow:[76,56],hand:[76,70],plate:[76,72]},
+            b:{head:[84,36],neck:[76,40],hip:[42,54],knee:[48,74],foot:[46,92],toe:[56,92],elbow:[58,50],hand:[70,58],plate:[70,58]}, floor:1 },
+  puxar_v:{ a:{head:[60,38],neck:[60,48],hip:[60,76],knee:[60,86],foot:[58,96],toe:[66,96],elbow:[69,28],hand:[64,8]},
+            b:{head:[58,14],neck:[60,24],hip:[60,52],knee:[60,64],foot:[58,76],toe:[66,76],elbow:[70,20],hand:[64,8]}, barra:1 },
+  core:{ a:{head:[22,58],neck:[30,62],hip:[66,68],knee:[86,78],foot:[104,88],toe:[108,92],elbow:[30,86],hand:[42,88]},
+         b:{head:[22,58],neck:[30,62],hip:[66,68],knee:[86,66],foot:[106,62],toe:[110,64],elbow:[30,86],hand:[42,88]}, floor:1 },
+  cardio:{ a:{head:[62,14],neck:[60,24],hip:[56,56],knee:[72,64],foot:[62,80],toe:[68,82],elbow:[72,40],hand:[80,50],knee2:[46,74],foot2:[34,88],toe2:[30,90],elbow2:[46,40],hand2:[38,32]},
+           b:{head:[62,12],neck:[60,22],hip:[56,52],knee:[78,56],foot:[78,76],toe:[84,78],elbow:[44,40],hand:[34,48],knee2:[40,66],foot2:[22,72],toe2:[18,76],elbow2:[72,34],hand2:[82,28]} },
+  isolamento:{ a:{head:[60,14],neck:[60,24],hip:[60,56],knee:[62,74],foot:[60,92],toe:[70,92],elbow:[62,44],hand:[64,62],plate:[64,64]},
+               b:{head:[60,14],neck:[60,24],hip:[60,56],knee:[62,74],foot:[60,92],toe:[70,92],elbow:[62,44],hand:[74,34],plate:[74,32]}, floor:1 },
+  mobilidade:{ a:{head:[58,14],neck:[60,24],hip:[60,56],knee:[62,74],foot:[60,92],toe:[70,92],elbow:[66,12],hand:[70,2]},
+               b:{head:[82,52],neck:[74,48],hip:[50,50],knee:[52,72],foot:[50,92],toe:[60,92],elbow:[76,64],hand:[80,80]}, floor:1 }
+};
+const ESQ_PAD_INFO = {
+  agachamento:'Quadríceps, glúteos, adutores e eretores da coluna.', dobradica:'Glúteos, isquiotibiais e eretores da coluna.',
+  empurrar_h:'Peitoral, deltoide anterior e tríceps.', empurrar_v:'Deltoides, tríceps e trapézio superior.',
+  puxar_h:'Dorsais, romboides, trapézio médio e bíceps.', puxar_v:'Grande dorsal, redondo maior e bíceps.',
+  core:'Reto abdominal, oblíquos, transverso e multífidos.', cardio:'Sistema cardiorrespiratório e músculos locomotores.',
+  isolamento:'Um músculo de cada vez, num único eixo articular.', mobilidade:'Amplitude articular e comprimento muscular.'
+};
+function esqFig(j, ox, props){
+  const pt = a=>a.join(',');
+  let s = `<g transform="translate(${ox},0)" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">`;
+  if(props.floor) s += `<line x1="0" y1="96" x2="120" y2="96" stroke-width="1.2" stroke-opacity=".4"/>`;
+  if(props.bench) s += `<line x1="8" y1="60" x2="74" y2="60" stroke-width="5" stroke-opacity=".35"/>`;
+  if(props.barra) s += `<line x1="28" y1="8" x2="92" y2="8" stroke-width="4" stroke-opacity=".5"/>`;
+  s += `<circle cx="${j.head[0]}" cy="${j.head[1]}" r="6.5"/><polyline points="${pt(j.neck)} ${pt(j.hip)}"/><polyline points="${pt(j.hip)} ${pt(j.knee)} ${pt(j.foot)} ${pt(j.toe)}"/><polyline points="${pt(j.neck)} ${pt(j.elbow)} ${pt(j.hand)}"/>`;
+  if(j.knee2) s += `<polyline stroke-opacity=".55" points="${pt(j.hip)} ${pt(j.knee2)} ${pt(j.foot2)} ${pt(j.toe2)}"/>`;
+  if(j.elbow2) s += `<polyline stroke-opacity=".55" points="${pt(j.neck)} ${pt(j.elbow2)} ${pt(j.hand2)}"/>`;
+  if(j.plate) s += `<circle cx="${j.plate[0]}" cy="${j.plate[1]}" r="4.6" fill="var(--ochre, #c9a227)" stroke="none"/>`;
+  return s + '</g>';
+}
+function esqPoseSvg(k){
+  const P = ESQ_POSE[k]; if(!P) return '';
+  return `<svg viewBox="0 0 280 102" style="width:100%; max-width:360px; display:block; margin:0 auto; color:var(--chalk);" role="img" aria-label="Esquema do padrão ${esc(PATTERN_LABELS[k]||k)}">${esqFig(P.a, 0, P)}<g stroke="var(--ochre, #c9a227)" stroke-width="2.4" fill="none" stroke-linecap="round"><line x1="124" y1="50" x2="152" y2="50"/><polyline points="146,44 152,50 146,56"/></g>${esqFig(P.b, 160, P)}<text x="60" y="101" font-size="8" text-anchor="middle" fill="currentColor" fill-opacity=".6" dy="0"></text></svg>`;
+}
+let esqOpen = false, esqTab = 'linhas', esqSel = '';
+function toggleEsq(){ esqOpen = !esqOpen; renderEsq(); }
+function esqSetTab(t){ esqTab = t; renderEsq(); }
+function esqSetSel(k){ esqSel = k; renderEsq(); }
+function esqVerLinha(k){ document.getElementById('lib-chain').value = k; document.getElementById('lib-pad').value = ''; libReset(); document.getElementById('biblioteca-list').scrollIntoView({ behavior:'smooth' }); }
+function esqVerPadrao(k){ document.getElementById('lib-pad').value = k; document.getElementById('lib-chain').value = ''; libReset(); document.getElementById('biblioteca-list').scrollIntoView({ behavior:'smooth' }); }
+function esqLinhasPorPadrao(){
+  const cnt = {};
+  DATA.exercises.forEach(e=>{ const p = e.padrao; if(!p) return; const c = cnt[p] = cnt[p] || { n:0, l:{} }; c.n++; if(p!=='cardio') exLinhas(e).forEach(k=>{ c.l[k] = (c.l[k]||0) + 1; }); });
+  return cnt;
+}
+function renderEsq(){
+  const box = document.getElementById('lib-esq'); if(!box) return;
+  if(!esqOpen){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  const tab = (id, nome)=>`<button class="btn btn-sm ${esqTab===id ? 'btn-primary' : ''}" onclick="esqSetTab('${id}')">${nome}</button>`;
+  let h = `<div style="border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:16px; background:var(--surface-raised);"><div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">${tab('linhas','Linhas miofasciais')}${tab('padroes','Exercícios por padrão')}<button class="btn btn-ghost btn-sm" style="margin-left:auto;" onclick="toggleEsq()">Fechar</button></div>`;
+  if(esqTab==='linhas'){
+    const chips = ['', ...Object.keys(LINHAS)].map(k=>{
+      const on = esqSel===k, cor = k ? ESQ_COR[k] : '#c9a227';
+      return `<button class="btn btn-sm" style="${on ? 'background:' + cor + '; color:#fff; border-color:' + cor + ';' : 'border-color:' + cor + ';'}" onclick="esqSetSel('${k}')">${k || 'Todas'}</button>`;
+    }).join('');
+    h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">${chips}</div>` + esqLinhasSvg(esqSel);
+    if(esqSel){
+      const L = LINHAS[esqSel];
+      h += `<div style="margin-top:12px; font-size:13.5px; line-height:1.55;"><div style="font-weight:600; color:${ESQ_COR[esqSel]};">${esc(L.nome)} (${esqSel})</div><div><b>Trilho:</b> ${esc(L.trilho)}</div><div><b>Função:</b> ${esc(L.f)}</div><div style="margin-top:8px;"><button class="btn btn-sm btn-primary" onclick="esqVerLinha('${esqSel}')">Ver exercícios desta linha</button></div></div>`;
+    } else {
+      h += `<div style="margin-top:12px; display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px;">` + Object.keys(LINHAS).map(k=>`<span><span style="display:inline-block; width:14px; height:4px; background:${ESQ_COR[k]}; border-radius:2px; vertical-align:middle; margin-right:4px;"></span>${k} ${esc(LINHAS[k].nome)}</span>`).join('') + `</div><div class="view-sub" style="margin-top:8px;">Escolhe uma linha para ver só o seu trajeto. Linhas tracejadas são profundas. Esquema simplificado a partir de Myers (Anatomy Trains).</div>`;
+    }
+  } else {
+    const st = esqLinhasPorPadrao();
+    h += `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px;">` + Object.keys(ESQ_POSE).map(k=>{
+      const c = st[k] || { n:0, l:{} };
+      const top = Object.entries(c.l).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([l])=>`<span class="tag" style="font-size:11px; border-color:${ESQ_COR[l]}; color:${ESQ_COR[l]};">${l}</span>`).join(' ');
+      return `<div style="border:1px solid var(--line); border-radius:8px; padding:10px;"><div style="font-weight:600; margin-bottom:4px;">${esc(PATTERN_LABELS[k]||k)} <span class="view-sub">(${c.n} exercícios)</span></div>${esqPoseSvg(k)}<div style="font-size:12.5px; margin-top:6px;">${esc(ESQ_PAD_INFO[k]||'')}</div><div style="font-size:12.5px; margin-top:4px;">Linhas mais trabalhadas: ${top || '—'}</div><div style="margin-top:8px;"><button class="btn btn-sm" onclick="esqVerPadrao('${k}')">Ver exercícios</button></div></div>`;
+    }).join('') + `</div><div class="view-sub" style="margin-top:8px;">Cada figura mostra o início e o fim do movimento, de perfil. A bola indica a carga. As linhas são calculadas a partir dos exercícios da tua biblioteca.</div>`;
+  }
+  box.innerHTML = h + '</div>';
 }
 
 function renderAll(){
