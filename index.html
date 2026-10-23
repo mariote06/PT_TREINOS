@@ -443,7 +443,7 @@
         </div>
       </div>
       <div class="select-line">
-        <input id="lib-search" type="search" placeholder="Pesquisar exercício ou equipamento…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
+        <input id="lib-search" type="search" placeholder="Pesquisar exercício, equipamento ou linha miofascial (ex.: SBL, espiral)…" oninput="libSearchDebounced()" style="flex:1; min-width:200px; background:var(--surface-raised); border:1px solid var(--line); color:var(--chalk); padding:8px 10px; border-radius:var(--radius-s); font-size:14px;">
         <select id="lib-mod" onchange="libReset()"><option value="">Todas as modalidades</option><option>Musculação</option><option>CrossFit</option><option>Funcional</option><option>HYROX</option><option>Corrida</option><option>Reabilitação</option></select>
         <select id="lib-pad" onchange="libReset()"><option value="">Todos os padrões de movimento</option><option value="agachamento">Agachamento</option><option value="dobradica">Dobradiça de anca</option><option value="empurrar_h">Empurrar horizontal</option><option value="empurrar_v">Empurrar vertical</option><option value="puxar_h">Puxar horizontal</option><option value="puxar_v">Puxar vertical</option><option value="core">Core / estabilização</option><option value="cardio">Cardio</option><option value="isolamento">Isolamento</option><option value="mobilidade">Mobilidade</option></select>
         <select id="lib-chain" onchange="libReset()"><option value="">Todas as linhas miofasciais</option><option value="SBL">SBL — Superficial Posterior</option><option value="SFL">SFL — Superficial Anterior</option><option value="LL">LL — Lateral</option><option value="SPL">SPL — Espiral</option><option value="FFL">FFL — Funcional Anterior</option><option value="BFL">BFL — Funcional Posterior</option><option value="DFL">DFL — Profunda Anterior</option><option value="SBAL">SBAL — Braço sup. posterior</option><option value="DBAL">DBAL — Braço prof. posterior</option><option value="SFAL">SFAL — Braço sup. anterior</option><option value="DFAL">DFAL — Braço prof. anterior</option></select>
@@ -1653,6 +1653,7 @@ function exFuncao(e){
   return 'Condição física geral';
 }
 function migrateAulas(d){
+  (d.exercises||[]).forEach(e=>{ if(e && /xtenção/.test(e.nome||'')) e.nome = e.nome.replace(/xtenção/g, 'xtensão'); });
   exFixAll(d.exercises);
   if(!d.mobV && (d.exercises||[]).length){ mobEnsure(d.exercises); d.mobV = 1; }
   if(!d.perfV && (d.exercises||[]).length){ perfEnsure(d.exercises); d.perfV = 1; }
@@ -1828,9 +1829,9 @@ function saveExercise(){
   saveData();
 }
 const BASE_EXERCISES = [
-  {"nome":"Extenção do Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"isolamento"},
-  {"nome":"Extenção do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"isolamento"},
-  {"nome":"Extenção/Flexão do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"empurrar_h"},
+  {"nome":"Extensão do Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"isolamento"},
+  {"nome":"Extensão do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"isolamento"},
+  {"nome":"Extensão/Flexão do Pulso (Halteres)","grupo":"Antebraço","equip":"Halteres","padrao":"empurrar_h"},
   {"nome":"Flexão do Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"empurrar_h"},
   {"nome":"Flexão do pulso por detrás das costas","grupo":"Antebraço","equip":"","padrao":"empurrar_h"},
   {"nome":"Flexão Pulso (Barra)","grupo":"Antebraço","equip":"Barra","padrao":"empurrar_h"},
@@ -1920,8 +1921,8 @@ const BASE_EXERCISES = [
   {"nome":"Crunch com Rotação","grupo":"Core","equip":"Peso corporal","padrao":"core"},
   {"nome":"Crunch Lateral","grupo":"Core","equip":"Peso corporal","padrao":"core"},
   {"nome":"Escaladores (TRX)","grupo":"Core","equip":"TRX","padrao":"core"},
-  {"nome":"Extenção M. Inferior","grupo":"Core","equip":"Peso corporal","padrao":"core"},
-  {"nome":"Extenção M. Inferior Alt","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Extensão M. Inferior","grupo":"Core","equip":"Peso corporal","padrao":"core"},
+  {"nome":"Extensão M. Inferior Alt","grupo":"Core","equip":"Peso corporal","padrao":"core"},
   {"nome":"Farm Carry (Kettlebell)","grupo":"Core","equip":"Kettlebell","padrao":"core"},
   {"nome":"Full Extension (Kettlebell)","grupo":"Core","equip":"Kettlebell","padrao":"core"},
   {"nome":"Full Extension (Medicine ball)","grupo":"Core","equip":"Medicine ball","padrao":"core"},
@@ -2131,9 +2132,9 @@ const BASE_EXERCISES = [
   {"nome":"Deadlift (Elástico)","grupo":"Costas","equip":"Elástico","padrao":"dobradica"},
   {"nome":"Elevação na Barra Fixa Mão em Pronação","grupo":"Costas","equip":"","padrao":"puxar_v"},
   {"nome":"Elevação na Barra Fixa Mão em Supinação","grupo":"Costas","equip":"","padrao":"puxar_v"},
-  {"nome":"Extenção Tronco","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
-  {"nome":"Extenção Tronco (Banco)","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
-  {"nome":"Extenção Tronco/Perna Alt","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Extensão Tronco","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Extensão Tronco (Banco)","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
+  {"nome":"Extensão Tronco/Perna Alt","grupo":"Costas","equip":"Peso corporal","padrao":"puxar_h"},
   {"nome":"Helicopter (TRX)","grupo":"Costas","equip":"TRX","padrao":"puxar_h"},
   {"nome":"Lat Pulldown (ao Peito) (Máquina)","grupo":"Costas","equip":"Máquina","padrao":"puxar_v"},
   {"nome":"Lat Pulldown (c/ Pegas) (Polia)","grupo":"Costas","equip":"Polia","padrao":"puxar_v"},
@@ -2442,7 +2443,7 @@ const BASE_EXERCISES = [
   {"nome":"Deadlift (Unilateral) (Kettlebell)","grupo":"Pernas","equip":"Kettlebell","padrao":"dobradica"},
   {"nome":"Deadlift Unilateral (Halteres)","grupo":"Pernas","equip":"Halteres","padrao":"dobradica"},
   {"nome":"Elevação do calcanhar unilateral","grupo":"Pernas","equip":"","padrao":"isolamento"},
-  {"nome":"Extenção Glúteo (Caneleira) (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"isolamento"},
+  {"nome":"Extensão Glúteo (Caneleira) (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"isolamento"},
   {"nome":"Extensão (TRX)","grupo":"Pernas","equip":"TRX","padrao":"isolamento"},
   {"nome":"Extensão/Flexão MI (Fitball)","grupo":"Pernas","equip":"Fitball","padrao":"empurrar_h"},
   {"nome":"Flexão Plantar","grupo":"Pernas","equip":"","padrao":"empurrar_h"},
@@ -2691,7 +2692,7 @@ function renderLibrary(){
   const mCur = document.getElementById('lib-mod').value;
   const chCur = (document.getElementById('lib-chain')||{}).value || '';
   const padCur = (document.getElementById('lib-pad')||{}).value || '';
-  const filtered = DATA.exercises.filter(e=>(!chCur || exLinhas(e).includes(chCur)) && (!padCur || e.padrao===padCur) && (!gCur || e.grupo===gCur) && (!mCur || exModalidade(e)===mCur) && (!pCur || (mCur && mCur!=='Reabilitação') || (e.patologias||[]).includes(pCur)) && (!q || normText(e.nome+' '+(e.equip||'')+' '+(e.variantes||[]).join(' ')).includes(q)));
+  const filtered = DATA.exercises.filter(e=>(!chCur || exLinhas(e).includes(chCur)) && (!padCur || e.padrao===padCur) && (!gCur || e.grupo===gCur) && (!mCur || exModalidade(e)===mCur) && (!pCur || (mCur && mCur!=='Reabilitação') || (e.patologias||[]).includes(pCur)) && (!q || normText(e.nome+' '+(e.equip||'')+' '+(e.variantes||[]).join(' ')).includes(q) || libLinhaMatch(e, q)));
   document.getElementById('lib-count').textContent = `${filtered.length} de ${DATA.exercises.length} exercícios` + (filtered.length>libLimit ? ` · a mostrar ${libLimit}` : '');
   if(pCur && mCur && mCur!=='Reabilitação') document.getElementById('lib-count').textContent += ' · ⚠ = contraindicado em ' + PATOLOGIAS[pCur].nome;
   if(filtered.length===0){ list.innerHTML = `<div class="empty"><strong>Nenhum resultado</strong>Experimenta outra pesquisa ou outro grupo.</div>`; return; }
@@ -2937,8 +2938,10 @@ function renderWorkouts(){
       <div class="list-row-main">
         <div class="list-row-title">${esc(w.nome)}</div>
         <div class="list-row-meta">${w.exercicios.map(l=>`${esc(exerciseName(l.exId))}${l.variante?' ('+esc(l.variante)+')':''} — ${l.series}x${l.reps}${l.carga?' @ '+esc(l.carga):''}${l.met?' ['+esc(l.met)+']':''}`).join(' · ')}</div>
+      ${openBiomW.has(w.id) ? biomWHtml(w) : ''}
       </div>
       <div class="list-row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="toggleBiomW('${w.id}')">Biomecânica</button>
         <button class="btn btn-ghost btn-sm" onclick="openWorkoutModal('${w.id}')">Editar</button>
         <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteWorkout('${w.id}')">Remover</button>
       </div>
@@ -3863,7 +3866,8 @@ function contraAlert(e, key){
   if(e.modalidade==='CrossFit') return 'exercícios de CrossFit (alta intensidade e complexidade)';
   if(e.modalidade==='HYROX') return 'exercícios de HYROX (alta intensidade, carga e impacto)';
   if(e.modalidade==='Corrida') return 'exercícios de corrida e saltos (impacto repetido)';
-  return pat.ex.test(normText(e.nome)) ? pat.contra : null;
+  if(pat.ex.test(normText(e.nome))) return pat.contra;
+  return biomBloqueio(e, key);
 }
 const PLAN_CF_ADV = /snatch|clean|jerk|muscle|handstand|parada de maos|pistol|overhead squat|kipping|toes to bar|ring dips|subida de corda|double under|sumo deadlift high|wall walk|l sit|devil|man maker|butterfly|chest to bar/;
 const PLAN_CF_HOLD = /hold|l sit|prancha|arch|hollow/;
@@ -6301,7 +6305,7 @@ function protoAdaptPhase(p, fi, keys, adapt, report){
         const o = protoExObj(x, p);
         let bad = null, badKey = null;
         for(const k of act){ const a = contraAlert(o, k); if(a){ bad = a; badKey = k; break; } }
-        if(!bad){ res.push(x); return; }
+        if(!bad){ const tip = biomDica(o, act); res.push(tip ? [x[0], x[1], x[2], x[3], x[4], ((x[5]||'') + ' ' + tip).trim()] : x); return; }
         const rep = DATA.exercises.find(e=>e.modalidade==='Reabilitação' && (e.patologias||[]).includes(badKey) && e.grupo===o.grupo && !used.has(normName(e.nome)) && !act.some(k=>contraAlert(e,k)));
         if(rep){ used.add(normName(rep.nome)); res.push([rep.nome, x[1], x[2], x[3], rep.grupo]); }
         if(report) report.push({ fase:fa.nome, nome:x[0], acao: rep ? 'substituído por ' + rep.nome : 'retirado', motivo: PATOLOGIAS[badKey].nome + ': ' + bad });
@@ -7097,6 +7101,40 @@ const LINHAS = {
   SFAL:{nome:'Linha Superficial Anterior do Braço', trilho:'peitoral maior e grande dorsal → septo medial → flexores do punho', f:'Empurrar e puxar contra o corpo; lado palmar do membro superior.', pista:'Postura de ombros enrolados e encurtamento peitoral.', forca:'supino, flexões, paralelas', mob:'peitoral, flexores do antebraço'},
   DFAL:{nome:'Linha Profunda Anterior do Braço', trilho:'peitoral menor → bíceps → rádio → polegar', f:'Controlo fino da omoplata e da mão; ligação ao polegar.', pista:'Omoplata projetada para a frente.', forca:'rosca bíceps, push-up plus, remada supinada', mob:'peitoral menor, bíceps'}
 };
+const LINHAS_REG_EXTRA = [
+  [/extensao (do )?pulso|extensores? do antebraco|rosca inversa|reverse curl/, 'SBAL'],
+  [/flexao (do )?pulso|rosca de punho|flexores do antebraco|antebraco|grip|pegada/, 'SFAL'],
+  [/tricipe|pushdown|gymstick|kickback de triceps|testa|frances/, 'DBAL'],
+  [/curl|scott|martelo|hammer/, 'DFAL'],
+  [/gluteo|coice|glute|abdutora/, 'SBL'],
+  [/adutora|adutores|borboleta|sapo|frog|butterfly/, 'DFL'],
+  [/lower back|extensao (do )?tronco|extensao de costas|banco romano|extensao tronco/, 'SBL'],
+  [/flexao plantar|calf|soleo/, 'SBL'],
+  [/subidas? (a|ao|na) (caixa|banco)|prensa|hack/, 'SFL'],
+  [/cadeira extensora|extensao (de )?pernas?|leg extension/, 'SFL'],
+  [/mesa flexora|cadeira flexora|flexao (de )?pernas?|flexora/, 'SBL'],
+  [/elevacoes (laterais|frontais)|press a nuca/, 'SBAL'],
+  [/aberturas?/, 'FFL'],
+  [/child|crianca|joelho ao peito|gato|cat.?cow|rolamento plantar|bola plantar|fascia plantar|isquio|posterior da coxa|cadeia posterior/, 'SBL'],
+  [/alongamento (de )?quadriceps|quadriceps|cobra|esfinge|sphinx|expansao toracica/, 'SFL'],
+  [/peitora|peitoral na porta/, 'SFAL'],
+  [/hip flexor|flexores da anca|psoas|afundo alongamento|alongamento (de )?adutor/, 'DFL'],
+  [/piriforme|figura 4|pigeon|pombo|iliotibial|it band|gluteo medio|alongamento lateral/, 'LL'],
+  [/rotacao toracica|rotacao de tronco|open book|abertura de livro|thread the needle|torcao deitado|wall slide|deslizamento na parede/, 'SPL'],
+  [/sleeper|braco cruzado|cross body|alongamento (de )?ombro|alongamento (de )?tricipe/, 'DBAL'],
+  [/alongamento dorsal|lat stretch|alongamento (do )?grande dorsal/, 'BFL'],
+  [/abductor|abdutor|hip abduction|passos laterais|mini band/, 'LL'],
+  [/aductor|aducao|adutor/, 'DFL'],
+  [/lombare?s?\b|gemeo|maos aos pes|inchworm|pescoco|extensao de anca|hip extension|mobilidade de tornozelo|knee to wall|elevacao de calcanhares/, 'SBL'],
+  [/deltoide posterior|elevador da escapula|y-t-w|wall angels|extensores do punho|passagem de bastao|pass.?through|cars de ombro|circulos de ombro|mobilizacao de ombros/, 'SBAL'],
+  [/quadricep|quadricipe|quadricipit|box ste|subir e descer|wall.?sit|elevacao da perna estendida|flexao da anca|joelhos ao peito|marcha [ab]\b|extensao terminal de joelho|dorsiflexao|extensao toracica/, 'SFL'],
+  [/eversao/, 'LL'],
+  [/inversao|alfabeto com o pe|arco dos pes|dedos|circulos de anca|rotacoes articulares da anca|enrolar toalha/, 'DFL'],
+  [/flexores do punho/, 'SFAL'],
+  [/mobilidade toracica|livro aberto|rotacao toracica/, 'SPL'],
+  [/y-t-w|wall angels|elevador da escapula/, 'DBAL']
+];
+const LINHAS_GRUPO = { 'biceps':['DFAL'], 'triceps':['DBAL'], 'antebraco':['SFAL'], 'gluteos':['SBL'], 'ombros':['SBAL'], 'peito':['FFL','SFAL'], 'gemeos':['SBL'], 'quadriceps':['SFL'], 'isquiotibiais':['SBL'], 'abdominais':['SFL'], 'costas':['BFL'] };
 const LINHAS_REG = [
   [/peso morto|terra\b|stiff|romeno|good morning|bom dia|hiperextens|extensao lombar|superman|swing|hip thrust|ponte|nordico|leg curl|flexao de joelho|femoral|gemeos|panturrilha|salto|jump|sprint|bulgaro|pistol|isquio/, 'SBL'],
   [/agachamento|squat|leg press|afundo|lunge|passada|step.?up|extensao (de )?(joelho|quadriceps)|extensora|abdominal|crunch|sit.?up|quadriceps|flexores da anca/, 'SFL'],
@@ -7112,13 +7150,20 @@ const LINHAS_REG = [
 ];
 function exLinhas(e){
   const n = normText(e.nome || '');
+  if(/man ?maker/.test(n)) return ['FFL','BFL','SBL'];
+  if(e.padrao==='cardio' || e.grupo==='Cardio') return [];
   const out = [];
-  LINHAS_REG.forEach(([re, k])=>{ if(re.test(n) && !out.includes(k)) out.push(k); });
+  LINHAS_REG.concat(LINHAS_REG_EXTRA).forEach(([re, k])=>{ if(re.test(n) && !out.includes(k)) out.push(k); });
+  if(!out.length && LINHAS_GRUPO[normText(e.grupo||'')]) return LINHAS_GRUPO[normText(e.grupo||'')].slice();
   if(!out.length){
     const fb = { dobradica:['SBL'], agachamento:['SFL','SBL'], empurrar_h:['SFAL','FFL'], empurrar_v:['SBAL'], puxar_h:['DBAL'], puxar_v:['BFL','SFAL'], core:['DFL','SFL'] }[e.padrao];
     if(fb) return fb.slice();
   }
   return out.slice(0, 3);
+}
+function libLinhaMatch(e, q){
+  const ls = exLinhas(e); if(!ls.length) return false;
+  return ls.some(k=>normText(k)===q || (q.length>=4 && normText(LINHAS[k].nome).includes(q)) || (q.length>=4 && normText('linha '+LINHAS[k].nome).includes(q)));
 }
 function exLinhasHtml(e){
   const l = exLinhas(e); if(!l.length) return '';
@@ -7272,6 +7317,129 @@ function monitCalcHtml(){
     <div class="field" style="margin:0"><label>Valor antes</label><input id="mc-a" type="text" inputmode="decimal" oninput="monitCalc()"></div>
     <div class="field" style="margin:0"><label>Valor depois</label><input id="mc-b" type="text" inputmode="decimal" oninput="monitCalc()"></div>
   </div><div id="mc-out" style="margin-top:8px; font-size:13.5px;"></div></details>`;
+}
+
+// ---------- BIOMECÂNICA NA PRESCRIÇÃO: nível de carga por região, bloqueio, análise e equilíbrio do treino ----------
+var BIOM_REGIAO = { lombar:['lombar','hernia'], joelho:['joelho','oa','patelar'], ombro:['ombro','supra'] };
+var BIOM_LIMITE = {};   // todas as condições bloqueiam o nível 3 de carga na região
+var BIOM_NIV = {
+  lombar:[
+    [/(peso morto|levantamento terra|deadlift|terra).*(romeno|stiff|trap|hexagonal|unilateral|unipodal|kettlebell|halter)|romeno|stiff/, 2],
+    [/russian twist.*(peso|carga|halter|medicine|kettle)|sit.?up.*(peso|carga)|hiperextensao.*(peso|carga)/, 3],
+    [/peso morto|levantamento terra|deadlift|good morning|bom dia|clean|snatch|arranco|arremesso|thruster|remada curvada|remada inclinada com barra|sumo deadlift/, 3],
+    [/agachamento (com barra|frontal)|front squat|back squat|press militar|desenvolvimento militar|swing|remada com barra|remada inclinada|abdominal|crunch|hiperextensao|russian twist|rotacao|sit.?up/, 2],
+    [/agachamento|afundo|passada|prancha|ponte|hip thrust|remada|step/, 1]
+  ],
+  joelho:[
+    [/pistol|salto|jump|burpee|skipping|sprint|pliom|sissy|hack squat|bound|\bhop\b|extensao (de )?(joelho|quadriceps).*(carga|pesad)/, 3],
+    [/agachamento|squat|leg press|afundo|lunge|passada|bulgaro|step.?up|extensao (de )?(joelho|quadriceps)|extensora|wall sit|corrida/, 2],
+    [/ponte|hip thrust|stiff|peso morto|elevacao de gemeos/, 1]
+  ],
+  ombro:[
+    [/snatch|arranco|jerk|overhead|handstand|parada de maos|dips|paralelas|mergulho|press militar com barra|desenvolvimento militar \(barra\)|atras da nuca|wall walk|\bring\b/, 3],
+    [/press|desenvolvimento|supino|flexoes|elevacao (lateral|frontal)|crucifixo|voador|remada alta|barra fixa|pull.?up|puxada|pullover/, 2],
+    [/remada|face pull|rosca|triceps/, 1]
+  ]
+};
+function biomNivel(e, reg){
+  if(!e || !BIOM_NIV) return 0;
+  if(e.padrao==='mobilidade' || e.grupo==='Mobilidade') return 0;
+  const n = normText(e.nome||'');
+  for(const [re, l] of BIOM_NIV[reg]) if(re.test(n)) return l;
+  const p = e.padrao;
+  if(reg==='lombar') return p==='dobradica' ? 2 : p==='agachamento' ? 1 : 0;
+  if(reg==='joelho') return p==='agachamento' ? 1 : 0;
+  if(reg==='ombro') return p==='empurrar_v' ? 2 : p==='empurrar_h' ? 1 : 0;
+  return 0;
+}
+// Devolve o motivo se a carga biomecânica do exercício for demasiado alta para a região lesionada
+function biomBloqueio(e, key){
+  if(!BIOM_REGIAO || !e) return null;
+  for(const reg in BIOM_REGIAO){
+    if(!BIOM_REGIAO[reg].includes(key)) continue;
+    const lim = BIOM_LIMITE[key] || 3;
+    if(biomNivel(e, reg) >= lim) return 'carga biomecânica alta na região ' + reg + ' (alavanca e compressão elevadas)';
+  }
+  return null;
+}
+function biomDica(e, keys){
+  for(const k of keys){
+    for(const reg in BIOM_REGIAO){
+      if(!BIOM_REGIAO[reg].includes(k)) continue;
+      const lim = BIOM_LIMITE[k] || 3;
+      if(lim > 2 && biomNivel(e, reg) === 2) return 'Região sensível (' + reg + '): aproxima a carga do corpo, reduz a amplitude e só sobe se não houver dor.';
+    }
+  }
+  return '';
+}
+function biomAnalise(w){
+  const keys = wPats(w);
+  const ex = (w.exercicios||[]).map(l=>({ l, e: DATA.exercises.find(x=>x.id===l.exId) })).filter(o=>o.e);
+  const ns = o=>parseInt(o.l.series) || 1;
+  const reg = { lombar:0, joelho:0, ombro:0 }, pad = {}, lin = {};
+  ex.forEach(o=>{
+    const n = ns(o);
+    pad[o.e.padrao] = (pad[o.e.padrao]||0) + n;
+    Object.keys(reg).forEach(r=>{ reg[r] += biomNivel(o.e, r) * n; });
+    exLinhas(o.e).forEach(k=>{ lin[k] = (lin[k]||0) + n; });
+  });
+  const push = (pad.empurrar_h||0) + (pad.empurrar_v||0), pull = (pad.puxar_h||0) + (pad.puxar_v||0);
+  const alertas = [], sug = [];
+  if(push>0 && pull < push*0.8){ alertas.push(`Puxar tem ${pull} séries e empurrar tem ${push}. O excesso de empurrar tende a projetar os ombros para a frente (linhas anteriores do braço dominantes).`); sug.push('puxar'); }
+  if((lin.SFL||0) >= 4 && (lin.SBL||0) < (lin.SFL||0)*0.6){ alertas.push('A cadeia anterior da perna domina a posterior. Falta dobradiça de anca ou ponte (Linha Superficial Posterior).'); sug.push('posterior'); }
+  if((lin.SBL||0) >= 4 && (lin.SFL||0) < (lin.SBL||0)*0.5){ alertas.push('A cadeia posterior domina a anterior. Falta trabalho de quadríceps ou agachamento.'); sug.push('anterior'); }
+  if(ex.length>=4 && !(pad.core||0) && !(lin.DFL||0)){ alertas.push('Sem core nem trabalho da Linha Profunda Anterior.'); sug.push('core'); }
+  if(ex.length>=4 && !(lin.LL||0) && !(lin.SPL||0)){ alertas.push('Sem trabalho lateral nem anti-rotação (Linhas Lateral e Espiral).'); sug.push('lateral'); }
+  const sens = new Set();
+  keys.forEach(k=>{ for(const r in BIOM_REGIAO) if(BIOM_REGIAO[r].includes(k)) sens.add(r); });
+  Object.keys(reg).forEach(r=>{
+    const lim = sens.has(r) ? 6 : 10;
+    if(reg[r] >= lim) alertas.push(`Carga ${r} elevada nesta sessão (${reg[r]} pontos)` + (sens.has(r) ? ', numa região condicionada do cliente. Troca por variantes de alavanca mais curta ou com apoio.' : '. Se houver treinos pesados em dias seguidos, espaça-os.'));
+  });
+  return { reg, pad, lin, push, pull, alertas, sug: [...new Set(sug)], keys };
+}
+function biomPick(tipo, w){
+  const keys = wPats(w);
+  const have = new Set((w.exercicios||[]).map(l=>l.exId));
+  const mods = ['Musculação','Funcional'];
+  const okBase = e=>!have.has(e.id) && mods.includes(exModalidade(e)) && !keys.some(k=>contraAlert(e,k)) && biomNivel(e,'lombar')<=1 && biomNivel(e,'joelho')<=2 && biomNivel(e,'ombro')<=2;
+  const test = {
+    puxar: e=>e.padrao==='puxar_h' || e.padrao==='puxar_v',
+    posterior: e=>exLinhas(e).includes('SBL') && (e.padrao==='dobradica' || /ponte|hip thrust|nordico|leg curl/.test(normText(e.nome))),
+    anterior: e=>e.padrao==='agachamento' && exLinhas(e).includes('SFL'),
+    core: e=>e.padrao==='core' && exLinhas(e).includes('DFL'),
+    lateral: e=>e.padrao==='core' && (exLinhas(e).includes('LL') || exLinhas(e).includes('SPL'))
+  }[tipo];
+  const c = DATA.exercises.filter(e=>okBase(e) && test(e)).sort((a,b)=>(biomNivel(a,'lombar')+biomNivel(a,'joelho')+biomNivel(a,'ombro')) - (biomNivel(b,'lombar')+biomNivel(b,'joelho')+biomNivel(b,'ombro')) || a.nome.localeCompare(b.nome,'pt'));
+  return c[0] || null;
+}
+const BIOM_TIPO_NOME = { puxar:'puxar', posterior:'cadeia posterior', anterior:'cadeia anterior', core:'core', lateral:'lateral / anti-rotação' };
+const openBiomW = new Set();
+function toggleBiomW(id){ if(openBiomW.has(id)) openBiomW.delete(id); else openBiomW.add(id); renderWorkouts(); }
+function biomWHtml(w){
+  const a = biomAnalise(w);
+  const L = Object.entries(a.lin).sort((x,y)=>y[1]-x[1]).map(([k,v])=>k + ' ' + v).join(' · ') || '—';
+  let h = `<div style="margin-top:8px; padding:10px 12px; background:rgba(128,128,128,.08); border-radius:6px; font-size:13px; line-height:1.5;">
+    <div><b>Análise biomecânica.</b> Empurrar ${a.push} séries, puxar ${a.pull}. Carga estimada: lombar ${a.reg.lombar}, joelho ${a.reg.joelho}, ombro ${a.reg.ombro} (nível × séries).</div>
+    <div><b>Linhas miofasciais (séries):</b> ${esc(L)}</div>`;
+  h += a.alertas.length ? '<ul style="margin:6px 0 0 18px; padding:0;">' + a.alertas.map(t=>`<li>${esc(t)}</li>`).join('') + '</ul>' : '<div style="margin-top:4px;">Treino equilibrado nos critérios verificados.</div>';
+  if(a.sug.length){
+    const prev = a.sug.map(t=>{ const e = biomPick(t, w); return e ? esc(BIOM_TIPO_NOME[t]) + ': ' + esc(e.nome) : null; }).filter(Boolean);
+    if(prev.length) h += `<div style="margin-top:6px;">Sugestão: ${prev.join('; ')}.</div><div style="margin-top:6px;"><button class="btn btn-sm btn-primary" onclick="biomEquilibrar('${w.id}')">Equilibrar o treino</button></div>`;
+  }
+  return h + '</div>';
+}
+function biomEquilibrar(id){
+  const w = DATA.workouts.find(x=>x.id===id); if(!w) return;
+  const a = biomAnalise(w); let n = 0;
+  a.sug.forEach(t=>{
+    const e = biomPick(t, w); if(!e) return;
+    w.exercicios.push({ exId: e.id, series: '2', reps: e.padrao==='core' ? '30 s / 10 reps' : '10-12', carga: '', descanso: '60s', met: '' }); n++;
+  });
+  if(!n){ alert('Não encontrei exercícios adequados na biblioteca.'); return; }
+  w.nome = String(w.nome).replace(/ \(equilibrado\)$/, '') + ' (equilibrado)';
+  saveData();
+  alert('Acrescentei ' + n + ' exercício(s) de 2 séries, escolhidos com carga lombar baixa e sem contraindicações do treino.');
 }
 
 function renderAll(){
