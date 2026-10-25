@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>Os Meus Treinos</title>
+<style>
+  /* ===================== CONFIGURAÇÃO ===================== */
+  /* O URL da aplicação web vai no script, mais abaixo (URL_API). */
+
+  :root{
+    --bg:#f4f6fa; --card:#fff; --txt:#0f172a; --sub:#64748b; --linha:#e2e8f0;
+    --pri:#16a34a; --pri2:#15803d; --azul:#2563eb; --aviso:#d97706; --erro:#dc2626;
+    --raio:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b1120; --card:#131c2e; --txt:#e5e7eb; --sub:#94a3b8; --linha:#24324a; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4}
+  header{position:sticky;top:0;z-index:5;background:#0f172a;color:#fff;
+    padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px}
+  header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  header button{background:transparent;border:1px solid #334155;color:#fff;border-radius:10px;padding:6px 10px;font-size:14px}
+  main{max-width:640px;margin:0 auto;padding:16px 16px 120px}
+  .card{background:var(--card);border:1px solid var(--linha);border-radius:var(--raio);padding:14px;margin-bottom:12px}
+  .sub{color:var(--sub);font-size:14px}
+  h2{font-size:17px;margin:0 0 4px}
+  h3{font-size:15px;margin:0}
+  input,textarea,select{width:100%;font:inherit;color:var(--txt);background:var(--bg);
+    border:1px solid var(--linha);border-radius:10px;padding:10px 12px}
+  textarea{min-height:70px;resize:vertical}
+  label{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px}
+  .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:600;cursor:pointer}
+  .btn-pri{background:var(--pri);color:#fff}
+  .btn-pri:active{background:var(--pri2)}
+  .btn-sec{background:transparent;color:var(--azul);border:1px solid var(--linha)}
+  .btn-grande{font-size:18px;padding:18px}
+  .linha{display:flex;gap:8px;align-items:center}
+  .linha > *{flex:1}
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--linha);background:var(--card);color:var(--txt);font:inherit}
+  .tabs button.on{background:#0f172a;color:#fff;border-color:#0f172a}
+  .ex{border-top:1px solid var(--linha);padding:12px 0}
+  .ex:first-child{border-top:0;padding-top:4px}
+  .ex-top{display:flex;gap:12px;align-items:flex-start}
+  .chk{width:30px;height:30px;flex:0 0 30px;border-radius:8px;border:2px solid var(--linha);
+    display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--bg);cursor:pointer}
+  .chk.on{background:var(--pri);border-color:var(--pri);color:#fff}
+  .presc{font-size:14px;color:var(--sub);margin-top:2px}
+  .mais{font-size:13px;color:var(--azul);background:none;border:0;padding:6px 0 0;cursor:pointer;font:inherit;font-size:13px}
+  .campos{display:none;margin-top:6px}
+  .campos.on{display:block}
+  .campos .linha label{margin-top:4px}
+  .rpe{display:flex;flex-wrap:wrap;gap:6px}
+  .rpe button{flex:1 0 16%;padding:10px 0;border-radius:10px;border:1px solid var(--linha);background:var(--bg);color:var(--txt);font:inherit}
+  .rpe button.on{background:var(--azul);border-color:var(--azul);color:#fff}
+  .fixo{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent,var(--bg) 30%)}
+  .fixo .btn{max-width:608px;margin:0 auto}
+  .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--linha);color:var(--sub)}
+  .ok{color:var(--pri)} .warn{color:var(--aviso)} .err{color:var(--erro)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .stats div{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:10px;text-align:center}
+  .stats b{display:block;font-size:22px}
+  .stats span{font-size:12px;color:var(--sub)}
+
+  .cal{margin-top:10px}
+  .cal-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .cal-top h3{flex:1;text-align:center}
+  .cal-top button{width:40px;height:40px;border-radius:10px;border:1px solid var(--linha);background:var(--bg);color:var(--txt);font:inherit;font-size:18px;cursor:pointer}
+  .cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-g .h{font-size:11px;color:var(--sub);text-align:center;padding:2px 0}
+  .cal-g button{aspect-ratio:1;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--txt);font:inherit;font-size:14px;position:relative;cursor:pointer;padding:0}
+  .cal-g button.vz{visibility:hidden}
+  .cal-g button.fut{color:var(--sub)}
+  .cal-g button.hoje{border-color:var(--azul)}
+  .cal-g button.on{background:var(--pri);color:#fff;font-weight:700}
+  .cal-g button.sel{outline:2px solid var(--txt);outline-offset:1px}
+  .cal-g button sub{position:absolute;right:4px;bottom:2px;font-size:10px;line-height:1}
+  .cal-leg{font-size:12px;color:var(--sub);margin-top:8px}
+  .semana{display:flex;gap:4px;margin-top:8px}
+  .semana i{flex:1;height:8px;border-radius:4px;background:var(--linha)}
+  .semana i.on{background:var(--pri)}
+  .toast{position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);
+    background:#0f172a;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;
+    max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .feito-ecra{text-align:center;padding:40px 10px}
+  .feito-ecra .big{font-size:64px}
+  a{color:var(--azul)}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Os Meus Treinos</h1>
+  <button id="btnSair" hidden onclick="sair()">Sair</button>
+</header>
+<main id="app"></main>
+
+<script>
+/* ===================== CONFIGURAÇÃO ===================== */
+// Cola aqui o URL da aplicação web do Apps Script (termina em /exec)
+const URL_API = 'https://script.google.com/macros/s/AKfycbxbCZ-TBYZGjZf-eCYAiE773IWKFe6AQp2MkfsjwT6VuKqLI6V5wZPmeP48NQIsrUHp/exec';
+/* ======================================================== */
+
+const LS = { cod:'ptc_codigo', cache:'ptc_cache', pend:'ptc_pendentes', hist:'ptc_hist' };
+let estado = { cliente:null, plano:null, aba:'treinos', treinoAberto:null, rascunho:null, historico:[] };
+
+/* ---------- utilitários ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function lsGet(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }catch(e){ return def; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function hoje(){ const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
+function uid(){ return 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function fmtData(iso){
+  if(!iso) return '';
+  const [a,m,d] = iso.split('-').map(Number);
+  const dt = new Date(a, m-1, d);
+  return dt.toLocaleDateString('pt-PT', { weekday:'short', day:'numeric', month:'short' });
+}
+function toast(msg, ms){
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), ms || 2600);
+}
+
+async function api(acao, dados){
+  if(!URL_API || URL_API.includes('COLA_AQUI')) throw new Error('A app ainda não está ligada ao servidor.');
+  const r = await fetch(URL_API, { method:'POST', body: JSON.stringify(Object.assign({ acao }, dados)) });
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.erro || 'Erro no servidor.');
+  return j;
+}
+
+/* ---------- entrada ---------- */
+async function iniciar(){
+  const p = new URLSearchParams(location.search).get('c');
+  if(p) lsSet(LS.cod, p.trim().toUpperCase());
+  const cod = lsGet(LS.cod, null);
+  const cache = lsGet(LS.cache, null);
+  if(cod && cache && cache.cliente && cache.cliente.codigo === cod){
+    aplicarLogin(cache); render();
+    entrar(cod, true);          // atualiza em segundo plano
+  } else if(cod){
+    entrar(cod);
+  } else {
+    renderLogin();
+  }
+  enviarPendentes();
+}
+
+function renderLogin(erro){
+  $('#btnSair').hidden = true; $('#titulo').textContent = 'Os Meus Treinos';
+  $('#app').innerHTML = `
+    <div class="card" style="margin-top:20px">
+      <h2>Entrar</h2>
+      <p class="sub">Escreve o código pessoal que o teu treinador te deu.</p>
+      <label for="cod">Código</label>
+      <input id="cod" autocomplete="off" autocapitalize="characters" placeholder="Ex.: ABC234"
+        value="${esc(lsGet(LS.cod,'') || '')}" style="text-transform:uppercase;font-size:20px;letter-spacing:2px">
+      ${erro ? `<p class="err">${esc(erro)}</p>` : ''}
+      <div style="height:12px"></div>
+      <button class="btn btn-pri" onclick="entrar($('#cod').value)">Entrar</button>
+    </div>`;
+  $('#cod').addEventListener('keydown', e => { if(e.key === 'Enter') entrar($('#cod').value); });
+}
+
+async function entrar(codigo, silencioso){
+  codigo = String(codigo || '').trim().toUpperCase();
+  if(!codigo){ renderLogin('Indica o código.'); return; }
+  if(!silencioso) $('#app').innerHTML = '<p class="sub" style="text-align:center;margin-top:40px">A entrar…</p>';
+  try{
+    const r = await api('login', { codigo });
+    lsSet(LS.cod, codigo);
+    lsSet(LS.cache, { cliente:r.cliente, plano:r.plano, planoAtualizado:r.planoAtualizado });
+    aplicarLogin(r);
+    if(!silencioso || !estado.treinoAberto) render();
+    carregarHistorico();
+  }catch(e){
+    if(silencioso){ return; }       // sem rede: continua com a cópia guardada
+    lsDel(LS.cache);
+    renderLogin(e.message);
+  }
+}
+
+function aplicarLogin(r){
+  estado.cliente = r.cliente;
+  estado.plano = r.plano || { treinos: [] };
+  estado.planoAtualizado = r.planoAtualizado || '';
+  estado.historico = lsGet(LS.hist, []);
+  $('#btnSair').hidden = false;
+  $('#titulo').textContent = 'Olá, ' + (r.cliente.nome || '').split(' ')[0];
+}
+
+function sair(){
+  if(!confirm('Sair desta conta neste telemóvel?')) return;
+  [LS.cod, LS.cache, LS.hist].forEach(lsDel);
+  estado = { cliente:null, plano:null, aba:'treinos', treinoAberto:null, rascunho:null, historico:[] };
+  history.replaceState(null, '', location.pathname);
+  renderLogin();
+}
+
+/* ---------- ecrã principal ---------- */
+function render(){
+  if(estado.treinoAberto !== null) return renderTreino();
+  const pend = lsGet(LS.pend, []).filter(p => p.codigo === estado.cliente.codigo);
+  $('#app').innerHTML = `
+    <div class="tabs">
+      <button class="${estado.aba==='treinos'?'on':''}" onclick="mudarAba('treinos')">Treinos</button>
+      <button class="${estado.aba==='progresso'?'on':''}" onclick="mudarAba('progresso')">Progresso</button>
+    </div>
+    ${pend.length ? `<div class="card warn" style="font-size:14px">⏳ ${pend.length} registo(s) por enviar — vão ser enviados quando houver rede.
+      <button class="mais" onclick="enviarPendentes(true)">Tentar agora</button></div>` : ''}
+    ${estado.aba === 'treinos' ? htmlTreinos() : htmlProgresso()}`;
+}
+function mudarAba(a){ estado.aba = a; if(a==='progresso') carregarHistorico(); render(); }
+
+function htmlTreinos(){
+  const p = estado.plano || {};
+  const treinos = p.treinos || [];
+  let h = '';
+  if(p.mensagem) h += `<div class="card">💬 ${esc(p.mensagem)}</div>`;
+  if(p.ciclo) h += `<p class="sub" style="margin:0 0 10px">${esc(p.ciclo)}</p>`;
+  if(!treinos.length){
+    h += `<div class="card"><h2>Ainda sem plano</h2><p class="sub">O teu treinador ainda não publicou o teu plano. Mesmo assim podes registar que treinaste.</p>
+      <button class="btn btn-pri" onclick="abrirTreino(-1)">Registar treino</button></div>`;
+    return h;
+  }
+  treinos.forEach((t, i) => {
+    const n = (t.exercicios || []).length;
+    const ult = estado.historico.find(r => r.treino === t.nome);
+    h += `<div class="card">
+      <h2>${esc(t.nome || ('Treino ' + (i+1)))}</h2>
+      <p class="sub" style="margin:0 0 10px">${n} exercício${n===1?'':'s'}${t.dia ? ' · ' + esc(t.dia) : ''}${t.duracao ? ' · ' + esc(t.duracao) : ''}${ult ? ' · último: ' + fmtData(ult.data_treino) : ''}</p>
+      <div class="linha">
+        <button class="btn btn-sec" onclick="abrirTreino(${i})">Ver treino</button>
+        <button class="btn btn-pri" onclick="confirmarRapido(${i})">Feito! 💪</button>
+      </div>
+    </div>`;
+  });
+  h += `<button class="btn btn-sec" onclick="abrirTreino(-1)">+ Fiz outro treino esta semana</button>`;
+  return h;
+}
+
+
+function mudarMes(n){ const [a,m] = estado.calMes.split('-').map(Number); const d = new Date(a, m-1+n, 1); estado.calMes = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); estado.calDia = null; render(); }
+function escolherDia(iso){ estado.calDia = estado.calDia === iso ? null : iso; render(); }
+function htmlCalendario(regs){
+  if(!estado.calMes) estado.calMes = hoje().slice(0,7);
+  const [a,m] = estado.calMes.split('-').map(Number);
+  const primeiro = new Date(a, m-1, 1), nDias = new Date(a, m, 0).getDate();
+  const vazios = (primeiro.getDay() + 6) % 7, hj = hoje();
+  const porDia = {}; regs.forEach(r => { (porDia[r.data_treino] = porDia[r.data_treino] || []).push(r); });
+  let cel = ''; for(let i=0;i<vazios;i++) cel += '<button class="vz" tabindex="-1" aria-hidden="true"></button>';
+  let noMes = 0;
+  for(let d=1; d<=nDias; d++){
+    const iso = a+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0'), n = (porDia[iso]||[]).length; noMes += n;
+    cel += `<button class="${n?'on':''} ${iso===hj?'hoje':''} ${iso>hj?'fut':''} ${estado.calDia===iso?'sel':''}" onclick="escolherDia('${iso}')" aria-label="${d}${n?', '+n+' treino'+(n>1?'s':''):''}">${d}${n>1?'<sub>×'+n+'</sub>':''}</button>`;
+  }
+  const nomeMes = primeiro.toLocaleDateString('pt-PT', { month:'long' }).replace(/^./, c => c.toUpperCase()) + ' ' + a;
+  const sel = estado.calDia ? (porDia[estado.calDia] || []) : null;
+  const detalhe = estado.calDia ? `<div style="margin-top:12px;border-top:1px solid var(--linha);padding-top:10px"><b>${fmtData(estado.calDia)}</b>${sel.length ? sel.map(r => `<div style="margin-top:6px">${esc(r.treino)}<span class="sub">${[r.duracao_min ? ' · '+r.duracao_min+' min' : '', r.rpe_sessao ? ' · esforço '+r.rpe_sessao+'/10' : ''].join('')}</span>${r.comentario ? `<div class="sub">“${esc(r.comentario)}”</div>` : ''}</div>`).join('') : '<div class="sub" style="margin-top:4px">Sem treino registado neste dia.</div>'}</div>` : '';
+  return `<div class="card cal"><div class="cal-top"><button onclick="mudarMes(-1)" aria-label="Mês anterior">‹</button><h3>${nomeMes}</h3><button onclick="mudarMes(1)" aria-label="Mês seguinte">›</button></div>
+    <div class="cal-g">${['S','T','Q','Q','S','S','D'].map(l=>`<span class="h">${l}</span>`).join('')}${cel}</div>
+    <div class="cal-leg">${noMes} treino${noMes===1?'':'s'} neste mês · dia a verde = treinaste</div>${detalhe}</div>`;
+}
+function htmlProgresso(){
+  const regs = estado.historico || [];
+  const hj = hoje();
+  const mes = hj.slice(0,7);
+  const doMes = regs.filter(r => (r.data_treino||'').startsWith(mes)).length;
+  // semana atual (segunda a domingo)
+  const d = new Date(); const dia = (d.getDay() + 6) % 7;
+  const dias = [...Array(7)].map((_, i) => { const x = new Date(d); x.setDate(d.getDate() - dia + i);
+    x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0,10); });
+  const datas = new Set(regs.map(r => r.data_treino));
+  const naSemana = dias.filter(x => datas.has(x)).length;
+  // semanas seguidas com pelo menos 1 treino
+  let seq = 0; const seg = new Date(d); seg.setDate(d.getDate() - dia);
+  for(let w = 0; w < 52; w++){
+    const ini = new Date(seg); ini.setDate(seg.getDate() - 7*w);
+    const fim = new Date(ini); fim.setDate(ini.getDate() + 6);
+    const f = x => { const y = new Date(x); y.setMinutes(y.getMinutes() - y.getTimezoneOffset()); return y.toISOString().slice(0,10); };
+    const a = f(ini), b = f(fim);
+    if(regs.some(r => r.data_treino >= a && r.data_treino <= b)) seq++;
+    else if(w > 0) break;
+  }
+  let h = `<div class="stats">
+      <div><b>${naSemana}</b><span>esta semana</span></div>
+      <div><b>${doMes}</b><span>este mês</span></div>
+      <div><b>${seq}</b><span>semanas seguidas</span></div>
+    </div>
+    <div class="card"><h3>Esta semana</h3>
+      <div class="semana">${dias.map(x => `<i class="${datas.has(x)?'on':''}" title="${x}"></i>`).join('')}</div>
+      <div class="linha sub" style="font-size:11px;margin-top:4px;text-align:center">${['S','T','Q','Q','S','S','D'].map(l=>`<span>${l}</span>`).join('')}</div>
+    </div>
+    ${htmlCalendario(regs)}
+    <h3 style="margin:16px 0 8px">Últimos treinos</h3>`;
+  if(!regs.length) h += `<p class="sub">Ainda não tens treinos registados.</p>`;
+  regs.slice(0, 30).forEach(r => {
+    const extra = [];
+    if(r.exercicios_total) extra.push(`${r.exercicios_feitos}/${r.exercicios_total} exercícios`);
+    if(r.duracao_min) extra.push(`${r.duracao_min} min`);
+    if(r.rpe_sessao) extra.push(`esforço ${r.rpe_sessao}/10`);
+    h += `<div class="card"><div class="linha"><h3>${esc(r.treino)}</h3>
+      <span class="tag" style="flex:0 0 auto">${fmtData(r.data_treino)}</span></div>
+      ${extra.length ? `<p class="sub" style="margin:4px 0 0">${extra.join(' · ')}</p>` : ''}
+      ${r.comentario ? `<p style="margin:6px 0 0;font-size:14px">“${esc(r.comentario)}”</p>` : ''}
+      ${r.pendente ? `<p class="warn" style="margin:6px 0 0;font-size:13px">⏳ por enviar</p>` : ''}</div>`;
+  });
+  return h;
+}
+
+async function carregarHistorico(){
+  if(!estado.cliente) return;
+  try{
+    const r = await api('historico', { codigo: estado.cliente.codigo });
+    const pend = lsGet(LS.pend, []).filter(p => p.codigo === estado.cliente.codigo)
+      .map(p => Object.assign({}, p.resumo, { pendente:true }));
+    estado.historico = pend.concat(r.registos);
+    lsSet(LS.hist, estado.historico);
+    if(estado.treinoAberto === null) render();
+  }catch(e){ /* sem rede: mantém o histórico guardado */ }
+}
+
+/* ---------- treino ---------- */
+function abrirTreino(i){
+  const t = i >= 0 ? estado.plano.treinos[i] : { nome:'', exercicios:[] };
+  estado.treinoAberto = i;
+  estado.rascunho = {
+    nome: t.nome || '',
+    data: hoje(), duracao:'', rpe:null, comentario:'',
+    ex: i >= 0 ? (t.exercicios || []).map(e => ({ nome:e.nome, feito:false, series:'', reps:'', carga:'', nota:'', aberto:false }))
+               : [{ nome:'', feito:true, series:'', reps:'', carga:'', nota:'', aberto:true }]
+  };
+  window.scrollTo(0,0);
+  renderTreino();
+}
+function fecharTreino(){ estado.treinoAberto = null; estado.rascunho = null; render(); window.scrollTo(0,0); }
+
+function renderTreino(){
+  const i = estado.treinoAberto, r = estado.rascunho;
+  const t = i >= 0 ? estado.plano.treinos[i] : { exercicios:[] };
+  const sugest = [...new Set((estado.plano.treinos || []).flatMap(x => (x.exercicios || []).map(e => e.nome)))];
+  const listaLivre = i >= 0 ? '' : r.ex.map((x, k) => `<div class="ex">
+      <div class="ex-top">
+        <div class="chk ${x.feito?'on':''}" onclick="marcar(${k})" role="checkbox" aria-checked="${x.feito}">${x.feito?'✓':''}</div>
+        <div style="flex:1">
+          <input list="sug" value="${esc(x.nome)}" placeholder="Nome do exercício" oninput="estado.rascunho.ex[${k}].nome=this.value" style="font-weight:600">
+          <div class="linha">
+            <div><label>Séries</label><input inputmode="numeric" value="${esc(x.series)}" oninput="estado.rascunho.ex[${k}].series=this.value"></div>
+            <div><label>Reps</label><input inputmode="text" value="${esc(x.reps)}" placeholder="ex. 12,10,8" oninput="estado.rascunho.ex[${k}].reps=this.value"></div>
+            <div><label>Carga (kg)</label><input inputmode="decimal" value="${esc(x.carga)}" oninput="estado.rascunho.ex[${k}].carga=this.value"></div>
+          </div>
+          <input value="${esc(x.nota)}" placeholder="Nota (opcional)" oninput="estado.rascunho.ex[${k}].nota=this.value" style="margin-top:6px">
+          <button class="mais" onclick="tirarEx(${k})">Remover exercício</button>
+        </div>
+      </div></div>`).join('') + `<datalist id="sug">${sugest.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <button class="btn btn-sec" style="margin-top:10px" onclick="addEx()">+ Adicionar exercício</button>`;
+  const lista = (t.exercicios || []).map((e, k) => {
+    const x = r.ex[k];
+    const presc = [
+      e.series && e.reps ? `${e.series} × ${e.reps}` : (e.series ? `${e.series} séries` : (e.reps ? `${e.reps} reps` : '')),
+      e.carga ? `${e.carga}` : '', e.descanso ? `desc. ${e.descanso}` : '', e.tempo ? `${e.tempo}` : ''
+    ].filter(Boolean).join(' · ');
+    return `<div class="ex">
+      <div class="ex-top">
+        <div class="chk ${x.feito?'on':''}" onclick="marcar(${k})" role="checkbox" aria-checked="${x.feito}">${x.feito?'✓':''}</div>
+        <div style="flex:1">
+          <h3>${esc(e.nome)}</h3>
+          ${presc ? `<div class="presc">${esc(presc)}</div>` : ''}
+          ${e.notas ? `<div class="presc">📝 ${esc(e.notas)}</div>` : ''}
+          ${e.video ? `<div class="presc"><a href="${esc(e.video)}" target="_blank" rel="noopener">▶ Ver vídeo</a></div>` : ''}
+          <button class="mais" onclick="abrirCampos(${k})">${x.aberto ? '− esconder detalhes' : '+ registar séries, carga… (opcional)'}</button>
+          <div class="campos ${x.aberto?'on':''}">
+            <div class="linha">
+              <div><label>Séries</label><input inputmode="numeric" value="${esc(x.series)}" oninput="campo(${k},'series',this.value)"></div>
+              <div><label>Reps</label><input inputmode="text" value="${esc(x.reps)}" placeholder="ex. 12,10,8" oninput="campo(${k},'reps',this.value)"></div>
+              <div><label>Carga (kg)</label><input inputmode="decimal" value="${esc(x.carga)}" oninput="campo(${k},'carga',this.value)"></div>
+            </div>
+            <label>Nota</label><input value="${esc(x.nota)}" placeholder="ex. senti o joelho" oninput="campo(${k},'nota',this.value)">
+          </div>
+        </div>
+      </div></div>`;
+  }).join('');
+
+  $('#app').innerHTML = `
+    <button class="mais" style="margin-bottom:10px;font-size:15px" onclick="fecharTreino()">← Voltar</button>
+    ${i >= 0 ? `<h2 style="font-size:20px">${esc(t.nome)}</h2>${t.notas ? `<p class="sub">${esc(t.notas)}</p>` : ''}`
+             : `<div class="card"><label style="margin-top:0">Treino extra: como lhe chamas?</label>
+                 <input value="${esc(r.nome)}" placeholder="ex. Corrida, aula de grupo, treino livre" oninput="estado.rascunho.nome=this.value"></div>`}
+    ${i < 0 ? `<div class="card"><h3>O que fizeste?</h3><p class="sub" style="margin:2px 0 6px">Junta os exercícios que fizeste. Séries, reps e carga são opcionais.</p>${listaLivre}</div>` : (lista ? `<div class="card">${lista}</div>` : '')}
+    <div class="card">
+      <h3>Como correu? <span class="sub" style="font-weight:400">(opcional)</span></h3>
+      <label>Esforço do treino (1 = muito leve, 10 = máximo)</label>
+      <div class="rpe">${[1,2,3,4,5,6,7,8,9,10].map(n => `<button class="${r.rpe===n?'on':''}" onclick="rpe(${n})">${n}</button>`).join('')}</div>
+      <div class="linha">
+        <div><label>Data</label><input type="date" value="${r.data}" max="${hoje()}" onchange="estado.rascunho.data=this.value"></div>
+        <div><label>Duração (min)</label><input inputmode="numeric" value="${esc(r.duracao)}" oninput="estado.rascunho.duracao=this.value"></div>
+      </div>
+      <label>Comentário para o treinador</label>
+      <textarea placeholder="Como te sentiste, dores, dificuldades…" oninput="estado.rascunho.comentario=this.value">${esc(r.comentario)}</textarea>
+    </div>
+    <div class="fixo"><button class="btn btn-pri btn-grande" id="btnConf" onclick="confirmar()">Treino concluído 🔥</button></div>`;
+}
+function addEx(){ estado.rascunho.ex.push({ nome:'', feito:true, series:'', reps:'', carga:'', nota:'', aberto:true }); renderTreino(); const l = document.querySelectorAll('.ex input[list]'); if(l.length) l[l.length-1].focus(); }
+function tirarEx(k){ estado.rascunho.ex.splice(k,1); renderTreino(); }
+function marcar(k){ const x = estado.rascunho.ex[k]; x.feito = !x.feito; renderTreino(); }
+function abrirCampos(k){ const x = estado.rascunho.ex[k]; x.aberto = !x.aberto; renderTreino(); }
+function campo(k, c, v){ const x = estado.rascunho.ex[k]; x[c] = v; if(v && !x.feito){ x.feito = true; const el = document.querySelectorAll('.chk')[k]; if(el){ el.classList.add('on'); el.textContent='✓'; } } }
+function rpe(n){ estado.rascunho.rpe = estado.rascunho.rpe === n ? null : n; renderTreino(); }
+
+function confirmarRapido(i){
+  const t = estado.plano.treinos[i];
+  if(!confirm(`Marcar "${t.nome}" como concluído hoje?`)) return;
+  guardarRegisto({ treino: t.nome, data: hoje(), exercicios: [] });
+}
+
+function confirmar(){
+  const r = estado.rascunho;
+  const nome = (r.nome || '').trim() || 'Treino livre';
+  const ex = r.ex.filter(x => estado.treinoAberto >= 0 || (x.nome || '').trim()).map(x => {
+    const o = { nome:x.nome, feito:x.feito };
+    if(x.series) o.series = x.series; if(x.reps) o.reps = x.reps;
+    if(x.carga) o.carga = x.carga;   if(x.nota) o.nota = x.nota;
+    return o;
+  });
+  // Se não marcou nenhum exercício, assume que fez o treino todo
+  if(ex.length && !ex.some(x => x.feito)) ex.forEach(x => x.feito = true);
+  guardarRegisto({ treino:nome, data:r.data || hoje(), duracao:r.duracao, rpe:r.rpe, comentario:r.comentario, exercicios:ex });
+}
+
+async function guardarRegisto(dados){
+  const registo = Object.assign({ id: uid() }, dados);
+  const codigo = estado.cliente.codigo;
+  const resumo = {
+    id: registo.id, data_treino: registo.data, data_hora: '', treino: registo.treino,
+    duracao_min: registo.duracao ? Number(registo.duracao) : null, rpe_sessao: registo.rpe || null,
+    comentario: registo.comentario || '',
+    exercicios_total: registo.exercicios.length || null,
+    exercicios_feitos: registo.exercicios.length ? registo.exercicios.filter(x => x.feito).length : null
+  };
+  const btn = $('#btnConf'); if(btn){ btn.disabled = true; btn.textContent = 'A enviar…'; }
+  let enviado = false;
+  try{ await api('registar', { codigo, registo }); enviado = true; }
+  catch(e){
+    if(/código|desativado/i.test(e.message)){ toast(e.message, 4000); if(btn){ btn.disabled=false; btn.textContent='Treino concluído 🔥'; } return; }
+    const pend = lsGet(LS.pend, []); pend.push({ codigo, registo, resumo }); lsSet(LS.pend, pend);
+  }
+  estado.historico = [Object.assign({}, resumo, { pendente: !enviado })].concat(estado.historico);
+  lsSet(LS.hist, estado.historico);
+  estado.treinoAberto = null; estado.rascunho = null;
+  window.scrollTo(0,0);
+  $('#app').innerHTML = `<div class="feito-ecra">
+      <div class="big">💪</div><h2 style="font-size:22px">Treino concluído 🔥</h2>
+      <p class="sub">${enviado ? 'O teu treinador já consegue ver.' : 'Sem rede neste momento — fica guardado e é enviado automaticamente.'}</p>
+      <div style="height:16px"></div>
+      <button class="btn btn-pri" onclick="estado.aba='progresso';render();carregarHistorico()">Ver o meu progresso</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-sec" onclick="estado.aba='treinos';render()">Voltar aos treinos</button></div>`;
+}
+
+let aEnviar = false;
+async function enviarPendentes(manual){
+  if(aEnviar) return;
+  const pend = lsGet(LS.pend, []);
+  if(!pend.length) return;
+  aEnviar = true;
+  const falta = [];
+  for(const p of pend){
+    try{ await api('registar', { codigo:p.codigo, registo:p.registo }); }
+    catch(e){ falta.push(p); }
+  }
+  lsSet(LS.pend, falta);
+  aEnviar = false;
+  if(manual) toast(falta.length ? 'Ainda sem ligação. Tenta mais tarde.' : 'Registos enviados ✓');
+  if(estado.cliente){ carregarHistorico(); }
+}
+window.addEventListener('online', () => enviarPendentes());
+
+iniciar();
+</script>
+</body>
+</html>
