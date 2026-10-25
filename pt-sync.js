@@ -258,6 +258,7 @@
               <button class="pts-btn sec mini" data-copiar="${esc(link)}">Copiar link</button>` : '<span class="pts-sub">Define o link da página do cliente em Ligação.</span>'}
             <button class="pts-btn sec mini" data-plano="${esc(c.codigo)}">Plano</button>
             <button class="pts-btn sec mini" data-ativo="${esc(c.codigo)}">${c.ativo ? 'Desativar' : 'Reativar'}</button>
+            <button class="pts-btn sec mini" style="color:#dc2626" data-elim="${esc(c.codigo)}">Eliminar</button>
           </div></div>`;
       }).join('')}`;
   }
@@ -316,10 +317,19 @@
 
   /* ---------- eventos ---------- */
   ov.addEventListener('click', async e => {
-    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar],[data-criar]');
+    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar],[data-criar],[data-elim]');
     if (!el) return;
     const d = el.dataset;
+    if (d.elim) {
+      const c = st.clientes.find(x => x.codigo === d.elim);
+      if (!c || !confirm(`Eliminar o acesso de ${c.nome} (${c.codigo})?\nO cliente deixa de entrar na app e o plano publicado é apagado. Os treinos que já registou ficam guardados na folha.`)) return;
+      try { await api('apagarCliente', { codigo: d.elim }); st.clientes = st.clientes.filter(x => x.codigo !== d.elim); st.msg = { t: `Acesso de ${c.nome} eliminado.`, ok: true }; }
+      catch (err) { st.msg = { t: /desconhecida/i.test(err.message) ? 'O servidor ainda não tem a versão nova do Code.gs. Atualiza-o no Apps Script (Nova versão).' : err.message, err: true }; }
+      return render();
+    }
     if (d.criar) {
+      const dup0 = st.clientes.find(c => norm(c.nome) === norm(d.criar));
+      if (dup0) { st.msg = { t: `Já existe um acesso para "${dup0.nome}" (código ${dup0.codigo}).`, err: true }; return render(); }
       try { const r = await api('guardarCliente', { cliente: { nome: d.criar } }); st.clientes.push({ codigo: r.codigo, nome: d.criar, ativo: true, ultimoTreino: '', planoAtualizado: '' }); st.msg = { t: `Acesso criado para ${d.criar}: código ${r.codigo}`, ok: true }; }
       catch (err) { st.msg = { t: err.message, err: true }; }
       return render();
@@ -360,6 +370,8 @@
       case 'criar': {
         const nome = (ov.querySelector('#pts-novo').value || '').trim();
         if (!nome) return;
+        const dup = st.clientes.find(c => norm(c.nome) === norm(nome));
+        if (dup) { st.msg = { t: `Já existe um acesso para "${dup.nome}" (código ${dup.codigo}).`, err: true }; return render(); }
         try {
           const r = await api('guardarCliente', { cliente: { nome: nome } });
           st.clientes.push({ codigo: r.codigo, nome: nome, ativo: true, ultimoTreino: '', planoAtualizado: '' });
