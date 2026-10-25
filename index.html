@@ -7860,6 +7860,7 @@ function renderAll(){
 
 /* ===== Clientes online (Google Sheet): plano do ciclo → página do cliente ===== */
 window.PTSync = window.PTSync || {};
+window.PTSync.listarClientes = function(){ return DATA.clients.filter(c=>isPtClient(c) && DATA.cycles.some(y=>cycleHas(y,c.id))).map(c=>c.nome); };
 window.PTSync.obterPlano = function(nome){
   const nn = normName(nome);
   const c = DATA.clients.find(x=>normName(x.nome)===nn) || DATA.clients.find(x=>{ const m=normName(x.nome); return nn && (m.indexOf(nn)===0 || nn.indexOf(m)===0); });

@@ -229,8 +229,19 @@
     const base = cfg().linkCliente || '';
     return base ? base + (base.includes('?') ? '&' : '?') + 'c=' + encodeURIComponent(codigo) : '';
   }
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  function faltamAcesso() {
+    if (typeof PTSync.listarClientes !== 'function') return [];
+    let l = []; try { l = PTSync.listarClientes() || []; } catch (e) {}
+    return l.filter(n => !st.clientes.some(c => { const a = norm(c.nome), b = norm(n); return a === b || a.indexOf(b) === 0 || b.indexOf(a) === 0; }));
+  }
   function vClientes() {
+    const falta = faltamAcesso();
     return `
+      ${falta.length ? `<div class="pts-card"><h3>Clientes da CICLO sem acesso (${falta.length})</h3>
+        <p class="pts-sub">Clientes PT com ciclo que ainda não têm código para a app do cliente.</p>
+        ${falta.map(n => `<div class="pts-row" style="margin-top:6px"><span class="f">${esc(n)}</span><button class="pts-btn sec mini" data-criar="${esc(n)}">Criar acesso</button></div>`).join('')}
+        <div style="margin-top:10px"><button class="pts-btn" data-a="criarTodos">Criar acesso a todos</button></div></div>` : ''}
       <div class="pts-card"><h3>Novo acesso</h3>
         <div class="pts-row"><input class="f" id="pts-novo" placeholder="Nome do cliente">
         <button class="pts-btn" data-a="criar">Criar código</button></div>
@@ -305,9 +316,14 @@
 
   /* ---------- eventos ---------- */
   ov.addEventListener('click', async e => {
-    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar]');
+    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar],[data-criar]');
     if (!el) return;
     const d = el.dataset;
+    if (d.criar) {
+      try { const r = await api('guardarCliente', { cliente: { nome: d.criar } }); st.clientes.push({ codigo: r.codigo, nome: d.criar, ativo: true, ultimoTreino: '', planoAtualizado: '' }); st.msg = { t: `Acesso criado para ${d.criar}: código ${r.codigo}`, ok: true }; }
+      catch (err) { st.msg = { t: err.message, err: true }; }
+      return render();
+    }
     if (d.aba) { st.aba = d.aba; st.detalhe = null; st.msg = null; return render(); }
     if (d.det) { st.detalhe = d.det; window.scrollTo && ov.scrollTo(0, 0); return render(); }
     if (d.plano) { st.aba = 'plano'; st.planoCod = d.plano; st.planoTxt = undefined; return render(); }
@@ -332,6 +348,15 @@
       case 'fechar': return PTSync.fechar();
       case 'atualizar': return atualizar();
       case 'voltar': st.detalhe = null; return render();
+      case 'criarTodos': {
+        const lista = faltamAcesso(); let n = 0;
+        for (const nome of lista) {
+          try { const r = await api('guardarCliente', { cliente: { nome: nome } }); st.clientes.push({ codigo: r.codigo, nome: nome, ativo: true, ultimoTreino: '', planoAtualizado: '' }); n++; }
+          catch (err) { st.msg = { t: err.message, err: true }; break; }
+        }
+        if (n) st.msg = { t: `${n} acesso${n === 1 ? '' : 's'} criado${n === 1 ? '' : 's'}.`, ok: true };
+        return render();
+      }
       case 'criar': {
         const nome = (ov.querySelector('#pts-novo').value || '').trim();
         if (!nome) return;
