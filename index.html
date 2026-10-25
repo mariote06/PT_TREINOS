@@ -1680,7 +1680,7 @@ function loadData(){
   if(raw){ const d = JSON.parse(raw); if(!Array.isArray(d.aulas)) d.aulas = []; if(!Array.isArray(d.patCustom)) d.patCustom = []; return migrateAulas(d); }
   return { clients: [], exercises: [], workouts: [], cycles: [], aulas: defaultAulas(), aulasV: 4, patCustom: [] };
 }
-function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); if(typeof syncCfg==='function' && syncCfg()){ setSyncMeta({dirty:true}); scheduleSync(); } renderAll(); }
+function saveData(){ localStorage.setItem(STORE_KEY, JSON.stringify(DATA)); if(typeof syncCfg==='function' && syncCfg()){ setSyncMeta({dirty:true}); scheduleSync(); } if(typeof ptAutoPublicarSoon==='function') ptAutoPublicarSoon(); renderAll(); }
 let DATA = loadData();
 function uid(){ return 'id' + Math.random().toString(36).slice(2,10); }
 
@@ -4787,7 +4787,7 @@ function gcSetup(){
     callback: r=>{ const silent = GC._silent; GC._silent = false;
       if(r.error){ if(!silent) GC.status = 'Erro ao ligar: '+r.error; renderHojeGcal(); return; }
       GC.token = r.access_token; GC.cache = {}; GC.status = ''; try{ localStorage.setItem('ciclo_gcal_on','1'); }catch(e){}
-      renderHoje(); } });
+      renderHoje(); gcSyncCycles(false); } });
   return true;
 }
 function gcConnect(silent){
@@ -4807,7 +4807,7 @@ function renderHojeGcal(){
   } else if(!GC.token){
     box.innerHTML = `<div style="${bar} display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;"><span>Google Calendar não ligado. ${esc(GC.status)}</span><button class="btn btn-sm btn-primary" onclick="gcConnect(false)">Ligar ao Google Calendar</button></div>`;
   } else {
-    box.innerHTML = `<div style="${bar} display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;"><span>✓ Ligado ao Google Calendar (só leitura) ${esc(GC.status)}</span><button class="btn btn-ghost btn-sm" onclick="gcDisconnect()">Desligar</button></div>`;
+    box.innerHTML = `<div style="${bar} display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;"><span>✓ Ligado ao Google Calendar ${esc(GC.status)}</span><span><button class="btn btn-ghost btn-sm" onclick="gcSyncCycles(true)">↻ Ajustar ciclos ao calendário</button> <button class="btn btn-ghost btn-sm" onclick="gcDisconnect()">Desligar</button></span></div>`;
   }
 }
 async function gcLoadDay(key, dt){
@@ -7850,7 +7850,155 @@ function renderAll(){
   renderPrev();
   renderHoje();
 }
+
+/* ===== Clientes online (Google Sheet): plano do ciclo → página do cliente ===== */
+window.PTSync = window.PTSync || {};
+window.PTSync.obterPlano = function(nome){
+  const nn = normName(nome);
+  const c = DATA.clients.find(x=>normName(x.nome)===nn) || DATA.clients.find(x=>{ const m=normName(x.nome); return nn && (m.indexOf(nn)===0 || nn.indexOf(m)===0); });
+  if(!c) return null;
+  let cur = monitCycleNow(c.id), cy, wi;
+  if(cur){ cy = cur.cy; wi = cur.wi; }
+  else {
+    const cs = DATA.cycles.filter(y=>cycleHas(y,c.id)).sort((a,b)=>String(b.inicio).localeCompare(String(a.inicio)));
+    if(!cs.length) return null; cy = cs[0]; wi = 0;
+  }
+  const sem = cy.semanas[wi]; const treinos = []; const vistos = {};
+  sem.dias.forEach((d,di)=>{
+    if(!d.workoutId) return;
+    const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w) return;
+    const chave = w.id + '|' + di; if(vistos[chave]) return; vistos[chave] = 1;
+    treinos.push({
+      nome: w.nome, dia: DIAS[di] + (d.pt ? ' (PT)' : ''), notas: (w.evid||[]).slice(0,2).join(' · '),
+      exercicios: (w.exercicios||[]).map(l=>{
+        const e = DATA.exercises.find(x=>x.id===l.exId) || {};
+        const o = { nome: (e.nome||'Exercício') + (l.variante ? ' ('+l.variante+')' : ''), series: l.series, reps: l.reps };
+        if(l.carga) o.carga = l.carga; if(l.descanso) o.descanso = l.descanso;
+        if(l.met) o.notas = l.met; if(e.videoLink) o.video = e.videoLink;
+        return o;
+      })
+    });
+  });
+  return { ciclo: (cy.nome||'Ciclo') + ' · Semana ' + (wi+1) + '/' + cy.semanas.length, mensagem: '', treinos };
+};
+
+/* ===== v62: avisos de caducidade, Google Calendar → ciclo, publicação automática ===== */
+function cicloToast(msg, ms){
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 14px;border-radius:10px;font-size:13px;z-index:99990;max-width:92vw;box-shadow:0 6px 20px rgba(0,0,0,.35);white-space:pre-line;';
+  t.textContent = msg; document.body.appendChild(t); setTimeout(()=>t.remove(), ms||6000);
+}
+function cicloMonday(iso){ const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d; }
+function cicloFimISO(cy){ const d = cicloMonday(cy.inicio); d.setDate(d.getDate() + cy.semanas.length*7 - 1); return isoOf(d); }
+function cicloAvisosLista(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0); const out = [];
+  const dias = iso => Math.round((new Date(iso+'T00:00:00') - hoje)/86400000);
+  DATA.clients.filter(isPtClient).forEach(c=>{
+    if(!c.cadFim) return; const d = dias(c.cadFim);
+    if(d<=7 && d>=-60) out.push({ d, tipo:'Caderneta', nome:c.nome, fim:c.cadFim });
+  });
+  DATA.cycles.forEach(cy=>{
+    if(!cy.inicio || !cy.semanas || !cycleIsPt(cy)) return;
+    const fim = cicloFimISO(cy), d = dias(fim);
+    if(d>7 || d<-60) return;
+    const seguinte = DATA.cycles.some(o=>o!==cy && o.inicio && o.inicio>cy.inicio && cycleClientIds(cy).some(i=>cycleHas(o,i)));
+    if(!seguinte) out.push({ d, tipo:'Ciclo de treino', nome:cycleNames(cy), fim, extra:cy.nome });
+  });
+  return out.sort((a,b)=>a.d-b.d);
+}
+function cicloAvisos(force){
+  const old = document.getElementById('ciclo-avisos'); if(old) old.remove();
+  const hojeK = isoOf(new Date());
+  try{ if(!force && localStorage.getItem('ciclo_avisos_off')===hojeK) return; }catch(e){}
+  const l = cicloAvisosLista(); if(!l.length) return;
+  const txt = x => x.d<0 ? 'caducou há '+(-x.d)+' dia'+(x.d===-1?'':'s') : x.d===0 ? 'caduca hoje' : 'caduca em '+x.d+' dia'+(x.d===1?'':'s');
+  const box = document.createElement('div'); box.id = 'ciclo-avisos';
+  box.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);width:min(94vw,520px);max-height:70vh;overflow:auto;background:#fff7ed;color:#7c2d12;border:1px solid #fb923c;border-radius:12px;padding:12px 14px;z-index:99991;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:13.5px;';
+  box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><b style="font-size:15px;">⏰ Ciclos a caducar ou caducados ('+l.length+')</b><button onclick="cicloAvisosFechar()" style="border:1px solid #fb923c;background:transparent;color:inherit;border-radius:8px;padding:4px 10px;cursor:pointer;">Fechar</button></div>'
+    + l.map(x=>'<div style="padding:6px 0;border-top:1px solid #fed7aa;'+(x.d<0?'color:#b91c1c;':'')+'"><b>'+esc(x.nome)+'</b> · '+esc(x.tipo)+(x.extra?' ('+esc(x.extra)+')':'')+'<br><span>'+txt(x)+' ('+formatDate(x.fim)+')</span></div>').join('')
+    + (('Notification' in window && Notification.permission==='default') ? '<div style="margin-top:8px;"><button onclick="cicloNotifAtivar()" style="border:0;background:#ea580c;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;">Ativar notificações do sistema</button></div>' : '');
+  document.body.appendChild(box);
+  try{ if('Notification' in window && Notification.permission==='granted' && !sessionStorage.getItem('ciclo_notif')){
+    sessionStorage.setItem('ciclo_notif','1');
+    const n = l.length+' ciclo'+(l.length===1?'':'s')+' a caducar ou caducado'+(l.length===1?'':'s')+': '+l.slice(0,3).map(x=>x.nome).join(', ')+(l.length>3?'…':'');
+    if(navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(r=>r.showNotification('CICLO.', { body:n, icon:'icon-192.png' })).catch(()=>{ new Notification('CICLO.', { body:n }); });
+    else new Notification('CICLO.', { body:n });
+  } }catch(e){}
+}
+function cicloAvisosFechar(){ try{ localStorage.setItem('ciclo_avisos_off', isoOf(new Date())); }catch(e){} const b = document.getElementById('ciclo-avisos'); if(b) b.remove(); }
+function cicloNotifAtivar(){ try{ Notification.requestPermission().then(()=>cicloAvisos(true)); }catch(e){} }
+
+/* Google Calendar → planificação: o treino de PT passa para o dia/hora marcados no calendário */
+async function gcSyncCycles(manual){
+  if(!GC.token){ if(manual) cicloToast('Liga primeiro o Google Calendar.'); return; }
+  const t0 = new Date(); t0.setHours(0,0,0,0); const t1 = new Date(t0); t1.setDate(t1.getDate()+21);
+  const hojeK = isoOf(t0);
+  let evs = [];
+  try{
+    const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin='+encodeURIComponent(t0.toISOString())+'&timeMax='+encodeURIComponent(t1.toISOString());
+    const r = await fetch(url, { headers:{ Authorization:'Bearer '+GC.token } });
+    if(!r.ok){ if(manual) cicloToast('Não consegui ler o calendário.'); return; }
+    const col = gcLs('google_training_color_id');
+    evs = ((await r.json()).items||[]).filter(e=>e.start && e.start.dateTime && e.status!=='cancelled' && (!col || String(e.colorId||'')===col));
+  }catch(e){ if(manual) cicloToast('Sem ligação ao Google.'); return; }
+  const evDoCiclo = (ev, cy)=>{
+    const m = matchClientByTitle(ev.summary||''); if(m && cycleHas(cy, m.id)) return true;
+    const n = normCal(ev.summary||'');
+    return cycleClients(cy).some(c=>isPtClient(c) && c.nome && (n.includes(normCal(c.nome)) || nameCombos2(c.nome).some(k=>n.includes(k))));
+  };
+  const alt = [];
+  DATA.cycles.forEach(cy=>{
+    if(!cy.inicio || !cycleIsPt(cy)) return;
+    const d0 = cicloMonday(cy.inicio);
+    cy.semanas.forEach((sem, wi)=>{
+      const wk = [...Array(7)].map((_,di)=>{ const x = new Date(d0); x.setDate(x.getDate()+wi*7+di); return isoOf(x); });
+      if(wk[6] < hojeK || wk[0] > isoOf(t1)) return;
+      const eds = []; 
+      evs.filter(ev=>evDoCiclo(ev, cy)).forEach(ev=>{
+        const s = new Date(ev.start.dateTime), iso = isoOf(s);
+        if(wk.indexOf(iso)<0 || iso<hojeK || eds.some(e=>e.iso===iso)) return;
+        eds.push({ iso, hora:String(s.getHours()).padStart(2,'0')+':'+String(s.getMinutes()).padStart(2,'0') });
+      });
+      if(!eds.length) return;
+      const pts = sem.dias.map((d,di)=>({ d, di, iso:wk[di] })).filter(x=>x.d.pt && x.iso>=hojeK);
+      pts.forEach(p=>{ const e = eds.find(e=>e.iso===p.iso); if(e && p.d.ptHora!==e.hora){ alt.push(cycleNames(cy)+': PT de '+DIAS[p.di]+' passou para as '+e.hora); p.d.ptHora = e.hora; } });
+      const livresEv = eds.filter(e=>!pts.some(p=>p.iso===e.iso));
+      const livresPt = pts.filter(p=>!eds.some(e=>e.iso===p.iso));
+      for(let i=0; i<Math.min(livresEv.length, livresPt.length); i++){
+        const de = livresPt[i].di, para = wk.indexOf(livresEv[i].iso);
+        const tmp = sem.dias[de]; sem.dias[de] = sem.dias[para]; sem.dias[para] = tmp;
+        sem.dias[para].ptHora = livresEv[i].hora;
+        alt.push(cycleNames(cy)+' (S'+sem.numero+'): PT mudou de '+DIAS[de]+' para '+DIAS[para]+' às '+livresEv[i].hora);
+      }
+    });
+  });
+  if(alt.length){ saveData(); cicloToast('📅 Planificação ajustada pelo Google Calendar:\n'+alt.slice(0,6).join('\n')+(alt.length>6?'\n…+'+(alt.length-6):''), 12000); }
+  else if(manual) cicloToast('Calendário e planificação já coincidem.');
+}
+
+/* Publicação automática dos planos na Google Sheet */
+let _apT = null, _apBusy = false;
+function ptAutoCfg(){ try{ return JSON.parse(localStorage.getItem('ptsync_cfg')) || {}; }catch(e){ return {}; } }
+function ptAutoHash(t){ let h = 5381; for(let i=0;i<t.length;i++) h = ((h<<5)+h+t.charCodeAt(i))|0; return String(h); }
+function ptAutoPublicarSoon(){ const c = ptAutoCfg(); if(!c.url || !c.token || c.auto===false) return; clearTimeout(_apT); _apT = setTimeout(ptAutoPublicar, 4000); }
+async function ptAutoPublicar(){
+  const c = ptAutoCfg(); if(_apBusy || !c.url || !c.token || c.auto===false || !window.PTSync || !PTSync.api) return;
+  _apBusy = true;
+  try{
+    const lista = (await PTSync.api('clientes')).clientes.filter(x=>x.ativo);
+    let hs = {}; try{ hs = JSON.parse(localStorage.getItem('ptsync_hashes')) || {}; }catch(e){}
+    const feitos = [];
+    for(const sc of lista){
+      const pl = PTSync.obterPlano(sc.nome); if(!pl || !pl.treinos.length) continue;
+      const h = ptAutoHash(JSON.stringify(pl)); if(hs[sc.codigo]===h) continue;
+      try{ await PTSync.api('publicarPlano', { codigo:sc.codigo, plano:pl }); hs[sc.codigo] = h; feitos.push(sc.nome.split(' ')[0]); }catch(e){}
+    }
+    try{ localStorage.setItem('ptsync_hashes', JSON.stringify(hs)); }catch(e){}
+    if(feitos.length) cicloToast('☁️ Plano publicado para: '+feitos.join(', '), 5000);
+  }catch(e){} finally{ _apBusy = false; }
+}
 renderAll();
+cicloAvisos(); setTimeout(ptAutoPublicar,1500);
 if(gcLs('ciclo_gcal_on')){ let _n=0; const _t=setInterval(()=>{ if(GC.token||++_n>20){ clearInterval(_t); return; } if(gcSetup()){ clearInterval(_t); gcConnect(true); } },500); }
 if(syncCfg()) setTimeout(()=>syncNow(false), 800);
 // Instalação como app e uso offline (ficheiros manifest.json e sw.js na mesma pasta)
@@ -7858,5 +8006,6 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 </script>
+<script src="pt-sync.js"></script>
 </body>
 </html>
