@@ -1204,7 +1204,12 @@ function ptMobBlock(obj, perf, keys, casa, home, wi){
   };
 }
 // junta o bloco de mobilidade a um treino já criado em DATA.workouts
-function ptAddMobility(w, obj, perf, keys, casa, home, wi){
+function ptSessaoMin(c){
+  if(!c) return 0;
+  const tm = String(c.servico||'').match(/(\d{2})/) || String(c.atividade||'').match(/(\d{2})\s*min/);
+  return parseInt(c.duracaoSessao) || (tm ? parseInt(tm[1]) : 0);
+}
+function ptAddMobility(w, obj, perf, keys, casa, home, wi, minSessao){
   if(!w) return;
   const blk = ptMobBlock(obj, perf, keys, casa, home, wi||0);
   const toLine = l=>{
@@ -1213,7 +1218,8 @@ function ptAddMobility(w, obj, perf, keys, casa, home, wi){
     if(!e){ e = { id: uid(), nome: l.nome, grupo:'Mobilidade', equip:'', notas: l.nota||'', padrao:'mobilidade', modalidade:'Funcional', imagem:'', videoLink:'', videoData:'', variantes:[], patologias:[] }; DATA.exercises.push(e); }
     return { exId: e.id, series: String(l.series), reps: String(l.reps), carga: '', descanso: l.descanso, met: '', mob: 1 };
   };
-  const pre = blk.pre.map(toLine), pos = blk.pos.map(toLine);
+  let pre = blk.pre.map(toLine), pos = blk.pos.map(toLine);
+  if(minSessao && minSessao <= 30){ pre = pre.slice(0,1); pos = []; }
   w.exercicios = [...pre, ...(w.exercicios||[]), ...pos];
   if(w.nome && !/mobilidade/i.test(w.nome)) w.nome += ' + mobilidade';
 }
@@ -4610,7 +4616,7 @@ function genPtWorkout(cy, wi, local){
         keep.nome = keep.nome + ' (PT ' + lab + ')';
         const pObj = (p.prova || p.grupo==='Performance') ? 'Performance' : (p.pat ? 'Reabilitação' : 'Condição física geral');
         const pPerf = ({'p-5k':'corrida5k','p-10k':'corrida10k','p-meia':'meia','p-maratona':'maratona','p-trail':'trail'})[p.id] || '';
-        ptAddMobility(keep, pObj, pPerf, keys, casa, home, wi);
+        ptAddMobility(keep, pObj, pPerf, keys, casa, home, wi, ptSessaoMin(c));
         if(protoKindOf(p)==='treino' && !p.prova) ptEvidencia(keep, { obj: (meta.opt && meta.opt.obj) || c.objetivo || pObj, nivel: (meta.opt && meta.opt.level) || c.nivel || 'Intermédio', wi });
         return keep.id;
       }
@@ -4619,7 +4625,8 @@ function genPtWorkout(cy, wi, local){
   const base = (meta && meta.tipo==='plano' && meta.p) ? meta.p : {
     objetivo: c.objetivo || 'Condição física geral', perf: c.perf||'', nivel: c.nivel || 'Intermédio', duracao: parseInt(c.duracaoSessao)||45,
     equipamento: 'Ginásio completo', equipList: DATA.equip===undefined ? null : DATA.equip, patologia: keys[0] || '', patologiasExtra: keys.slice(1) };
-  const pp = { ...base, rm: clientRM(cycleClientIds(cy)), dias: 1, prova: '', semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
+  const pm = ptSessaoMin(c);
+  const pp = { ...base, ...(pm ? { duracao: pm } : {}), rm: clientRM(cycleClientIds(cy)), dias: 1, prova: '', semanas: Math.min(12, Math.max(2, cy.numSemanas||4)), limitacoes: '', comp: {} };
   if(casa){ pp.equipamento = (home && home.length) ? 'Casa, com elásticos' : 'Casa, sem material'; pp.equipList = home; }
   if(keys.length){ pp.patologia = keys[0]; pp.patologiasExtra = keys.slice(1); }
   const r = buildAutoPlan(pp);
@@ -4629,7 +4636,7 @@ function genPtWorkout(cy, wi, local){
   const id = uid();
   DATA.workouts.push({ id, nome: `${cy.nome} — PT S${sem.numero} (${lab})`, patologias: keys, patologia: keys[0]||'',
     exercicios: (t.exercicios||[]).map(x=>({ exId: findOrCreateExercise(x.exercicio), series: String(x.series||3), reps: String(x.reps||'10'), carga: String(x.carga||''), descanso: String(x.descanso||'60s'), met: String(x.met||'') })).filter(l=>l.exId) });
-  ptAddMobility(DATA.workouts[DATA.workouts.length-1], base.objetivo, base.perf || '', keys, casa, home, wi);
+  ptAddMobility(DATA.workouts[DATA.workouts.length-1], base.objetivo, base.perf || '', keys, casa, home, wi, ptSessaoMin(c));
   ptEvidencia(DATA.workouts[DATA.workouts.length-1], { obj: base.objetivo, nivel: base.nivel, wi });
   return id;
 }
@@ -7863,13 +7870,14 @@ window.PTSync.obterPlano = function(nome){
     const cs = DATA.cycles.filter(y=>cycleHas(y,c.id)).sort((a,b)=>String(b.inicio).localeCompare(String(a.inicio)));
     if(!cs.length) return null; cy = cs[0]; wi = 0;
   }
+  const ptMin = ptSessaoMin(c);
   const sem = cy.semanas[wi]; const treinos = []; const vistos = {};
   sem.dias.forEach((d,di)=>{
     if(!d.workoutId) return;
     const w = DATA.workouts.find(x=>x.id===d.workoutId); if(!w) return;
     const chave = w.id + '|' + di; if(vistos[chave]) return; vistos[chave] = 1;
     treinos.push({
-      nome: w.nome, dia: DIAS[di] + (d.pt ? ' (PT)' : ''), notas: (w.evid||[]).slice(0,2).join(' · '),
+      nome: w.nome, dia: DIAS[di] + (d.pt ? ' (PT)' : ''), duracao: (d.pt && ptMin) ? ptMin + ' min' : '', notas: (w.evid||[]).slice(0,2).join(' · '),
       exercicios: (w.exercicios||[]).map(l=>{
         const e = DATA.exercises.find(x=>x.id===l.exId) || {};
         const o = { nome: (e.nome||'Exercício') + (l.variante ? ' ('+l.variante+')' : ''), series: l.series, reps: l.reps };
