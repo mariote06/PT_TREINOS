@@ -63,19 +63,20 @@
   /* ---------- estilos ---------- */
   const css = `
   .pts-fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:99998;border:0;border-radius:99px;
-    padding:12px 16px;background:#0f172a;color:#fff;font:600 15px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+    padding:12px 16px;background:#21E1B0;color:#062A22;font:700 15px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.45);cursor:pointer}
+  @media (max-width:780px){.pts-fab{bottom:calc(72px + env(safe-area-inset-bottom, 0px));right:max(12px, env(safe-area-inset-right, 0px));padding:8px 13px;font-size:13px;opacity:.96}}
   .pts-ov{position:fixed;inset:0;z-index:99999;background:var(--pts-bg);color:var(--pts-txt);overflow:auto;
     font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --pts-bg:#f4f6fa;--pts-card:#fff;--pts-txt:#0f172a;--pts-sub:#64748b;--pts-ln:#e2e8f0}
+    --pts-bg:#f4f6fa;--pts-card:#fff;--pts-txt:#0C1F2E;--pts-sub:#64748b;--pts-ln:#e2e8f0}
   @media (prefers-color-scheme: dark){.pts-ov{--pts-bg:#0b1120;--pts-card:#131c2e;--pts-txt:#e5e7eb;--pts-sub:#94a3b8;--pts-ln:#24324a}}
   .pts-ov *{box-sizing:border-box}
-  .pts-hd{position:sticky;top:0;background:#0f172a;color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 10px;z-index:2}
+  .pts-hd{position:sticky;top:0;background:#0C1F2E;color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 10px;z-index:2}
   .pts-hd .t{display:flex;align-items:center;gap:8px}
   .pts-hd h2{flex:1;margin:0;font-size:18px}
   .pts-hd button{background:transparent;border:1px solid #334155;color:#fff;border-radius:10px;padding:6px 10px;font:inherit;cursor:pointer}
   .pts-tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto}
   .pts-tabs button{flex:1;white-space:nowrap}
-  .pts-tabs button.on{background:#fff;color:#0f172a;border-color:#fff}
+  .pts-tabs button.on{background:#fff;color:#0C1F2E;border-color:#fff}
   .pts-bd{max-width:820px;margin:0 auto;padding:16px}
   .pts-card{background:var(--pts-card);border:1px solid var(--pts-ln);border-radius:14px;padding:14px;margin-bottom:10px}
   .pts-sub{color:var(--pts-sub);font-size:13px}
@@ -84,7 +85,7 @@
     border:1px solid var(--pts-ln);border-radius:10px;padding:10px 12px}
   .pts-ov textarea{min-height:220px;font:13px/1.4 ui-monospace,Menlo,monospace}
   .pts-ov label{display:block;font-size:13px;color:var(--pts-sub);margin:10px 0 4px}
-  .pts-btn{border:0;border-radius:10px;padding:10px 14px;font:600 14px system-ui,sans-serif;cursor:pointer;background:#16a34a;color:#fff}
+  .pts-btn{border:0;border-radius:10px;padding:10px 14px;font:600 14px system-ui,sans-serif;cursor:pointer;background:#21E1B0;color:#062A22}
   .pts-btn.sec{background:transparent;color:#2563eb;border:1px solid var(--pts-ln)}
   .pts-btn.mini{padding:6px 10px;font-size:13px}
   .pts-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -98,7 +99,7 @@
   .pts-kpi span{font-size:11px;color:var(--pts-sub)}
   .pts-dots{display:flex;gap:3px;margin-top:8px}
   .pts-dots i{flex:1;height:7px;border-radius:3px;background:var(--pts-ln)}
-  .pts-dots i.on{background:#16a34a}
+  .pts-dots i.on{background:#21E1B0}
   .pts-tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--pts-ln);color:var(--pts-sub)}
   .pts-tag.ok{color:#16a34a;border-color:#16a34a55}.pts-tag.warn{color:#d97706;border-color:#d9770655}.pts-tag.err{color:#dc2626;border-color:#dc262655}
   .pts-tb{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
@@ -235,9 +236,19 @@
     let l = []; try { l = PTSync.listarClientes() || []; } catch (e) {}
     return l.filter(n => !st.clientes.some(c => { const a = norm(c.nome), b = norm(n); return a === b || a.indexOf(b) === 0 || b.indexOf(a) === 0; }));
   }
+  function tipoCli(c) {
+    let i = null; try { i = typeof PTSync.infoCliente === 'function' ? PTSync.infoCliente(c.nome) : null; } catch (e) {}
+    if (!c.ativo || (i && i.susp)) return 'susp';
+    return (i && !i.pt) ? 'normal' : 'pt';
+  }
   function vClientes() {
     const falta = faltamAcesso();
+    const cont = { pt: 0, normal: 0, susp: 0 }; st.clientes.forEach(c => cont[tipoCli(c)]++);
+    const f = st.listaF || '';
+    const lista = st.clientes.filter(c => !f || tipoCli(c) === f);
+    const chip = (v, l) => `<button class="pts-btn mini ${f === v ? '' : 'sec'}" data-lf="${v}">${l}</button>`;
     return `
+      <div class="pts-row" style="margin-bottom:10px">${chip('', 'Todos (' + st.clientes.length + ')')}${chip('pt', 'Clientes PT (' + cont.pt + ')')}${chip('normal', 'Clientes (' + cont.normal + ')')}${chip('susp', 'Clientes suspensos (' + cont.susp + ')')}</div>
       ${falta.length ? `<div class="pts-card"><h3>Clientes da CICLO sem acesso (${falta.length})</h3>
         <p class="pts-sub">Clientes PT com ciclo que ainda não têm código para a app do cliente.</p>
         ${falta.map(n => `<div class="pts-row" style="margin-top:6px"><span class="f">${esc(n)}</span><button class="pts-btn sec mini" data-criar="${esc(n)}">Criar acesso</button></div>`).join('')}
@@ -247,7 +258,7 @@
         <button class="pts-btn" data-a="criar">Criar código</button></div>
         <p class="pts-sub">Cada cliente recebe um código pessoal para entrar na página de treinos.</p>
       </div>
-      ${st.clientes.map(c => {
+      ${lista.map(c => {
         const link = linkCliente(c.codigo);
         const msg = `Olá ${c.nome.split(' ')[0]}! Já podes ver o teu plano e registar os teus treinos aqui: ${link || '(link)'}\nO teu código é ${c.codigo}`;
         return `<div class="pts-card" style="${c.ativo ? '' : 'opacity:.55'}">
@@ -317,9 +328,10 @@
 
   /* ---------- eventos ---------- */
   ov.addEventListener('click', async e => {
-    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar],[data-criar],[data-elim]');
+    const el = e.target.closest('[data-a],[data-aba],[data-det],[data-copiar],[data-ativo],[data-plano],[data-apagar],[data-criar],[data-elim],[data-lf]');
     if (!el) return;
     const d = el.dataset;
+    if (d.lf !== undefined) { st.listaF = d.lf; return render(); }
     if (d.elim) {
       const c = st.clientes.find(x => x.codigo === d.elim);
       if (!c || !confirm(`Eliminar o acesso de ${c.nome} (${c.codigo})?\nO cliente deixa de entrar na app e o plano publicado é apagado. Os treinos que já registou ficam guardados na folha.`)) return;
