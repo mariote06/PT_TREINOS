@@ -384,6 +384,24 @@
     .exline{ grid-template-columns: 1fr; gap: 4px; padding: 12px 0; }
     .cycle-meta{ gap: 16px; }
   }
+
+  /* Avaliação postural */
+  .pv-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 12px; }
+  .pv-tab{ background:var(--surface); color:var(--chalk-dim); border:1px solid var(--line); padding:8px 14px; border-radius:var(--radius-m); font-size:13px; cursor:pointer; font-family:var(--font-body); }
+  .pv-tab.on{ background:var(--ochre); color:#062A22; border-color:var(--ochre); font-weight:600; }
+  .pv-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+  .pv-col{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-m); padding:10px 12px; }
+  .pv-col h4{ margin:0 0 6px; font-family:var(--font-display); font-size:15px; letter-spacing:.04em; text-transform:uppercase; }
+  .pv-fig{ display:flex; justify-content:center; margin:2px 0 8px; }
+  .pv-fig svg{ width:100%; max-width:150px; height:auto; color:var(--chalk-dim); }
+  .pv-fig .zn{ fill:rgba(33,225,176,.0); stroke:rgba(154,171,189,.35); stroke-width:1; cursor:pointer; }
+  .pv-fig .zn.on{ fill:rgba(229,72,77,.45); stroke:#E5484D; stroke-width:1.5; }
+  .pv-zone{ margin:6px 0 0; border-top:1px dashed var(--line); padding-top:5px; }
+  .pv-zone summary{ cursor:pointer; font-size:13px; color:var(--chalk); padding:3px 0; }
+  .pv-zone summary .n{ color:#E5484D; font-weight:700; margin-left:6px; }
+  .pv-zone label{ display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--chalk-dim); padding:3px 0; font-weight:400; }
+  .pv-res{ white-space:pre-wrap; font-size:13px; color:var(--chalk); background:var(--surface); border:1px solid var(--line); border-radius:var(--radius_m,6px); padding:10px 12px; margin:8px 0; }
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -420,7 +438,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 88</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 89</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -3176,6 +3194,184 @@ function anamColher(){
   };
 }
 
+
+// ---------- AVALIAÇÃO POSTURAL (ficha do cliente) ----------
+const PV_ZONAS = { cab:'Cabeça e pescoço', omb:'Ombros e escápulas', tro:'Tronco e coluna', pel:'Pelve e anca', joe:'Joelhos', pes:'Pés e tornozelos' };
+const PV_ZONA_ORDEM = ['cab','omb','tro','pel','joe','pes'];
+const PV_VISTAS = { ant:'Vista anterior', lat:'Vista lateral', pos:'Vista posterior' };
+// formato: 'id|Etiqueta|músculos hiperativos ou encurtados (separados por vírgula)|músculos inibidos ou fracos'
+const PV_DEF = {
+  est: { titulo:'Postura estática', sub:'Em pé, relaxado, de frente, de lado e de costas.', vistas:{
+    ant:{ cab:['incl|Cabeça inclinada ou rodada|Esternocleidomastoideo,Escalenos,Trapézio superior do lado inclinado|Músculos cervicais do lado oposto','proj|Cabeça projetada à frente (visível pela frente: queixo avançado)|Esternocleidomastoideo,Escalenos,Elevador da escápula,Suboccipitais|Flexores profundos do pescoço'],
+      omb:['eleD|Ombro direito elevado|Trapézio superior direito,Elevador da escápula direito|Trapézio inferior direito','eleE|Ombro esquerdo elevado|Trapézio superior esquerdo,Elevador da escápula esquerdo|Trapézio inferior esquerdo','rotint|Braços rodados para dentro (palmas viradas para trás)|Peitoral maior,Grande dorsal,Subescapular|Rotadores externos,Trapézio médio e inferior'],
+      tro:['rot|Tronco rodado ou inclinado para um lado|Oblíquos,Quadrado lombar do lado da inclinação|Oblíquos e glúteo médio do lado oposto'],
+      pel:['incD|Pelve alta à direita|Quadrado lombar direito,Glúteo médio esquerdo,Adutores direitos|Glúteo médio direito','incE|Pelve alta à esquerda|Quadrado lombar esquerdo,Glúteo médio direito,Adutores esquerdos|Glúteo médio esquerdo'],
+      joe:['valgo|Joelhos para dentro (valgo)|Adutores,Bíceps femoral (cabeça curta),TFL,Vasto lateral|Glúteo médio e máximo,Vasto medial','varo|Joelhos para fora (varo)|TFL,Bíceps femoral,Vasto lateral|Adutores,Glúteo máximo'],
+      pes:['rotext|Pés rodados para fora|Sóleo,Gastrocnémio lateral,Bíceps femoral (cabeça curta)|Gastrocnémio medial,Isquiotibiais mediais,Sartório','plano|Arco abatido (pé plano / pronado)|Peroneais,Gastrocnémio lateral|Tibial posterior,Tibial anterior,Glúteo médio','cavo|Arco elevado (pé cavo)|Tibial posterior,Gémeos|Peroneais,Tibial anterior']
+    },
+    lat:{ cab:['proj|Cabeça projetada à frente|Esternocleidomastoideo,Escalenos,Elevador da escápula,Trapézio superior,Suboccipitais|Flexores profundos do pescoço'],
+      omb:['enrol|Ombros enrolados à frente (protraídos)|Peitoral maior e menor,Grande dorsal|Trapézio médio e inferior,Romboides,Serrátil anterior'],
+      tro:['cifose|Cifose torácica aumentada|Peitorais,Reto abdominal|Extensores torácicos,Trapézio médio e inferior','lordose|Lordose lombar aumentada|Flexores da anca,Eretores lombares|Glúteo máximo,Abdominais profundos','retif|Retificação lombar (costas "planas")|Isquiotibiais,Reto abdominal|Eretores lombares,Flexores da anca'],
+      pel:['antev|Anteversão pélvica|Flexores da anca,Reto femoral,Eretores lombares|Glúteo máximo,Abdominais,Isquiotibiais','retrov|Retroversão pélvica|Isquiotibiais,Reto abdominal,Glúteo máximo|Flexores da anca,Eretores lombares'],
+      joe:['hiper|Joelhos em hiperextensão|Quadríceps,Gémeos|Isquiotibiais,Poplíteo','flex|Joelhos em flexão (semi-fletidos)|Isquiotibiais,Gémeos|Quadríceps'],
+      pes:['antep|Corpo deslocado à frente (peso no antepé)|Gémeos,Sóleo|Tibial anterior','calc|Corpo deslocado para trás (peso nos calcanhares)|Tibial anterior,Quadríceps|Gémeos,Sóleo']
+    },
+    pos:{ cab:['incl|Cabeça inclinada ou rodada|Esternocleidomastoideo,Escalenos,Trapézio superior do lado inclinado|Músculos cervicais do lado oposto'],
+      omb:['alada|Escápulas aladas|Peitoral menor,Elevador da escápula|Serrátil anterior,Trapézio médio e inferior','elev|Escápulas elevadas|Trapézio superior,Elevador da escápula|Trapézio inferior','abd|Escápulas afastadas da coluna (abduzidas)|Peitoral menor,Serrátil anterior|Romboides,Trapézio médio'],
+      tro:['escol|Desvio lateral da coluna (escoliose funcional)|Quadrado lombar,Oblíquos do lado côncavo|Músculos do lado convexo'],
+      pel:['asim|Pelve ou pregas glúteas assimétricas|Quadrado lombar,Adutores do lado alto|Glúteo médio do lado baixo'],
+      joe:['pregas|Pregas poplíteas assimétricas|Isquiotibiais do lado alto|Glúteo máximo do lado baixo'],
+      pes:['valgo|Calcanhares em valgo (pronação)|Peroneais,Gastrocnémio lateral|Tibial posterior,Tibial anterior','varo|Calcanhares em varo (supinação)|Tibial posterior|Peroneais','rotext|Pés rodados para fora|Sóleo,Gastrocnémio lateral|Gastrocnémio medial']
+    }}},
+  loc: { titulo:'Dinâmica: locomoção', sub:'Marcha ou corrida (indica nas condições se foi descalço ou calçado, e a velocidade).', vistas:{
+    ant:{ cab:['incl|Cabeça inclina ou roda durante a marcha|Esternocleidomastoideo,Escalenos|Músculos cervicais do lado oposto'],
+      omb:['assim|Balanço dos braços assimétrico ou reduzido|Peitorais,Grande dorsal|Trapézio médio e inferior,Deltoide posterior'],
+      tro:['osc|Oscilação lateral excessiva do tronco|Quadrado lombar,Oblíquos|Glúteo médio'],
+      pel:['rot|Rotação pélvica excessiva|Flexores da anca,Adutores|Glúteo médio e máximo'],
+      joe:['valgo|Joelhos para dentro durante o apoio (valgo dinâmico)|Adutores,TFL,Bíceps femoral (cabeça curta),Vasto lateral|Glúteo médio e máximo,Vasto medial','varo|Joelhos para fora durante o apoio|TFL,Vasto lateral|Adutores,Glúteo máximo'],
+      pes:['rotext|Pés rodados para fora na passada|Sóleo,Gastrocnémio lateral,Bíceps femoral|Gastrocnémio medial','plano|Colapso do arco no apoio|Peroneais,Gastrocnémio lateral|Tibial posterior,Tibial anterior,Glúteo médio']
+    },
+    lat:{ cab:['proj|Cabeça projetada à frente|Esternocleidomastoideo,Escalenos,Elevador da escápula|Flexores profundos do pescoço'],
+      omb:['braco|Pouco balanço dos braços|Peitorais,Grande dorsal|Trapézio médio e inferior,Deltoide posterior'],
+      tro:['incl|Tronco inclinado à frente|Flexores da anca,Reto abdominal|Eretores lombares,Glúteo máximo','pouco|Pouca rotação do tronco|Oblíquos,Eretores lombares|Multífidos,Glúteo máximo'],
+      pel:['antev|Anteversão pélvica na marcha|Flexores da anca,Eretores lombares|Glúteo máximo,Abdominais','ext|Extensão da anca reduzida (passo curto atrás)|Flexores da anca,Reto femoral|Glúteo máximo'],
+      joe:['hiper|Joelhos em hiperextensão no apoio|Quadríceps,Gémeos|Isquiotibiais,Poplíteo'],
+      pes:['calc|Aterragem forte com o calcanhar|Quadríceps|Tibial anterior,Gémeos','antep|Aterragem no antepé|Gémeos,Sóleo|Tibial anterior','arrasta|Arrasta o pé / levanta pouco o pé|Gémeos,Sóleo|Tibial anterior,Flexores da anca']
+    },
+    pos:{ cab:['incl|Cabeça inclinada durante a marcha|Esternocleidomastoideo,Escalenos|Músculos cervicais do lado oposto'],
+      omb:['assim|Escápulas ou ombros com balanço assimétrico|Trapézio superior,Elevador da escápula|Trapézio médio e inferior'],
+      tro:['osc|Inclinação lateral do tronco|Quadrado lombar,Oblíquos|Glúteo médio'],
+      pel:['queda|Queda da pelve no lado oposto (Trendelenburg)|Quadrado lombar,Adutores do lado do apoio|Glúteo médio do lado do apoio'],
+      joe:['valgo|Joelhos para dentro no apoio|Adutores,TFL,Vasto lateral|Glúteo médio e máximo'],
+      pes:['valgo|Calcanhar em valgo no contacto (pronação)|Peroneais,Gastrocnémio lateral|Tibial posterior,Tibial anterior','varo|Calcanhar em varo no contacto (supinação)|Tibial posterior|Peroneais']
+    }}},
+  ohs: { titulo:'Dinâmica: overhead squat', sub:'Agachamento com os braços esticados acima da cabeça (pés à largura dos ombros, 5 repetições).', vistas:{
+    ant:{ pes:['rotext|Pés rodam para fora|Sóleo,Gastrocnémio lateral,Bíceps femoral (cabeça curta)|Gastrocnémio medial,Isquiotibiais mediais,Sartório','plano|Pés achatam (arco colapsa)|Peroneais,Bíceps femoral (cabeça curta),Gastrocnémio lateral|Tibial posterior,Tibial anterior,Glúteo médio'],
+      joe:['valgo|Joelhos movem-se para dentro|Adutores,Bíceps femoral (cabeça curta),TFL,Vasto lateral|Glúteo médio e máximo,Vasto medial','varo|Joelhos movem-se para fora|TFL,Bíceps femoral,Vasto lateral|Adutores,Glúteo máximo']
+    },
+    lat:{ cab:['proj|Cabeça projetada à frente|Esternocleidomastoideo,Escalenos,Elevador da escápula,Trapézio superior|Flexores profundos do pescoço'],
+      omb:['bracos|Braços descem ou caem à frente|Grande dorsal,Peitoral maior e menor,Redondo maior|Trapézio médio e inferior,Romboides,Rotadores externos da coifa'],
+      tro:['incl|Tronco inclina excessivamente à frente|Sóleo,Gastrocnémio,Flexores da anca,Abdominais|Tibial anterior,Glúteo máximo,Eretores lombares'],
+      pel:['arqueia|Zona lombar arqueia|Flexores da anca,Eretores lombares,Grande dorsal|Glúteo máximo,Isquiotibiais,Abdominais profundos (transverso, oblíquo interno)','achata|Zona lombar achata ou arredonda|Isquiotibiais,Adutor magno,Reto abdominal,Oblíquo externo|Glúteo máximo,Eretores lombares,Flexores da anca']
+    },
+    pos:{ omb:['sobem|Ombros sobem|Trapézio superior,Esternocleidomastoideo,Elevador da escápula|Trapézio médio e inferior'],
+      pel:['desloc|Deslocamento assimétrico do peso (desvio para um lado)|Adutores,TFL,Glúteo médio do lado oposto|Glúteo médio do lado do desvio'],
+      pes:['calc|Calcanhares sobem|Gastrocnémio,Sóleo|Tibial anterior','plano|Pés achatam|Peroneais,Gastrocnémio lateral|Tibial posterior,Tibial anterior']
+    }}}
+};
+function pvItens(a,v,z){
+  const arr = (((PV_DEF[a]||{}).vistas||{})[v]||{})[z] || [];
+  return arr.map(t=>{ const p=t.split('|'); return { id:p[0], label:p[1], sobre:(p[2]||'').split(',').filter(Boolean), sub:(p[3]||'').split(',').filter(Boolean) }; });
+}
+function pvFigSvg(v, lit){
+  const on = z=>lit && lit.includes(z) ? ' on' : '';
+  const z = (key,cx,cy,r)=>`<circle class="zn${on(key)}" data-z="${key}" cx="${cx}" cy="${cy}" r="${r}"><title>${esc(PV_ZONAS[key])}</title></circle>`;
+  const st = 'fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
+  let body='', zonas='';
+  if(v==='lat'){
+    body = `<circle cx="60" cy="28" r="13" ${st}/><path d="M60 41 L60 52" ${st}/><path d="M56 56 Q50 90 56 130 L66 130 Q70 92 66 58 Z" ${st}/><path d="M62 62 L58 100 L64 128" ${st}/><path d="M58 130 L58 215 L58 268" ${st}/><path d="M50 274 L86 274" ${st}/>`;
+    zonas = z('cab',60,28,15)+z('omb',60,62,11)+z('tro',60,96,13)+z('pel',60,138,13)+z('joe',58,214,11)+z('pes',64,272,12);
+  } else {
+    const esc2 = v==='pos' ? `<path d="M48 70 L56 92 M72 70 L64 92" ${st} stroke-width="2"/>` : '';
+    body = `<circle cx="60" cy="28" r="13" ${st}/><path d="M60 41 L60 52" ${st}/><path d="M30 60 L90 60" ${st}/><path d="M38 62 L44 128 L76 128 L82 62" ${st}/><path d="M30 62 L22 120 L20 160" ${st}/><path d="M90 62 L98 120 L100 160" ${st}/><path d="M44 128 L40 150 L80 150 L76 128" ${st}/><path d="M48 150 L46 215 L46 268" ${st}/><path d="M72 150 L74 215 L74 268" ${st}/><path d="M38 270 L54 270 M66 270 L82 270" ${st}/>${esc2}`;
+    zonas = z('cab',60,28,15)+z('omb',30,60,10)+z('omb',90,60,10)+z('tro',60,95,14)+z('pel',60,140,13)+z('joe',46,214,11)+z('joe',74,214,11)+z('pes',46,272,12)+z('pes',74,272,12);
+  }
+  return `<svg viewBox="0 0 120 290" role="img" aria-label="${esc(PV_VISTAS[v])}">${body}${zonas}</svg>`;
+}
+function pvColunaHtml(c, a, v){
+  const pv = (c.postural||{})[a] || {};
+  const sel = (pv[v]||[]);
+  const zonasLit = PV_ZONA_ORDEM.filter(z=>pvItens(a,v,z).some(i=>sel.includes(z+'.'+i.id)));
+  const zonasHtml = PV_ZONA_ORDEM.map(z=>{
+    const it = pvItens(a,v,z); if(!it.length) return '';
+    const n = it.filter(i=>sel.includes(z+'.'+i.id)).length;
+    return `<details class="pv-zone" data-z="${z}" ${n?'open':''}><summary>${esc(PV_ZONAS[z])}<span class="n">${n?('· '+n):''}</span></summary>${it.map(i=>`<label><input type="checkbox" class="f-pv" data-a="${a}" data-v="${v}" value="${z}.${i.id}" ${sel.includes(z+'.'+i.id)?'checked':''} onchange="pvMudou('${a}','${v}')"> ${esc(i.label)}</label>`).join('')}</details>`;
+  }).join('');
+  return `<div class="pv-col" id="pv-${a}-${v}"><h4>${esc(PV_VISTAS[v])}</h4><div class="pv-fig" id="pv-fig-${a}-${v}">${pvFigSvg(v, zonasLit)}</div>${zonasHtml}</div>`;
+}
+let pvTabAtual = 'est';
+document.addEventListener('click', e=>{
+  const c = e.target && e.target.closest ? e.target.closest('.pv-fig .zn') : null; if(!c) return;
+  const col = c.closest('.pv-col'); const d = col && col.querySelector('.pv-zone[data-z="'+c.dataset.z+'"]');
+  if(d){ d.open = true; d.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+});
+function posturalHtml(c){
+  const p = c.postural || {};
+  const tabs = Object.keys(PV_DEF).map(a=>`<button type="button" class="pv-tab ${a===pvTabAtual?'on':''}" data-a="${a}" onclick="pvTab('${a}')">${esc(PV_DEF[a].titulo)}</button>`).join('');
+  const paineis = Object.keys(PV_DEF).map(a=>`<div class="pv-painel" data-a="${a}" ${a===pvTabAtual?'':'hidden'}>
+      <div class="view-sub" style="margin-bottom:8px;">${esc(PV_DEF[a].sub)}</div>
+      <div class="field"><label>Condições do teste</label><input id="f-pv-cond-${a}" type="text" value="${esc((p[a]||{}).cond||'')}" placeholder="${a==='est'?'Ex: descalço, em pé relaxado, de frente para a parede':a==='loc'?'Ex: descalço, tapete rolante a 5 km/h, 1 min':'Ex: descalço, braços acima da cabeça, 5 repetições'}"></div>
+      <div class="pv-grid">${['ant','lat','pos'].map(v=>pvColunaHtml(c,a,v)).join('')}</div>
+      <div class="field" style="margin-top:10px;"><label>Notas — ${esc(PV_DEF[a].titulo)}</label><textarea id="f-pv-nota-${a}" rows="2">${esc((p[a]||{}).nota||'')}</textarea></div>
+    </div>`).join('');
+  return `
+    <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 6px;">Avaliação postural</h2>
+    <div class="view-sub" style="margin-bottom:8px;">Postura estática, locomoção e overhead squat, em três vistas. Marca os desvios observados: a figura assinala as zonas afetadas e a síntese sugere a prioridade de intervenção. É um apoio à observação e não substitui a avaliação clínica.</div>
+    <div class="row-2"><div class="field"><label>Data da avaliação</label><input id="f-pv-data" type="date" value="${esc(p.data||'')}"></div>
+      <div class="field"><label>Avaliador</label><input id="f-pv-aval" type="text" value="${esc(p.avaliador||'')}"></div></div>
+    <div class="pv-tabs">${tabs}</div>
+    ${paineis}
+    <h3 style="font-family:var(--font-display); font-size:16px; margin:14px 0 4px;">Síntese</h3>
+    <div class="pv-res" id="f-pv-resumo">${esc(pvResumoTexto(p))}</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;"><button type="button" class="btn btn-sm" onclick="pvCopiar()">Copiar síntese</button></div>
+    <div class="field"><label>Prioridades de intervenção</label><textarea id="f-pv-prio" rows="2" placeholder="Ex: 1) mobilidade de tornozelo; 2) ativar glúteo médio; 3) controlo da lombar no agachamento">${esc(p.prioridades||'')}</textarea></div>`;
+}
+function pvTab(a){
+  pvTabAtual = a;
+  document.querySelectorAll('.pv-tab').forEach(b=>b.classList.toggle('on', b.dataset.a===a));
+  document.querySelectorAll('.pv-painel').forEach(d=>{ if(d.dataset.a===a) d.removeAttribute('hidden'); else d.setAttribute('hidden',''); });
+}
+function pvColher(){
+  const r = { data:(document.getElementById('f-pv-data')||{}).value||'', avaliador:((document.getElementById('f-pv-aval')||{}).value||'').trim(), prioridades:((document.getElementById('f-pv-prio')||{}).value||'').trim() };
+  Object.keys(PV_DEF).forEach(a=>{
+    r[a] = { cond:((document.getElementById('f-pv-cond-'+a)||{}).value||'').trim(), nota:((document.getElementById('f-pv-nota-'+a)||{}).value||'').trim(), ant:[], lat:[], pos:[] };
+    document.querySelectorAll('.f-pv[data-a="'+a+'"]:checked').forEach(i=>r[a][i.dataset.v].push(i.value));
+  });
+  return r;
+}
+function pvMudou(a,v){
+  const sel = Array.from(document.querySelectorAll('.f-pv[data-a="'+a+'"][data-v="'+v+'"]:checked')).map(i=>i.value);
+  const lit = PV_ZONA_ORDEM.filter(z=>sel.some(x=>x.split('.')[0]===z));
+  const fig = document.getElementById('pv-fig-'+a+'-'+v); if(fig) fig.innerHTML = pvFigSvg(v, lit);
+  document.querySelectorAll('#pv-'+a+'-'+v+' .pv-zone').forEach(d=>{ const z=d.dataset.z; const n = sel.filter(x=>x.split('.')[0]===z).length; d.querySelector('.n').textContent = n ? '· '+n : ''; });
+  const res = document.getElementById('f-pv-resumo'); if(res) res.textContent = pvResumoTexto(pvColher());
+}
+function pvResumoTexto(p){
+  p = p || {};
+  const linhas = [], sobre = new Set(), sub = new Set(), ids = new Set();
+  Object.keys(PV_DEF).forEach(a=>{
+    const bloco = p[a]; if(!bloco) return;
+    const partes = [];
+    ['ant','lat','pos'].forEach(v=>{
+      (bloco[v]||[]).forEach(k=>{
+        const [z,id] = k.split('.'); const it = pvItens(a,v,z).find(x=>x.id===id); if(!it) return;
+        partes.push('• '+PV_VISTAS[v].replace('Vista ','').replace(/^./,m=>m.toUpperCase())+' — '+PV_ZONAS[z]+': '+it.label);
+        it.sobre.forEach(m=>sobre.add(m)); it.sub.forEach(m=>sub.add(m)); ids.add(a+'.'+v+'.'+z+'.'+id);
+      });
+    });
+    if(partes.length) linhas.push(PV_DEF[a].titulo.toUpperCase()+(bloco.cond?' ('+bloco.cond+')':'')+'\n'+partes.join('\n')+(bloco.nota?'\nNota: '+bloco.nota:''));
+  });
+  if(!linhas.length) return 'Ainda sem desvios assinalados.';
+  const cnt = arr=>arr.filter(k=>ids.has(k)).length;
+  const sug = [];
+  if(cnt(['est.lat.cab.proj','est.lat.omb.enrol','est.lat.tro.cifose','ohs.lat.cab.proj','ohs.lat.omb.bracos','ohs.pos.omb.sobem'])>=2) sug.push('Padrão compatível com síndrome cruzado superior (ver o protocolo "Síndrome cruzado superior").');
+  if(cnt(['est.lat.tro.lordose','est.lat.pel.antev','ohs.lat.pel.arqueia'])>=2) sug.push('Padrão compatível com síndrome cruzado inferior (ver o protocolo "Síndrome cruzado inferior").');
+  if(cnt(['est.ant.joe.valgo','loc.ant.joe.valgo','loc.pos.joe.valgo','ohs.ant.joe.valgo'])>=2) sug.push('Valgo dinâmico repetido: reforçar o glúteo médio e o controlo do joelho, e rever a mobilidade do tornozelo.');
+  let t = linhas.join('\n\n');
+  if(sobre.size) t += '\n\nPossíveis músculos hiperativos ou encurtados (alongar ou libertar):\n'+Array.from(sobre).join(', ');
+  if(sub.size) t += '\n\nPossíveis músculos inibidos ou fracos (ativar e fortalecer):\n'+Array.from(sub).join(', ');
+  if(sug.length) t += '\n\nSugestões:\n'+sug.map(x=>'• '+x).join('\n');
+  t += '\n\nAs relações entre desvios e músculos são hipóteses de trabalho (modelo NASM e Janda): confirma-as com a avaliação clínica e o movimento do cliente.';
+  return t;
+}
+function pvCopiar(){
+  const p = pvColher(); const nome = (document.getElementById('f-nome')||{}).value||'';
+  const txt = 'Avaliação postural'+(nome?' — '+nome:'')+(p.data?' ('+p.data+')':'')+'\n\n'+pvResumoTexto(p)+(p.prioridades?'\n\nPrioridades: '+p.prioridades:'');
+  const ok = ()=>{ const m=document.getElementById('ficha-msg'); if(m) m.textContent='Síntese copiada.'; };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok).catch(()=>{}); }
+  else { const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); ok(); }catch(e){} ta.remove(); }
+}
+
 function renderFicha(){
   if(!fichaId) return;
   const c = DATA.clients.find(x=>x.id===fichaId);
@@ -3245,6 +3441,7 @@ function renderFicha(){
     <div class="field"><label>Patologias / condições (podes indicar várias; usadas nos planos automáticos e nos protocolos)</label>${patPickerHtml('f-patologia', clientPats(c))}</div>
     <div class="field"><label>Limitações, lesões ou cuidados</label><textarea id="f-limitacoes" rows="3" placeholder="Ex: desconforto no ombro direito, evitar impacto...">${esc(c.limitacoes||'')}</textarea></div>
     ${anamHtml(c)}
+    ${posturalHtml(c)}
 
     <h2 style="font-family:var(--font-display); font-size:20px; margin:24px 0 6px;">Cargas de referência (1RM)</h2>
     <div class="view-sub" style="margin-bottom:10px;">Escreve a carga e as repetições de um teste recente (1 repetição = 1RM). Para iniciantes, usa um teste de 5RM, que é mais seguro; a app estima o 1RM. Com estes dados, os treinos de força passam a indicar a carga em kg.</div>
@@ -3291,6 +3488,7 @@ function saveFicha(){
     nascimento: v('f-nasc'), sexo: v('f-sexo'), telefone: v('f-tel'), email: v('f-email'), profissao: v('f-prof'), altura: v('f-altura'), peso: v('f-peso')
   });
   c.anamnese = anamColher();
+  c.postural = pvColher();
   const _al = document.getElementById('f-an-alerta'); if(_al) _al.innerHTML = anamAlertaHtml(c.anamnese);
   c.rm = {};
   RM_LIFTS.forEach(([k])=>{ const kg = parseFloat(String((document.getElementById('f-rm-'+k+'-kg')||{}).value||'').replace(',', '.')), rp = parseInt((document.getElementById('f-rm-'+k+'-reps')||{}).value) || 1; if(kg>0) c.rm[k] = { kg, reps: Math.max(1, Math.min(10, rp)) }; });
