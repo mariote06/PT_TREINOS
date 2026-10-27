@@ -185,6 +185,8 @@
 
   /* Forms */
   .field{ margin-bottom: 14px; }
+  .field input[type=checkbox], .field input[type=radio]{ width:18px !important; min-width:18px; height:18px; min-height:0 !important; padding:0; margin:0; flex:none; accent-color:var(--ochre); }
+  .field label.chk{ display:flex; gap:8px; align-items:center; font-weight:400; font-size:14px; color:var(--chalk); margin:0; }
   .field label{ display:block; font-size: 13px; color: var(--chalk-dim); margin-bottom: 5px; }
   .field input, .extra-row input, .field select, .field textarea{
     width: 100%;
@@ -438,7 +440,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 89</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 91</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -1161,7 +1163,7 @@ const MOB_LIB = [
 ];
 // alongamento final por região
 const MOB_CD = { tornozelo:'Alongamento de gémeos na parede', pe:'Alongamento da fáscia plantar', anca:'Alongamento do flexor da anca', ativacao:'Alongamento de isquiotibiais em pé', corrida:'Alongamento de isquiotibiais em pé', toracica:'Alongamento lateral do tronco (lado côncavo)', ombro:'Alongamento posterior do ombro (cross-body)', lombar:'Joelhos ao peito alternado', cervical:'Alongamento suave do pescoço', corpo:'Alongamento suave de corpo inteiro' };
-const MOB_BY_PAT = { joelho:['anca','tornozelo','ativacao'], oa:['anca','tornozelo','ativacao'], ombro:['ombro','toracica'], supra:['ombro','toracica'], cervical:['cervical','toracica','ombro'], lombar:['lombar','anca','toracica'], hernia:['lombar','anca','toracica'], piriforme:['anca','lombar','ativacao'], coxartrose:['anca','lombar','ativacao'], coifa:['ombro','toracica'], olecrano:['ombro','toracica'], tunelcarpico:['ombro','toracica','cervical'], gatilho:['ombro','toracica'], acromio:['ombro','toracica'], elevador:['cervical','toracica','ombro'], scs:['cervical','toracica','ombro'], sci:['lombar','anca','ativacao'], snapping:['ombro','toracica'], discinesia:['ombro','toracica'], alada:['ombro','toracica'], distrofia:['corpo','anca','toracica'], miosite:['corpo','anca','toracica'], dupuytren:['ombro','toracica'], fratdedos:['ombro','toracica'], dequervain:['ombro','toracica'], tendpunho:['ombro','toracica'], quisto:['ombro','toracica'], ligpunho:['ombro','toracica'], fratpunho:['ombro','toracica'], tfcc:['ombro','toracica'], punhoartrose:['ombro','toracica'], artritereum:['ombro','toracica'], cubital:['ombro','toracica','cervical'], bicepsdist:['ombro','toracica'], fratcot:['ombro','toracica'], cotartrose:['ombro','toracica'], impacto:['ombro','toracica'], instab:['ombro','toracica'], omartrose:['ombro','toracica'], slap:['ombro','toracica'], fratura:['ombro','toracica'], cfa:['anca','lombar','ativacao'], displasia:['anca','ativacao'], bursite:['anca','ativacao'], escoliose:['toracica','lombar','anca'], entorse:['tornozelo','ativacao','pe'], aquiles:['tornozelo','pe','anca'], fascite:['pe','tornozelo'], epicondilite:['ombro','toracica'], epitrocleite:['ombro','toracica'], osteop:['toracica','anca','lombar'], fibro:['corpo','toracica','anca'], em:['corpo','anca','toracica'] };
+const MOB_BY_PAT = { joelho:['anca','tornozelo','ativacao'], oa:['anca','tornozelo','ativacao'], ombro:['ombro','toracica'], supra:['ombro','toracica'], cervical:['cervical','toracica','ombro'], lombar:['lombar','anca','toracica'], hernia:['lombar','anca','toracica'], piriforme:['anca','lombar','ativacao'], coxartrose:['anca','lombar','ativacao'], coifa:['ombro','toracica'], olecrano:['ombro','toracica'], tunelcarpico:['ombro','toracica','cervical'], gatilho:['ombro','toracica'], acromio:['ombro','toracica'], elevador:['cervical','toracica','ombro'], scs:['cervical','toracica','ombro'], vertigem:['cervical','toracica','ativacao'], sci:['lombar','anca','ativacao'], snapping:['ombro','toracica'], discinesia:['ombro','toracica'], alada:['ombro','toracica'], distrofia:['corpo','anca','toracica'], miosite:['corpo','anca','toracica'], dupuytren:['ombro','toracica'], fratdedos:['ombro','toracica'], dequervain:['ombro','toracica'], tendpunho:['ombro','toracica'], quisto:['ombro','toracica'], ligpunho:['ombro','toracica'], fratpunho:['ombro','toracica'], tfcc:['ombro','toracica'], punhoartrose:['ombro','toracica'], artritereum:['ombro','toracica'], cubital:['ombro','toracica','cervical'], bicepsdist:['ombro','toracica'], fratcot:['ombro','toracica'], cotartrose:['ombro','toracica'], impacto:['ombro','toracica'], instab:['ombro','toracica'], omartrose:['ombro','toracica'], slap:['ombro','toracica'], fratura:['ombro','toracica'], cfa:['anca','lombar','ativacao'], displasia:['anca','ativacao'], bursite:['anca','ativacao'], escoliose:['toracica','lombar','anca'], entorse:['tornozelo','ativacao','pe'], aquiles:['tornozelo','pe','anca'], fascite:['pe','tornozelo'], epicondilite:['ombro','toracica'], epitrocleite:['ombro','toracica'], osteop:['toracica','anca','lombar'], fibro:['corpo','toracica','anca'], em:['corpo','anca','toracica'] };
 function mobEnsure(list){
   if(!Array.isArray(list) || !list.length) return 0;
   const have = new Set(list.map(e=>normName(e.nome)));
@@ -1698,6 +1700,7 @@ function migrateAulas(d){
   if(LIBOK && !d.escV && (d.exercises||[]).length){ escEnsure(d.exercises); d.escV = 1; }
   if(LIBOK && !d.elevV && (d.exercises||[]).length){ elevEnsure(d.exercises); d.elevV = 1; }
   if(LIBOK && !d.crzV && (d.exercises||[]).length){ crzEnsure(d.exercises); d.crzV = 1; }
+  if(LIBOK && !d.vestV && (d.exercises||[]).length){ vestEnsure(d.exercises); d.vestV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -2676,12 +2679,12 @@ function loadFullLibrary(){
   const all = [...BASE_EXERCISES.map(e=>({...e, notas:'', variantes:[]})), ...EXTRA_EXERCISES, ...REHAB_EXERCISES, ...HYROX_EXERCISES, ...CORRIDA_EXERCISES];
   const toAdd = all.filter(e=>!byName.has(normName(e.nome)));
   const toUpdate = all.filter(e=>{ const x=byName.get(normName(e.nome)); return x && ((!x.rx && e.rx) || (!x.notas && e.notas) || (!(x.variantes||[]).length && (e.variantes||[]).length)); });
-  const piriN = PIRI_EXERCISES.concat(ANCA_EXERCISES, OMBRO_EXERCISES, COTOVELO_EXERCISES, PUNHO_EXERCISES, MAO_EXERCISES, ESC_EXERCISES, ELEV_EXERCISES, CRZ_EXERCISES).filter(m=>!byName.has(normName(m.nome))).length;
-  if(!toAdd.length && !toUpdate.length && !piriN){ piriEnsure(DATA.exercises); ancaEnsure(DATA.exercises); ombroEnsure(DATA.exercises); cotoveloEnsure(DATA.exercises); punhoEnsure(DATA.exercises); maoEnsure(DATA.exercises); escEnsure(DATA.exercises); elevEnsure(DATA.exercises); crzEnsure(DATA.exercises); saveData(); alert('A biblioteca completa já está carregada.'); return; }
+  const piriN = PIRI_EXERCISES.concat(ANCA_EXERCISES, OMBRO_EXERCISES, COTOVELO_EXERCISES, PUNHO_EXERCISES, MAO_EXERCISES, ESC_EXERCISES, ELEV_EXERCISES, CRZ_EXERCISES, VEST_EXERCISES).filter(m=>!byName.has(normName(m.nome))).length;
+  if(!toAdd.length && !toUpdate.length && !piriN){ piriEnsure(DATA.exercises); ancaEnsure(DATA.exercises); ombroEnsure(DATA.exercises); cotoveloEnsure(DATA.exercises); punhoEnsure(DATA.exercises); maoEnsure(DATA.exercises); escEnsure(DATA.exercises); elevEnsure(DATA.exercises); crzEnsure(DATA.exercises); vestEnsure(DATA.exercises); saveData(); alert('A biblioteca completa já está carregada.'); return; }
   if(!confirm(`Adicionar ${toAdd.length} exercícios`+(toUpdate.length?` e completar notas/variantes em ${toUpdate.length} já existentes`:'')+'? Não apaga nem altera o que já escreveste.')) return;
   toAdd.forEach(e=>DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: e.notas||'', padrao: e.padrao, imagem: '', modalidade: e.modalidade||'', variantes: (e.variantes||[]).slice(), patologias: (e.patologias||[]).slice(), rx: e.rx||null }));
   toUpdate.forEach(e=>{ const x=byName.get(normName(e.nome)); if(!x.notas && e.notas) x.notas=e.notas; if(!(x.variantes||[]).length && (e.variantes||[]).length) x.variantes=e.variantes.slice(); if(!x.modalidade && e.modalidade) x.modalidade=e.modalidade; if(!x.rx && e.rx) x.rx=e.rx; if(!(x.patologias||[]).length && (e.patologias||[]).length) x.patologias=e.patologias.slice(); });
-  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1; prevEnsure(DATA.exercises); DATA.prevV = 1; piriEnsure(DATA.exercises); DATA.piriV = 1; ancaEnsure(DATA.exercises); DATA.ancaV = 1; ombroEnsure(DATA.exercises); DATA.ombroV = 1; cotoveloEnsure(DATA.exercises); DATA.cotV = 1; punhoEnsure(DATA.exercises); DATA.punV = 1; maoEnsure(DATA.exercises); DATA.maoV = 1; escEnsure(DATA.exercises); DATA.escV = 1; elevEnsure(DATA.exercises); DATA.elevV = 1; crzEnsure(DATA.exercises); DATA.crzV = 1;
+  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1; prevEnsure(DATA.exercises); DATA.prevV = 1; piriEnsure(DATA.exercises); DATA.piriV = 1; ancaEnsure(DATA.exercises); DATA.ancaV = 1; ombroEnsure(DATA.exercises); DATA.ombroV = 1; cotoveloEnsure(DATA.exercises); DATA.cotV = 1; punhoEnsure(DATA.exercises); DATA.punV = 1; maoEnsure(DATA.exercises); DATA.maoV = 1; escEnsure(DATA.exercises); DATA.escV = 1; elevEnsure(DATA.exercises); DATA.elevV = 1; crzEnsure(DATA.exercises); DATA.crzV = 1; vestEnsure(DATA.exercises); DATA.vestV = 1;
   exFixAll(DATA.exercises);
   saveData();
 }
@@ -3179,7 +3182,7 @@ function anamHtml(c){
       ${f('f-an-sono','Qualidade do sono',anamSel('f-an-sono',AN_SONO,a.sono))}
     </div>
     <div class="field"><label>Sinais de alerta (assinala se houver)</label>
-      <div style="display:grid; gap:6px;">${AN_BANDEIRAS.map(([k,t])=>`<label style="display:flex; gap:8px; align-items:center; font-weight:400;"><input type="checkbox" class="f-an-band" value="${k}" ${(a.bandeiras||[]).includes(k)?'checked':''}> ${esc(t)}</label>`).join('')}</div></div>
+      <div style="display:grid; gap:6px;">${AN_BANDEIRAS.map(([k,t])=>`<label class="chk"><input type="checkbox" class="f-an-band" value="${k}" ${(a.bandeiras||[]).includes(k)?'checked':''}> ${esc(t)}</label>`).join('')}</div></div>
     <div class="field"><label>Observações da anamnese</label><textarea id="f-an-obs" rows="3">${esc(a.observacoes||'')}</textarea></div>`;
 }
 function anamColher(){
@@ -3707,7 +3710,7 @@ async function ghPush(cfg, sha){
 function applyRemote(remote){
   try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
   const d = remote.payload.data;
-  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
   setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
   renderAll();
@@ -3810,7 +3813,7 @@ function importBackup(input){
       if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
         status.textContent = 'Importação cancelada.'; return;
       }
-      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
+      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
       saveData();
       status.textContent = 'Cópia importada: ' + resumo + '.';
     }catch(e){
@@ -7909,6 +7912,36 @@ const CRZPROT = [
   ]}
 ];
 
+const VESTPROT = [
+{ id:'reab-vertigem', nome:'Síndrome vertiginoso (reabilitação vestibular)', grupo:'Neurológicas', pat:'vertigem', g:'Corpo inteiro',
+  resumo:'Tonturas e vertigens de origem vestibular periférica (VPPB, neuronite ou hipofunção vestibular, tonturas cervicogénicas e outras), já diagnosticadas por médico. A reabilitação vestibular usa movimentos oculares e da cabeça que provocam sintomas ligeiros de forma controlada, para que o cérebro se adapte e se habitue, e treina o equilíbrio e a marcha.',
+  quando:'Vertigem ou instabilidade com causa vestibular periférica ou cervicogénica já avaliada por médico (ORL ou neurologia), sem sinais de causa central, com autorização para exercício.',
+  bandeiras:['Cefaleia súbita muito intensa, visão dupla, dificuldade em falar, boca ao lado, fraqueza ou dormência de um lado do corpo: urgência (suspeita de causa central).','Perda de audição súbita, ou zumbido que aparece de repente com a vertigem.','Desmaio, dor no peito, palpitações ou falta de ar.','Vómitos persistentes, incapacidade de andar sem apoio ou quedas.','Vertigem que não melhora em 4 a 6 semanas, ou que piora com o exercício: reavaliar.'],
+  notas:['As manobras de reposicionamento (Epley, Semont) fazem-se só por profissional de saúde depois de confirmar o canal afetado; o Brandt-Daroff é um exercício de habituação para casa, só depois de diagnóstico de VPPB.','No treino, é esperado provocar tonturas ligeiras (≤ 3 a 4/10) que passam em minutos; parar e sentar se forem intensas, e voltar depois de passar.','Ter sempre apoio por perto (parede, cadeira, barra); não treinar sozinho em superfícies instáveis nas fases iniciais.','Medicação para a tontura e álcool atrasam a adaptação; não conduzir enquanto houver crises.','Em doença de Ménière ou enxaqueca vestibular, o plano depende do controlo da doença e dos gatilhos: coordenar com o médico.'],
+  fases:[
+  { nome:'Fase 1 — Segurança e habituação inicial', sem:2, freq:5,
+    obj:['Reduzir o medo do movimento e o stresse.','Habituação suave a movimentos provocadores.','Manter a atividade com segurança.'],
+    criterios:['Tonturas ≤ 3/10 e a passar em poucos minutos.','Caminha 15 min sem apoio.','Sem sinais de alerta.'],
+    evitar:['Movimentos bruscos da cabeça e posições invertidas.','Treinar sozinho em superfícies instáveis.','Esforços máximos e alturas.'],
+    ex:[['Respiração diafragmática deitado','2','8 resp.','—','Core'],['Brandt-Daroff (habituação)','1','5 ciclos','—','Mobilidade','Só se o diagnóstico for VPPB. Sentado, deitar para um lado com a cabeça virada 45° para cima, manter até a tontura passar (ou 30 s), sentar, e repetir para o outro lado.'],['Fixação do olhar com rotação da cabeça (VOR x1 horizontal)','3','30 s','45s','Mobilidade'],['Seguimento visual suave (smooth pursuit)','2','10','30s','Mobilidade'],['Rotação cervical ativa','2','10','30s','Costas'],['Mobilização de ombros em círculos','2','10','30s','Mobilidade']] },
+  { nome:'Fase 2 — Adaptação do reflexo vestíbulo-ocular', sem:4, freq:5,
+    obj:['Adaptar o reflexo vestíbulo-ocular (VOR).','Equilíbrio estático básico.','Marcha com movimentos de cabeça.'],
+    criterios:['VOR x1 horizontal e vertical 1 min sem sintomas intensos.','Equilíbrio em tandem 20 s.'],
+    evitar:['Aumentar velocidade e dificuldade ao mesmo tempo.','Treino com olhos fechados sem apoio.'],
+    ex:[['Fixação do olhar com rotação da cabeça (VOR x1 horizontal)','3','30-60 s','45s','Mobilidade'],['Fixação do olhar com movimento vertical da cabeça (VOR x1 vertical)','3','30-60 s','45s','Mobilidade'],['Movimentos sacádicos (olhar entre dois alvos)','2','10','30s','Mobilidade'],['Equilíbrio em tandem','3','20-30 s','30s','Core'],['Equilíbrio unipodal','3','20 s','30s','Core'],['Marcha com rotação da cabeça','3','10 m','45s','Core']] },
+  { nome:'Fase 3 — Equilíbrio e integração', sem:6, freq:4,
+    obj:['Dificuldade progressiva do VOR e do equilíbrio.','Integrar visão, vestibular e propriocepção.','Marcha e tarefas duplas.'],
+    criterios:['VOR x2 sem sintomas intensos.','Equilíbrio em espuma 30 s com olhos abertos.','Marcha em tandem 10 passos.'],
+    evitar:['Fadiga excessiva.','Superfícies instáveis sem apoio por perto.'],
+    ex:[['VOR x2 (alvo e cabeça em sentidos opostos)','3','30 s','45s','Mobilidade'],['Equilíbrio sobre espuma com olhos abertos','3','30 s','45s','Core'],['Equilíbrio com olhos fechados','3','15-20 s','45s','Core','Com apoio por perto e só depois de dominar o equilíbrio com olhos abertos.'],['Marcha em tandem','3','10 passos','45s','Core'],['Sentar e levantar com rotação da cabeça','3','8','60s','Pernas'],['Passe de bola em equilíbrio','3','30 s','45s','Core'],['Bicicleta estática em intensidade leve','1','10 min','—','Cardio']] },
+  { nome:'Fase 4 — Regresso ao treino', sem:4, freq:4,
+    obj:['Reintroduzir o treino habitual com movimentos de cabeça e do corpo.','Exposição graduada a gestos provocadores.'],
+    criterios:['Treino completo sem tonturas limitantes.','Tolera movimentos rápidos da cabeça.'],
+    evitar:['Voltar a posições invertidas e a esforços máximos de uma só vez.'],
+    ex:[['Exposição graduada a movimentos provocadores','2','5 repetições','60s','Mobilidade','Repetir o movimento que provoca tontura, de forma lenta e a ir acelerando, até a reação diminuir.'],['Sentar e levantar com rotação da cabeça','3','10','60s','Pernas'],['Marcha com rotação da cabeça','3','20 m','45s','Core'],['Equilíbrio sobre espuma com olhos abertos','3','30 s','45s','Core'],['Passe de bola em equilíbrio','3','45 s','45s','Core']] }
+  ]}
+];
+
 const OMBROPROT = [
 { id:'reab-coifa', nome:'Lesão do manguito rotador (rotura parcial ou total)', grupo:'Ombro', pat:'coifa', g:'Ombros',
   resumo:'Rotura parcial ou total de um ou mais tendões do manguito rotador. O tratamento conservador (roturas parciais e algumas totais) assenta em carga progressiva da coifa e da escápula. No pós-operatório, os prazos e as restrições são do cirurgião.',
@@ -8214,7 +8247,7 @@ const ANCAPROT = [
     ex:[['Hip thrust unilateral','3','10','60s','Glúteos'],['Agachamento unilateral até ao banco','3','10','75s','Pernas'],['Step-up alto','3','10','60s','Pernas'],['Prancha lateral','3','35s','45s','Core'],['Passada lateral com mini band','3','12 por lado','45s','Glúteos']] }
   ]}
 ];
-PROTOCOLOS.push(...PREVPROT, ...REABPROT, ...ANCAPROT, ...OMBROPROT, ...COTOVELOPROT, ...PUNHOPROT, ...MAOPROT, ...ESCPROT, ...ELEVPROT, ...CRZPROT);
+PROTOCOLOS.push(...PREVPROT, ...REABPROT, ...ANCAPROT, ...OMBROPROT, ...COTOVELOPROT, ...PUNHOPROT, ...MAOPROT, ...ESCPROT, ...ELEVPROT, ...CRZPROT, ...VESTPROT);
 PATOLOGIAS.isquio = { nome:'Lesão muscular dos isquiotibiais', contra:'sprint, saltos e alongamento forte nas primeiras fases', dias:3, series:3, reps:['8-12','10-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:10, maq:true, grp:'Músculo-esqueléticas',
   ex:/sprint|skipping|salto|jump|burpee|box|pliometr/,
   avisos:['Lesão muscular dos isquiotibiais: começar com isométricos sem dor, avançar para excêntrico e velocidade por critérios (sem reação em 24 h, amplitude completa, força ≥ 85% do lado são) e só depois voltar ao sprint.','Dor súbita e forte atrás da coxa, hematoma extenso ou dor em repouso precisam de avaliação médica.'] };
@@ -8526,6 +8559,47 @@ function crzEnsure(list){
     m.pats.forEach(k=>tag(x,k));
   });
   Object.keys(CRZ_TAG).forEach(k=>CRZ_TAG[k].forEach(nm=>{ const x = by.get(normName(nm)); if(x) tag(x,k); }));
+  return n;
+}
+
+PATOLOGIAS.vertigem = { nome:'Síndrome vertiginoso (vertigem)', contra:'movimentos bruscos da cabeça, posições invertidas, deitar e levantar rápido, saltos e trabalho em altura nas primeiras fases', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 4-5, tonturas ≤ 3/10 e a passar em minutos', cardio:10, maq:true, grp:'Neurológicas',
+  ex:/handstand|pike|invertid|burpee|salto|jump|skipping|corda|box|pliometr|sprint|climber|crunch|sit ?up|v-?up|good morning|bom dia|stiff|romeno|declinado|decline|slam|battle|wall ball|turkish|snatch|clean|jerk|russian|rotac.*(rapid|explosiv)|medicine ball|kettlebell swing|swing|barra fixa|pull ?up|step|escada/,
+  avisos:['Síndrome vertiginoso: exercício após diagnóstico médico, com apoio por perto. Tonturas ligeiras (≤ 3-4/10) que passam em minutos fazem parte da adaptação; parar e sentar se forem intensas.','Cefaleia súbita muito intensa, visão dupla, dificuldade em falar, fraqueza de um lado do corpo, perda de audição súbita, desmaio ou dor no peito exigem avaliação urgente. Evitar conduzir durante as crises.'] };
+
+// ---------- BIBLIOTECA: REABILITAÇÃO VESTIBULAR ----------
+const VEST_EXERCISES = [
+ {nome:'Fixação do olhar com rotação da cabeça (VOR x1 horizontal)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Sentado ou em pé, olhar fixo num alvo (letra ou ponto) a cerca de 1 m. Rodar a cabeça de um lado para o outro, devagar, mantendo o alvo nítido. 30-60 s. Aumentar a velocidade de forma gradual, com tontura ligeira aceitável.', variantes:['Em pé','Com fundo xadrez','Mais rápido']},
+ {nome:'Fixação do olhar com movimento vertical da cabeça (VOR x1 vertical)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Olhar fixo num alvo à frente. Mover a cabeça para cima e para baixo, devagar, mantendo o alvo nítido. 30-60 s. Aumentar a velocidade de forma gradual.', variantes:['Sentado','Em pé','Com fundo xadrez']},
+ {nome:'VOR x2 (alvo e cabeça em sentidos opostos)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Segurar um alvo na mão e mover a cabeça e o alvo em sentidos opostos, mantendo o alvo nítido. 30 s, devagar, com progressão de velocidade.', variantes:['Horizontal','Vertical']},
+ {nome:'Seguimento visual suave (smooth pursuit)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Com a cabeça parada, seguir com os olhos um dedo ou objeto que se desloca devagar de um lado para o outro (e para cima e para baixo). 10 repetições.', variantes:['Mais rápido','Com fundo estruturado']},
+ {nome:'Movimentos sacádicos (olhar entre dois alvos)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Dois alvos afastados cerca de 40-60 cm. Mudar o olhar de um para o outro, sem mover a cabeça, e depois com a cabeça a seguir. 10 repetições.', variantes:['Horizontais','Verticais']},
+ {nome:'Brandt-Daroff (habituação)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Só com diagnóstico de VPPB. Sentado na beira da cama, deitar para um lado com a cabeça virada 45° para cima; esperar que a tontura passe (ou 30 s); sentar; repetir para o outro lado. 5 ciclos, 2-3 vezes por dia. Fazê-lo com apoio por perto.', variantes:['Com apoio de almofada','Com menor amplitude']},
+ {nome:'Equilíbrio em tandem', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['vertigem'], notas:'Um pé à frente do outro, em linha, calcanhar com os dedos. Manter 20-30 s, depois trocar o pé da frente. Ter apoio por perto.', variantes:['Semi-tandem','Com braços cruzados']},
+ {nome:'Equilíbrio sobre espuma com olhos abertos', grupo:'Core', equip:'Espuma', padrao:'core', pats:['vertigem'], notas:'Em pé sobre almofada de espuma com os pés juntos, olhos abertos e apoio por perto. Manter 30 s. Progredir para olhos fechados só com autorização do profissional.', variantes:['Pés em tandem','Com movimentos de cabeça lentos']},
+ {nome:'Equilíbrio com olhos fechados', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['vertigem'], notas:'Em pé, pés juntos ou em tandem, olhos fechados e apoio por perto. Manter 15-20 s. Só depois de dominar o equilíbrio com olhos abertos.', variantes:['Pés afastados','Pés juntos']},
+ {nome:'Marcha em tandem', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['vertigem'], notas:'Caminhar em linha reta, calcanhar de um pé com os dedos do outro. 10 passos, com apoio por perto.', variantes:['Com rotação da cabeça','Para trás']},
+ {nome:'Marcha com rotação da cabeça', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['vertigem'], notas:'Caminhar devagar, rodando a cabeça para um lado e para o outro a cada 2 passos, depois cima e baixo. 10-20 m, com apoio por perto.', variantes:['Com viragens de 180°','Mais rápida']},
+ {nome:'Sentar e levantar com rotação da cabeça', grupo:'Pernas', equip:'Peso corporal', padrao:'agachamento', pats:['vertigem'], notas:'Sentar e levantar de uma cadeira, rodando a cabeça de um lado para o outro durante o movimento. 8-10 repetições, devagar, com apoio por perto.', variantes:['Com olhos fixos num alvo','Mais rápido']},
+ {nome:'Passe de bola em equilíbrio', grupo:'Core', equip:'Bola', padrao:'core', pats:['vertigem'], notas:'Em pé, pés juntos ou em tandem, passar uma bola leve de uma mão para a outra ou a um parceiro, seguindo-a com os olhos. 30-45 s, com apoio por perto.', variantes:['Em apoio unipodal','Em espuma']},
+ {nome:'Exposição graduada a movimentos provocadores', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['vertigem'], notas:'Repetir de forma lenta o movimento que provoca tontura (olhar para cima, virar-se, baixar-se) e ir acelerando de forma gradual, até a reação diminuir. 5 repetições, com apoio por perto.', variantes:['Virar-se de pé','Baixar-se e levantar']}
+];
+const VEST_TAG = {
+  vertigem:['Respiração diafragmática deitado','Rotação cervical ativa','Retração cervical (queixo para dentro)','Isométricos cervicais (4 direções)','Equilíbrio unipodal','Sentar e levantar da cadeira','Bicicleta estática em intensidade leve','Mobilização de ombros em círculos','Extensão torácica sobre foam roller','Alongamento do elevador da escápula','Alongamento do trapézio superior','Ponte de glúteos com pausa']
+};
+function vestEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const by = new Map(list.map(e=>[normName(e.nome), e]));
+  const tag = (x,k)=>{ x.patologias = x.patologias||[]; if(!x.patologias.includes(k)) x.patologias.push(k); };
+  let n = 0;
+  VEST_EXERCISES.forEach(m=>{
+    let x = by.get(normName(m.nome));
+    if(!x){
+      x = { id: uid(), nome: m.nome, grupo: m.grupo, equip: m.equip, notas: m.notas, padrao: m.padrao, modalidade:'Reabilitação', patologias:[], variantes: m.variantes.slice(), imagem:'', videoLink:'', videoData:'' };
+      list.push(x); by.set(normName(m.nome), x); n++;
+    }
+    m.pats.forEach(k=>tag(x,k));
+  });
+  Object.keys(VEST_TAG).forEach(k=>VEST_TAG[k].forEach(nm=>{ const x = by.get(normName(nm)); if(x) tag(x,k); }));
   return n;
 }
 
@@ -9831,7 +9905,7 @@ async function ptAutoPublicar(){
 LIBOK = true;
 try{
   let _ch = false;
-  [['piriV',piriEnsure],['ancaV',ancaEnsure],['ombroV',ombroEnsure],['cotV',cotoveloEnsure],['punV',punhoEnsure],['maoV',maoEnsure],['escV',escEnsure],['elevV',elevEnsure],['crzV',crzEnsure]].forEach(([k,fn])=>{
+  [['piriV',piriEnsure],['ancaV',ancaEnsure],['ombroV',ombroEnsure],['cotV',cotoveloEnsure],['punV',punhoEnsure],['maoV',maoEnsure],['escV',escEnsure],['elevV',elevEnsure],['crzV',crzEnsure],['vestV',vestEnsure]].forEach(([k,fn])=>{
     if(!DATA[k] && (DATA.exercises||[]).length){ fn(DATA.exercises); DATA[k] = 1; _ch = true; }
   });
   if(_ch) localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
