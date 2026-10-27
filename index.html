@@ -420,7 +420,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 87</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 88</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -1664,21 +1664,22 @@ function exFuncao(e){
   if(['agachamento','dobradica','empurrar_h','empurrar_v','puxar_h','puxar_v'].includes(p)) return /barra|halter|multipower|m[áa]quina|polia|kettle|landmine/i.test(e.equip||n) ? 'Força e hipertrofia (multiarticular)' : 'Força-resistência (multiarticular)';
   return 'Condição física geral';
 }
+var LIBOK = false;   // as bibliotecas por patologia só se aplicam depois de o script todo carregar
 function migrateAulas(d){
   (d.exercises||[]).forEach(e=>{ if(e && /xtenção/.test(e.nome||'')) e.nome = e.nome.replace(/xtenção/g, 'xtensão'); });
   exFixAll(d.exercises);
   if(!d.mobV && (d.exercises||[]).length){ mobEnsure(d.exercises); d.mobV = 1; }
   if(!d.perfV && (d.exercises||[]).length){ perfEnsure(d.exercises); d.perfV = 1; }
   if(!d.prevV && (d.exercises||[]).length){ prevEnsure(d.exercises); d.prevV = 1; }
-  if(!d.piriV && (d.exercises||[]).length){ piriEnsure(d.exercises); d.piriV = 1; }
-  if(!d.ancaV && (d.exercises||[]).length){ ancaEnsure(d.exercises); d.ancaV = 1; }
-  if(!d.ombroV && (d.exercises||[]).length){ ombroEnsure(d.exercises); d.ombroV = 1; }
-  if(!d.cotV && (d.exercises||[]).length){ cotoveloEnsure(d.exercises); d.cotV = 1; }
-  if(!d.punV && (d.exercises||[]).length){ punhoEnsure(d.exercises); d.punV = 1; }
-  if(!d.maoV && (d.exercises||[]).length){ maoEnsure(d.exercises); d.maoV = 1; }
-  if(!d.escV && (d.exercises||[]).length){ escEnsure(d.exercises); d.escV = 1; }
-  if(!d.elevV && (d.exercises||[]).length){ elevEnsure(d.exercises); d.elevV = 1; }
-  if(!d.crzV && (d.exercises||[]).length){ crzEnsure(d.exercises); d.crzV = 1; }
+  if(LIBOK && !d.piriV && (d.exercises||[]).length){ piriEnsure(d.exercises); d.piriV = 1; }
+  if(LIBOK && !d.ancaV && (d.exercises||[]).length){ ancaEnsure(d.exercises); d.ancaV = 1; }
+  if(LIBOK && !d.ombroV && (d.exercises||[]).length){ ombroEnsure(d.exercises); d.ombroV = 1; }
+  if(LIBOK && !d.cotV && (d.exercises||[]).length){ cotoveloEnsure(d.exercises); d.cotV = 1; }
+  if(LIBOK && !d.punV && (d.exercises||[]).length){ punhoEnsure(d.exercises); d.punV = 1; }
+  if(LIBOK && !d.maoV && (d.exercises||[]).length){ maoEnsure(d.exercises); d.maoV = 1; }
+  if(LIBOK && !d.escV && (d.exercises||[]).length){ escEnsure(d.exercises); d.escV = 1; }
+  if(LIBOK && !d.elevV && (d.exercises||[]).length){ elevEnsure(d.exercises); d.elevV = 1; }
+  if(LIBOK && !d.crzV && (d.exercises||[]).length){ crzEnsure(d.exercises); d.crzV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -9628,6 +9629,15 @@ async function ptAutoPublicar(){
     if(feitos.length) cicloToast('☁️ Plano publicado para: '+feitos.join(', '), 5000);
   }catch(e){} finally{ _apBusy = false; }
 }
+// Aplica as bibliotecas por patologia aos dados já guardados (só agora, com tudo carregado)
+LIBOK = true;
+try{
+  let _ch = false;
+  [['piriV',piriEnsure],['ancaV',ancaEnsure],['ombroV',ombroEnsure],['cotV',cotoveloEnsure],['punV',punhoEnsure],['maoV',maoEnsure],['escV',escEnsure],['elevV',elevEnsure],['crzV',crzEnsure]].forEach(([k,fn])=>{
+    if(!DATA[k] && (DATA.exercises||[]).length){ fn(DATA.exercises); DATA[k] = 1; _ch = true; }
+  });
+  if(_ch) localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
+}catch(e){ console.error('Biblioteca por patologia', e); }
 renderAll();
 cicloAvisos(); setTimeout(ptAutoPublicar,1500);
 if(gcLs('ciclo_gcal_on')){ let _n=0; const _t=setInterval(()=>{ if(GC.token||++_n>20){ clearInterval(_t); return; } if(gcSetup()){ clearInterval(_t); gcConnect(true); } },500); }
