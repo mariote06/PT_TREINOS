@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 101</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 104</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -1706,6 +1706,8 @@ function migrateAulas(d){
   if(LIBOK && !d.crzV && (d.exercises||[]).length){ crzEnsure(d.exercises); d.crzV = 1; }
   if(LIBOK && !d.vestV && (d.exercises||[]).length){ vestEnsure(d.exercises); d.vestV = 1; }
   if(LIBOK && !d.sacV && (d.exercises||[]).length){ sacroEnsure(d.exercises); d.sacV = 1; }
+  if(LIBOK && !d.radV && (d.exercises||[]).length){ radicEnsure(d.exercises); d.radV = 1; }
+  if(LIBOK && !d.mcgV && (d.exercises||[]).length){ mcgEnsure(d.exercises); d.mcgV = 1; }
   const defs = defaultAulas();
   if(!(d.aulasV>=2)){
     const usados = new Set(); (d.cycles||[]).forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(x=>{ if(x.aulaId) usados.add(x.aulaId); })));
@@ -2685,12 +2687,12 @@ function loadFullLibrary(){
   const all = [...BASE_EXERCISES.map(e=>({...e, notas:'', variantes:[]})), ...EXTRA_EXERCISES, ...REHAB_EXERCISES, ...HYROX_EXERCISES, ...CORRIDA_EXERCISES];
   const toAdd = all.filter(e=>!byName.has(normName(e.nome)));
   const toUpdate = all.filter(e=>{ const x=byName.get(normName(e.nome)); return x && ((!x.rx && e.rx) || (!x.notas && e.notas) || (!(x.variantes||[]).length && (e.variantes||[]).length)); });
-  const piriN = PIRI_EXERCISES.concat(ANCA_EXERCISES, OMBRO_EXERCISES, COTOVELO_EXERCISES, PUNHO_EXERCISES, MAO_EXERCISES, ESC_EXERCISES, ELEV_EXERCISES, CRZ_EXERCISES, VEST_EXERCISES, SACRO_EXERCISES).filter(m=>!byName.has(normName(m.nome))).length;
-  if(!toAdd.length && !toUpdate.length && !piriN){ piriEnsure(DATA.exercises); ancaEnsure(DATA.exercises); ombroEnsure(DATA.exercises); cotoveloEnsure(DATA.exercises); punhoEnsure(DATA.exercises); maoEnsure(DATA.exercises); escEnsure(DATA.exercises); elevEnsure(DATA.exercises); crzEnsure(DATA.exercises); vestEnsure(DATA.exercises); sacroEnsure(DATA.exercises); saveData(); alert('A biblioteca completa já está carregada.'); return; }
+  const piriN = PIRI_EXERCISES.concat(ANCA_EXERCISES, OMBRO_EXERCISES, COTOVELO_EXERCISES, PUNHO_EXERCISES, MAO_EXERCISES, ESC_EXERCISES, ELEV_EXERCISES, CRZ_EXERCISES, VEST_EXERCISES, SACRO_EXERCISES, RADIC_EXERCISES, MCG_EXERCISES).filter(m=>!byName.has(normName(m.nome))).length;
+  if(!toAdd.length && !toUpdate.length && !piriN){ piriEnsure(DATA.exercises); ancaEnsure(DATA.exercises); ombroEnsure(DATA.exercises); cotoveloEnsure(DATA.exercises); punhoEnsure(DATA.exercises); maoEnsure(DATA.exercises); escEnsure(DATA.exercises); elevEnsure(DATA.exercises); crzEnsure(DATA.exercises); vestEnsure(DATA.exercises); sacroEnsure(DATA.exercises); radicEnsure(DATA.exercises); mcgEnsure(DATA.exercises); saveData(); alert('A biblioteca completa já está carregada.'); return; }
   if(!confirm(`Adicionar ${toAdd.length} exercícios`+(toUpdate.length?` e completar notas/variantes em ${toUpdate.length} já existentes`:'')+'? Não apaga nem altera o que já escreveste.')) return;
   toAdd.forEach(e=>DATA.exercises.push({ id: uid(), nome: e.nome, grupo: e.grupo, equip: e.equip, notas: e.notas||'', padrao: e.padrao, imagem: '', modalidade: e.modalidade||'', variantes: (e.variantes||[]).slice(), patologias: (e.patologias||[]).slice(), rx: e.rx||null }));
   toUpdate.forEach(e=>{ const x=byName.get(normName(e.nome)); if(!x.notas && e.notas) x.notas=e.notas; if(!(x.variantes||[]).length && (e.variantes||[]).length) x.variantes=e.variantes.slice(); if(!x.modalidade && e.modalidade) x.modalidade=e.modalidade; if(!x.rx && e.rx) x.rx=e.rx; if(!(x.patologias||[]).length && (e.patologias||[]).length) x.patologias=e.patologias.slice(); });
-  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1; prevEnsure(DATA.exercises); DATA.prevV = 1; piriEnsure(DATA.exercises); DATA.piriV = 1; ancaEnsure(DATA.exercises); DATA.ancaV = 1; ombroEnsure(DATA.exercises); DATA.ombroV = 1; cotoveloEnsure(DATA.exercises); DATA.cotV = 1; punhoEnsure(DATA.exercises); DATA.punV = 1; maoEnsure(DATA.exercises); DATA.maoV = 1; escEnsure(DATA.exercises); DATA.escV = 1; elevEnsure(DATA.exercises); DATA.elevV = 1; crzEnsure(DATA.exercises); DATA.crzV = 1; vestEnsure(DATA.exercises); DATA.vestV = 1; sacroEnsure(DATA.exercises); DATA.sacV = 1;
+  mobEnsure(DATA.exercises); DATA.mobV = 1; perfEnsure(DATA.exercises); DATA.perfV = 1; prevEnsure(DATA.exercises); DATA.prevV = 1; piriEnsure(DATA.exercises); DATA.piriV = 1; ancaEnsure(DATA.exercises); DATA.ancaV = 1; ombroEnsure(DATA.exercises); DATA.ombroV = 1; cotoveloEnsure(DATA.exercises); DATA.cotV = 1; punhoEnsure(DATA.exercises); DATA.punV = 1; maoEnsure(DATA.exercises); DATA.maoV = 1; escEnsure(DATA.exercises); DATA.escV = 1; elevEnsure(DATA.exercises); DATA.elevV = 1; crzEnsure(DATA.exercises); DATA.crzV = 1; vestEnsure(DATA.exercises); DATA.vestV = 1; sacroEnsure(DATA.exercises); DATA.sacV = 1; radicEnsure(DATA.exercises); DATA.radV = 1; mcgEnsure(DATA.exercises); DATA.mcgV = 1;
   exFixAll(DATA.exercises);
   saveData();
 }
@@ -3420,9 +3422,16 @@ const TE_DEF = [
  ['watson','pun','Teste de Watson (deslocamento do escafoide)','Instabilidade escafo-semilunar.','O avaliador mantém o escafoide com o polegar enquanto leva o punho do desvio ulnar para o radial.','Dor ou ressalto doloroso na face dorsal do punho.','ligpunho,fratpunho','' ],
  ['tfcc','pun','Teste de compressão do complexo fibrocartilagíneo triangular (TFCC)','Lesão do TFCC.','Desvio ulnar do punho com compressão axial e movimentos de rotação do antebraço.','Dor ou clique no lado ulnar do punho.','tfcc','' ],
  ['allen','pun','Teste de Allen','Circulação da mão (artérias radial e ulnar).','Cliente fecha a mão apertando; o avaliador comprime as duas artérias, o cliente abre a mão, e liberta uma artéria de cada vez.','A mão demora a corar mais de 5 s.','','v'],
- ['slr','lomb','Teste de elevação da perna estendida (Lasègue)','Tensão do nervo ciático e irritação de raízes lombares.','De costas, o avaliador eleva a perna estendida de forma passiva, devagar.','Dor irradiada abaixo do joelho, entre 30° e 70°.','hernia,lombar','n'],
- ['slump','lomb','Slump teste','Tensão neural (dura-máter e nervo ciático).','Sentado, curva as costas, inclina o pescoço, estende o joelho e dorsiflete o pé em sequência.','Reproduz a dor irradiada que melhora com a extensão do pescoço.','hernia,lombar','n'],
- ['pkb','lomb','Teste de flexão do joelho em prono (nervo femoral)','Tensão do nervo femoral e raízes lombares altas (L2-L4).','De barriga para baixo, o avaliador flete o joelho até o calcanhar tocar a nádega, 45-60 s.','Dor na frente da coxa ou na lombar.','hernia,lombar','n'],
+ ['slr','lomb','Teste de elevação da perna estendida (Lasègue)','Tensão do nervo ciático e irritação de raízes lombares.','De costas, o avaliador eleva a perna estendida de forma passiva, devagar.','Dor irradiada abaixo do joelho, entre 30° e 70°.','hernia,lombar,radic','n'],
+ ['slump','lomb','Slump teste','Tensão neural (dura-máter e nervo ciático).','Sentado, curva as costas, inclina o pescoço, estende o joelho e dorsiflete o pé em sequência.','Reproduz a dor irradiada que melhora com a extensão do pescoço.','hernia,lombar,radic','n'],
+ ['pkb','lomb','Teste de flexão do joelho em prono (nervo femoral)','Tensão do nervo femoral e raízes lombares altas (L2-L4).','De barriga para baixo, o avaliador flete o joelho até o calcanhar tocar a nádega, 45-60 s.','Dor na frente da coxa ou na lombar.','hernia,lombar,radic','n'],
+ ['pronext','lomb','Teste de extensão em prono (McKenzie)','Verificar se a dor melhora com extensão passiva (disco posterior) e escolher a posição de alívio.','De barriga para baixo, relaxado, passa por três níveis: mãos sob o queixo, apoio nos cotovelos, e cotovelos com pescoço fletido (alivia a raiz nervosa presa). Observa a dor e a sensação de estabilidade antes e depois.','Menos dor e mais estabilidade depois de deitar: provável origem discal posterior (evitar flexão sob carga). Pior com extensão: outra origem (por exemplo, facetária ou espondilolistese).','hernia,radic,lombar,estenose','' ],
+ ['espondtest','lomb','Teste de espondilolistese (tração e elevação em prono)','Dor de origem instável, no defeito do arco ou na listese.','De barriga para baixo, o avaliador aplica tração suave nos tornozelos (cerca de 9 kg no total) e levanta as pernas até os joelhos saírem da marquesa. Pode acrescentar um abanar lento de um lado para o outro (um ciclo a cada 2 s).','Dor na lombar (por vezes irradiada): articulação instável. Alívio: provável origem no disco, não na listese.','espondilolistese,instab','' ],
+ ['rockback','lomb','Teste de balanço para os calcanhares (procurar «dobradiças»)','Segmento que se move mais do que os outros.','Em quatro apoios, com as ancas sobre os joelhos e os ombros sobre as mãos, leva as nádegas aos calcanhares mantendo a coluna neutra. Observa se algum ponto da coluna flete mais.','Um segmento que dobra e que coincide com o local da dor: dobradiça segmentar (treinar bracing e consciência da posição).','instab,rigida,lombar','' ],
+ ['torsion','lomb','Testes de controlo torsional (mão ao cotovelo oposto, extensão de anca em prancha, ponte com perna estendida)','Desligamento entre caixa torácica e bacia.','Em posição de flexão, levanta uma mão e leva-a ao cotovelo oposto; depois estende uma perna a partir da anca; em ponte de glúteos, estende uma perna. Observa se a bacia e a caixa torácica ficam niveladas.','Bacia a subir, a cair ou a rodar: controlo torsional fraco (treinar anti-rotação antes de rotação com carga).','instab,facetaria,lombar','f'],
+ ['endrat','lomb','Razões de endurance do tronco (flexores, laterais e extensores)','A relação entre os grupos é mais importante do que o valor absoluto.','Medir o tempo de manutenção dos flexores, das duas pranchas laterais e dos extensores, em dias sem dor. Calcular as razões.','Diferença entre lados da prancha lateral acima de 5%; razão flexão/extensão acima de 1,0; razão prancha lateral/extensão acima de 0,75.','lombar,instab,rigida','f'],
+ ['scohang','lomb','Teste de suspensão para escoliose','Ver se a curva corrige com tração.','Pendurado numa barra com o peso do corpo nos braços, o avaliador observa as curvas da coluna.','As curvas endireitam sob tração: potencial de resposta a exercício específico (por exemplo, Schroth), com profissional.','escoliose','' ],
+ ['heeldrop','lomb','Teste da queda do calcanhar (com cuidado)','Dor óssea, como em fratura vertebral por compressão.','Em pé, sobe sobre as pontas dos pés e deixa os calcanhares cair com suavidade no chão, de forma cuidadosa.','Dor local ou irradiada na coluna: pedir imagem e avaliação médica antes de qualquer carga.','osteop,hernia','' ],
  ['stork','lomb','Teste de extensão lombar em apoio unipodal (stork standing)','Pars interarticularis (zona posterior da lombar).','Em apoio num pé, estende a coluna lombar e roda para o lado do pé de apoio.','Dor lombar do lado do apoio.','lombar','' ],
  ['soren','lomb','Teste isométrico dos extensores (Sorensen)','Resistência dos extensores da coluna.','De barriga para baixo, tronco fora da marquesa e pernas fixas, mantém o tronco horizontal.','Menos de 60 s (referência: 2 min).','lombar','f'],
  ['abdiso','lomb','Teste isométrico abdominal','Resistência dos flexores do tronco.','Sentado, costas a 60° apoiadas, joelhos fletidos, mantém a posição quando o apoio se afasta.','Menos de 60 s.','lombar','f'],
@@ -3801,7 +3810,7 @@ function astAplicar(){
 // ---------- PRESCRIÇÃO LIGADA À ANAMNESE E À POSTURA ----------
 const LIGA_PAT_TXT = [
   [/piriform/,'piriforme'],[/coxartrose|artrose (da|na) anca/,'coxartrose'],[/conflito femoro|\bcfa\b/,'cfa'],[/trocanter|bursite (da|na) anca|tendinopatia glutea/,'bursite'],[/displasia/,'displasia'],
-  [/lombar|lombalgia|costas baixas/,'lombar'],[/hernia/,'hernia'],[/cervic|pescoco|torcicolo/,'cervical'],[/escolio/,'escoliose'],
+  [/radicul|ciatic|ciatalg|lombociat/,'radic'],[/estenose/,'estenose'],[/espondilolist|espondilolise|listese/,'espondilolistese'],[/instabilidade lombar|hipermobilidade lombar|dobradica/,'instab'],[/facetari|sindrome facetario/,'facetaria'],[/coluna rigida|rigidez lombar|hipercontracao/,'rigida'],[/cifose/,'cifose'],[/espondilite|anquilos/,'espondilite'],[/lombar|lombalgia|costas baixas/,'lombar'],[/hernia/,'hernia'],[/cervic|pescoco|torcicolo/,'cervical'],[/escolio/,'escoliose'],
   [/manguito|coifa/,'coifa'],[/impacto|bursite.{0,12}ombro|subacrom/,'impacto'],[/supraespin/,'supra'],[/slap|labrum/,'slap'],[/luxa.{0,20}ombro|instabilidade.{0,12}ombro/,'instab'],[/acromio|\bac\b/,'acromio'],[/escapula alada/,'alada'],[/discinesia/,'discinesia'],[/elevador da escapula/,'elevador'],[/ombro/,'ombro'],
   [/epicondil|cotovelo de tenis/,'epicondilite'],[/epitrocle|cotovelo de golf/,'epitrocleite'],[/tunel carpico|carpico/,'tunelcarpico'],[/quervain/,'dequervain'],[/gatilho/,'gatilho'],[/dupuytren/,'dupuytren'],[/tfcc|fibrocartilagem/,'tfcc'],
   [/patelar/,'patelar'],[/menisco|ligamento cruzado|\blca\b|joelho/,'joelho'],[/aquiles/,'aquiles'],[/fascite|fascia plantar/,'fascite'],[/entorse|tornozelo/,'entorse'],[/isquio/,'isquio'],
@@ -4351,7 +4360,7 @@ async function ghPush(cfg, sha){
 function applyRemote(remote){
   try{ localStorage.setItem('ciclo_before_sync', JSON.stringify(DATA)); }catch(e){}   // cópia de segurança do que havia neste aparelho
   const d = remote.payload.data;
-  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, sacV: d.sacV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
+  DATA = migrateAulas({ clients: d.clients||[], exercises: d.exercises||[], workouts: d.workouts||[], cycles: d.cycles||[], aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, sacV: d.sacV, radV: d.radV, mcgV: d.mcgV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
   localStorage.setItem(STORE_KEY, JSON.stringify(DATA));
   setSyncMeta({ remoteTs: remote.payload.updatedAt, dirty: false, last: Date.now() });
   renderAll();
@@ -4454,7 +4463,7 @@ function importBackup(input){
       if(!confirm(`Importar esta cópia (${resumo})?\n\nIsto substitui todos os dados atuais deste dispositivo (${backupSummaryText()}).`)){
         status.textContent = 'Importação cancelada.'; return;
       }
-      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, sacV: d.sacV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
+      DATA = migrateAulas({ clients: d.clients, exercises: d.exercises, workouts: d.workouts, cycles: d.cycles, aulas: Array.isArray(d.aulas) ? d.aulas : [], aulasV: d.aulasV, patCustom: Array.isArray(d.patCustom) ? d.patCustom : [], monit: Array.isArray(d.monit) ? d.monit : [], mobV: d.mobV, perfV: d.perfV, prevV: d.prevV, piriV: d.piriV, ancaV: d.ancaV, ombroV: d.ombroV, cotV: d.cotV, punV: d.punV, maoV: d.maoV, escV: d.escV, elevV: d.elevV, crzV: d.crzV, vestV: d.vestV, sacV: d.sacV, radV: d.radV, mcgV: d.mcgV, prev: (d.prev && typeof d.prev==='object' && !Array.isArray(d.prev)) ? d.prev : {}, equip: d.equip, equipCasa: d.equipCasa });
       saveData();
       status.textContent = 'Cópia importada: ' + resumo + '.';
     }catch(e){
@@ -4949,11 +4958,31 @@ function planPickExercise(slot, ctx, usedPlan, usedSession){
   const fresh = c.filter(e=>!usedPlan.has(e.id));
   if(fresh.length) c = fresh;
   if(!c.length) return null;
-  c.sort((a,b)=>(score(a)+penalty(a))-(score(b)+penalty(b)) || a.nome.length-b.nome.length || a.nome.localeCompare(b.nome,'pt'));
+  // rotação: dentro das opções de equipamento equivalentes, escolhe a que foi usada há mais tempo (ou nunca) em planos com os mesmos dados
+  const last = ctx.last || {};
+  const sc = e=>score(e)+penalty(e); const minS = Math.min(...c.map(sc));
+  const rot = e=> sc(e)-minS<=3 ? (last[e.id]===undefined ? -1 : last[e.id]) : 1e9;
+  c.sort((a,b)=>rot(a)-rot(b) || sc(a)-sc(b) || a.nome.length-b.nome.length || a.nome.localeCompare(b.nome,'pt'));
+  if(ctx.picked) ctx.picked.add(c[0].id);
   return c[0];
+}
+// histórico de exercícios usados por conjunto de dados, para que o mesmo pedido não devolva sempre os mesmos treinos
+function planSig(p){
+  const pk = [p.patologia, ...(p.patologiasExtra||[])].filter(Boolean).sort().join(',');
+  return [p.objetivo, p.nivel, p._d0||p.dias, p.duracao, p.equipamento, (p.equipList||[]).join(','), p.perf||'', pk, normText(p.limitacoes||''), JSON.stringify(p.comp||{})].join('|');
+}
+function planHistGet(sig){ DATA.planHist = DATA.planHist || {}; const h = DATA.planHist[sig] = DATA.planHist[sig] || { seq:0, last:{} }; return h; }
+function planHistSave(sig, ids){
+  const h = planHistGet(sig); h.seq++;
+  ids.forEach(id=>{ h.last[id] = h.seq; });
+  const keys = Object.keys(h.last);
+  if(keys.length>900){ keys.sort((a,b)=>h.last[a]-h.last[b]).slice(0, keys.length-700).forEach(k=>delete h.last[k]); }
+  const sigs = Object.keys(DATA.planHist);
+  if(sigs.length>60){ sigs.sort((a,b)=>DATA.planHist[a].seq-DATA.planHist[b].seq).slice(0, sigs.length-40).forEach(k=>delete DATA.planHist[k]); }
 }
 function buildAutoPlan(p){
   let rmUsado = false;
+  const SIG = planSig(p); const HIST = planHistGet(SIG); const PICKED = new Set();
   let cfg = PLAN_OBJ[p.objetivo];
   const PF = (p.objetivo==='Performance' && p.perf && PERF[p.perf] && PERF[p.perf].tpl) ? PERF[p.perf] : null;
   if(PF){ cfg = { ...cfg, series: PF.series, reps: PF.reps, rest: PF.rest, carga: PF.carga }; p = { ...p, dias: Math.min(p.dias, PF.dias) }; }
@@ -5007,7 +5036,7 @@ function buildAutoPlan(p){
   const order = (p.nivel==='Iniciante' || (pat && pat.maq)) ? ['Máquina','Halteres','Peso corporal','Polia','Multipower','Elástico','Kettlebell','Barra']
     : p.objetivo==='Força' ? ['Barra','Halteres','Multipower','Máquina','Polia','Kettlebell','Peso corporal']
     : ['Halteres','Barra','Polia','Máquina','Multipower','Peso corporal','Kettlebell','Elástico'];
-  const ctx = { pool, order };
+  const ctx = { pool, order, last: HIST.last, picked: PICKED };
   let [sMain, sAcc] = cfg.series[p.nivel];
   let carga = p.nivel==='Iniciante' ? 'RPE 6-7' : cfg.carga;
   let cardioMin = p.duracao >= 45 ? cfg.cardio : 0;
@@ -5077,6 +5106,7 @@ function buildAutoPlan(p){
     if(pat && rn>0){
       const okEq = ['', 'Peso corporal','Elástico','Mini band','Toalha','Step'];
       const rAll = DATA.exercises.filter(e=>e.modalidade==='Reabilitação' && [p.patologia, ...(p.patologiasExtra||[])].some(k=>(e.patologias||[]).includes(k)) && (!home || okEq.includes(e.equip||'')));
+      rAll.sort((a,b)=>((HIST.last[a.id]===undefined?-1:HIST.last[a.id])-(HIST.last[b.id]===undefined?-1:HIST.last[b.id])));
       const rFresh = rAll.filter(e=>!usedRehab.has(e.id));
       const rPick = [...rFresh, ...rAll.filter(e=>usedRehab.has(e.id))].slice(0, rn);
       rPick.forEach(e=>{
@@ -5085,7 +5115,7 @@ function buildAutoPlan(p){
         if(/caminhada|marcha no lugar/.test(n)){ series=1; reps='5 min'; }
         else if(/alongamento|respiracao|relaxamento|rolamento|pendular|postura|alinhamento|gato|joelhos ao peito|mobilidade|alfabeto/.test(n)) reps='30 s';
         else if(/isometric|hold|equilibrio|tandem|short foot/.test(n)) reps='20-30 s';
-        usedRehab.add(e.id); usedSession.add(e.id);
+        usedRehab.add(e.id); usedSession.add(e.id); PICKED.add(e.id);
         lines.push({ exercicio: e.nome, series, reps, carga:'Sem dor (≤ 3/10)', descanso:'30s', tipo:'reab' });
         total += series*1 + 1;
       });
@@ -5113,10 +5143,11 @@ function buildAutoPlan(p){
     }
     if(nHyrox>0){
       const hAll = DATA.exercises.filter(e=>e.modalidade==='HYROX');
+      hAll.sort((a,b)=>((HIST.last[a.id]===undefined?-1:HIST.last[a.id])-(HIST.last[b.id]===undefined?-1:HIST.last[b.id])));
       const hFresh = hAll.filter(e=>!usedHyrox.has(e.id));
       const hPick = [...hFresh, ...hAll.filter(e=>usedHyrox.has(e.id))].slice(0, nHyrox);
       hPick.forEach(e=>{
-        usedHyrox.add(e.id);
+        usedHyrox.add(e.id); PICKED.add(e.id);
         const rx = e.rx || ['3','10'];
         total += (parseInt(rx[0])||3) * 1.5;
         lines.push({ exercicio: e.nome, series: rx[0], reps: rx[1], carga: 'Ritmo de prova (RPE 7-8)', descanso: '60-90s', tipo: 'hyrox' });
@@ -5183,6 +5214,7 @@ function buildAutoPlan(p){
     for(let i=1;i<=p.semanas;i++) semanas.push({ numero:i, progressao: planWeekText(i, p.semanas, p.objetivo, p.perf), sessoes: nomes });
     if(p.semanas>=4) avisos.push('A semana 4 (e a 8, a 12) é de deload: reduz o volume para recuperar.');
   }
+  planHistSave(SIG, PICKED);
   return { nome: `${p.objetivo} · ${p.dias}x/semana · ${p.duracao} min`, avisos, treinos, semanas, estimativas: est, provaData: provaInfo ? p.prova : '' };
 }
 
@@ -7087,7 +7119,7 @@ function protoEnsureEx(x, p){
   DATA.exercises.push(e);
   return e.id;
 }
-const PROTO_PAT_MUSC = ['lombar','hernia','cervical','escoliose','entorse','aquiles','fascite','epicondilite','epitrocleite','ombro','supra','joelho','oa','osteop','fibro'];
+const PROTO_PAT_MUSC = ['lombar','hernia','radic','estenose','espondilolistese','instab','facetaria','rigida','cifose','espondilite','cervical','escoliose','entorse','aquiles','fascite','epicondilite','epitrocleite','ombro','supra','joelho','oa','osteop','fibro'];
 const PROTO_ADAPT_DROP = /interval|limiar|strides|fartlek|subida|ritmo de|bounding|salto|pogo|hop\b|skater|skipping|quick feet|brick|sprint|burpee|sled|wall ball|simula|sandbag|farmers|skierg|remo\b|roxzone|comprometida/i;
 
 // ---------- Patologias personalizadas ----------
@@ -8738,6 +8770,183 @@ const SACROPROT = [
   ]}
 ];
 
+const RADICPROT = [
+{ id:'reab-radic', nome:'Radiculopatia lombar (dor irradiada à perna)', grupo:'Coluna', pat:'radic', g:'Core',
+  resumo:'Irritação ou compressão de uma raiz nervosa lombar (por hérnia discal, estenose foraminal ou alterações degenerativas), com dor que irradia à nádega ou à perna, por vezes com formigueiro ou fraqueza. O objetivo é reduzir a irritação neural, manter a atividade com segurança, estabilizar o tronco e voltar de forma gradual ao treino.',
+  quando:'Radiculopatia lombar já avaliada por médico ou fisioterapeuta, com sinais neurológicos estáveis e autorização para exercício. Sinais típicos: Lasègue ou slump positivos, dor que desce abaixo do joelho, alteração de sensibilidade num território da perna.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou do intestino, ou dormência na zona genital e entre as pernas: urgência médica imediata (síndrome da cauda equina).','Fraqueza que aumenta, pé que cai ou arrasta, ou perna que falha ao andar.','Dor ou formigueiro nas duas pernas.','Dor intensa que não alivia em nenhuma posição, febre, perda de peso inexplicada ou antecedentes de cancro.','Queda ou traumatismo recente com dor intensa.'],
+  notas:['A dor que passa da perna para a lombar (centralização) é bom sinal; a dor que desce mais pela perna (periferalização) obriga a parar o exercício e a rever a direção do movimento.','Escolher a direção que alivia: extensão (por exemplo, em prono) se melhora com extensão; flexão suave se melhora ao fletir (por exemplo, estenose). Não forçar a direção que piora a dor na perna.','Os deslizamentos neurais fazem-se de vaivém, sem manter o alongamento e sem provocar dor intensa; não são alongamentos do nervo.','Dor aceitável durante o exercício até 3/10 na lombar, e sem aumento da dor na perna nas 24 h seguintes.','Sentar prolongado e levantar cargas com a coluna fletida costumam agravar: fazer pausas a cada 30-40 min e usar dobradiça da anca.'],
+  fases:[
+  { nome:'Fase 1 — Alívio e manter-se ativo', sem:2, freq:5, obj:['Reduzir a dor na perna e a irritação da raiz.','Encontrar a posição e a direção de movimento que alivia.','Manter a caminhada diária.'], criterios:['Dor na perna estável ou a diminuir.','Sem fraqueza nova nem alterações da bexiga.','Caminha 10 min seguidos sem agravar.'], evitar:['Flexão lombar sob carga e torções.','Alongamentos fortes do ciático.','Ficar sentado mais de 30-40 min seguidos.'],
+    ex:[['Descanso 90/90 com pernas sobre cadeira','2','2-3 min','—','Core'],['Respiração diafragmática deitado','2','8 respirações','—','Core'],['Extensão lombar em prono (McKenzie)','3','10','30s','Mobilidade','Só se melhorar ou não piorar a dor na perna; senão, trocar por joelhos ao peito.'],['Joelhos ao peito (flexão lombar suave)','2','8-10','30s','Mobilidade','Para quem melhora com flexão. Fazer só uma das duas direções, a que alivia.'],['Báscula pélvica deitado','2','12','30s','Core'],['Ativação do transverso do abdómen','3','10 (5 s)','30s','Core'],['Caminhada graduada em plano','3','5-10 min','—','Cardio']] },
+  { nome:'Fase 2 — Mobilidade neural e estabilização', sem:3, freq:4, obj:['Melhorar a mobilidade do nervo com deslizamentos suaves.','Estabilização do tronco em posição neutra.','Ativar glúteos.'], criterios:['Deslizamento neural sem aumentar a dor na perna.','Dead bug e bird dog sem dor.','Caminha 20 min.'], evitar:['Manter alongamento do nervo.','Compensar com a lombar nos exercícios de core.'],
+    ex:[['Deslize neural do ciático sentado (slider)','2','10','30s','Mobilidade','Se a dor for na frente da coxa, usar o deslize do femoral.'],['Deslize neural do ciático deitado','2','10 por lado','30s','Mobilidade'],['Dead bug com braços','3','8 por lado','45s','Core'],['Bird dog lento com pausa','3','8 por lado','45s','Core'],['Ponte de glúteos com pausa','3','10','45s','Glúteos'],['Prancha lateral apoiada no joelho','3','20-30 s por lado','45s','Core'],['Caminhada graduada em plano','3','10-15 min','—','Cardio']] },
+  { nome:'Fase 3 — Força funcional', sem:4, freq:3, obj:['Dobradiça da anca com a coluna neutra.','Força de pernas e glúteos.','Resistência do tronco.'], criterios:['Dobradiça da anca sem dor na perna.','Prancha lateral de 30 s por lado.','Marcha em pontas e calcanhares simétrica.'], evitar:['Peso morto pesado com a coluna fletida.','Impacto e saltos.'],
+    ex:[['Hip hinge com bastão','3','10-12','45s','Pernas'],['Agachamento com bola na parede','3','10','60s','Pernas'],['Peso morto com kettlebell','3','8','60s','Pernas','Só se a dobradiça com bastão estiver sem dor.'],['Ponte de glúteos com pausa','3','12','45s','Glúteos'],['Prancha lateral','3','20-30 s por lado','45s','Core'],['Prancha Frontal','3','30 s','45s','Core'],['Marcha em pontas dos pés e em calcanhares','2','10 passos cada','45s','Pernas'],['Remada com elástico (postura)','3','12','45s','Costas']] },
+  { nome:'Fase 4 — Regresso ao treino', sem:3, freq:3, obj:['Reintroduzir o treino habitual com técnica.','Prevenir recaídas.'], criterios:['Treino completo sem dor irradiada.','Sem fraqueza nem alterações de sensibilidade.'], evitar:['Voltar a cargas máximas e a impacto de uma só vez.'],
+    ex:[['Peso morto com kettlebell','3','10','60s','Pernas'],['Agachamento com bola na parede','3','12','60s','Pernas'],['Prancha lateral','3','30-45 s por lado','45s','Core'],['Bird dog lento com pausa','3','10 por lado','45s','Core'],['Ponte de glúteos com pausa','3','15','45s','Glúteos'],['Caminhada graduada em plano','1','20-30 min','—','Cardio']] }
+  ]}
+];
+
+const MCG_NOTA_BASE = 'Princípios do capítulo de reabilitação (McGill): exercício sem dor; estabilidade antes de mobilidade; holds curtos de 7-8 s e endurance por repetições (pirâmide invertida, por exemplo 5-5, 4-4, 3-3 por lado); técnica perfeita; progredir só se a melhoria mantém uma inclinação positiva, e voltar atrás se se perder.';
+const MCGPROT = [
+{ id:'reab-mcgill-big3', nome:'Programa base de estabilização lombar (Big 3 de McGill)', grupo:'Coluna', pat:'lombar', g:'Core',
+  resumo:'Programa de estabilização lombar para dor lombar crónica ou recorrente, sem sinais de alarme. Baseia-se em movimento sem dor, em padrões que poupam a coluna (dobradiça da anca, afundo, stop twist) e nos três exercícios de referência: curl-up, prancha lateral e bird dog, com endurance e sem alongamento da zona dolorosa.',
+  quando:'Dor lombar sem diagnóstico específico ou com diagnóstico já avaliado por médico ou fisioterapeuta, sem sinais neurológicos progressivos.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital: urgência.','Fraqueza progressiva, pé que cai ou sintomas nas duas pernas.','Dor depois de queda ou traumatismo, febre, perda de peso inexplicada, antecedentes de cancro ou dor noturna constante.','Dor que não responde a nenhum movimento, postura ou carga.'],
+  notas:[MCG_NOTA_BASE,'Não achatar a lombar no chão nem fazer báscula pélvica nos exercícios: manter a curva natural (ou a variante que alivia).','Bracing abdominal (co-contração) e não «hollowing» (encolher a barriga): é mais eficaz para a estabilidade da coluna.','Começar a sessão com 5-6 ciclos de gato-camelo, como movimento e não como alongamento. Mais ciclos não reduzem mais a viscosidade.','Manter um diário de como as costas se sentem e das tarefas feitas. Procurar tarefas ou posturas que antecedem as crises.'],
+  fases:[
+  { nome:'Fase 1 — Padrões de movimento (estágio 1)', sem:2, freq:5, obj:['Separar o movimento da anca do movimento da coluna.','Aprender o bracing abdominal.','Aprender hip-hinge, afundo e stop twist para as tarefas do dia.'], criterios:['Faz hip-hinge sem flectir a lombar.','Mantém a coluna neutra ao lavar os dentes.','Dor estável ou a diminuir.'], evitar:['Flexão lombar repetida.','Báscula pélvica forçada.','Posturas de dor prolongadas.'],
+    ex:[['Gato-camelo suave','1','5-6 ciclos','—','Mobilidade'],['Bracing abdominal (co-contração sem encolher)','3','5 × 8 s','30s','Core'],['Hip-hinge com mãos nas coxas','3','8','30s','Pernas'],['Agachamento de anca «potty squat» (sem mover a coluna)','2','8','30s','Pernas'],['Descida ao chão em afundo (lunge to floor)','2','3','45s','Pernas'],['Stop twist na parede (wall roll)','2','5 por lado','30s','Core'],['Caminhada em intervalos tolerados','3','conforme a tolerância','—','Cardio']] },
+  { nome:'Fase 2 — Os 3 grandes (estágio 2)', sem:4, freq:4, obj:['Estabilidade com baixa carga na coluna.','Holds curtos de 7-8 s.','Técnica perfeita antes de aumentar a dificuldade.'], criterios:['Curl-up, prancha lateral e bird dog sem dor.','Mantém a coluna neutra e a bacia nivelada.','Melhoria na inclinação positiva.'], evitar:['Aumentar a duração dos holds.','Fazer várias progressões ao mesmo tempo.'],
+    ex:[['Gato-camelo suave','1','5-6 ciclos','—','Mobilidade'],['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core','Pirâmide invertida: 5, 4 e 3 repetições, de holds de 7-8 s, com descanso breve entre séries.'],['Prancha lateral na parede (remedial)','3','5-4-3 por lado × 7 s','—','Core','Quando for fácil, passar para a prancha de joelhos.'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog remedial (mão ou joelho a 2,5 cm)','3','5-4-3 por lado × 7 s','—','Core'],['Caminhada em intervalos tolerados','3','conforme a tolerância','—','Cardio']] },
+  { nome:'Fase 3 — Endurance (estágio 3)', sem:6, freq:4, obj:['Construir endurance sem fadiga.','Progredir cada exercício de forma gradual.','Aproximar-se das razões de endurance normais.'], criterios:['Prancha lateral sem diferença relevante entre lados.','Bird dog completo durante 8 s sem desvios.','Treino completo sem dor.'], evitar:['Treinar até à falha.','Treinar o teste de endurance em vez de construir endurance.'],
+    ex:[['Gato-camelo suave','1','5-6 ciclos','—','Mobilidade'],['Curl-up de McGill avançado (com bracing prévio)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog com varrimento do chão','2','5 por lado','—','Core'],['Ponte de glúteos com pausa','3','10','45s','Glúteos'],['Hip hinge com bastão','3','10','45s','Pernas']] },
+  { nome:'Fase 4 — Transferência e força (opcional)', sem:4, freq:3, obj:['Aplicar os padrões a tarefas do dia, trabalho e desporto.','Força só se for um objetivo do cliente.'], criterios:['Sem dor nas tarefas habituais.','Mantém a técnica com carga ligeira.'], evitar:['Ganhar força à frente da técnica e da endurance: a perda de forma é a causa mais comum de crises.','Velocidade elevada na coluna.'],
+    ex:[['Deadlift (levantamento terra)','3','8','60s','Pernas','Só com a dobradiça perfeita e carga ligeira (kettlebell ou trap bar).'],['Agachamento goblet com kettlebell','3','8','60s','Pernas'],['Transporte de carga (farmer walk)','3','20-30 m','60s','Corpo inteiro'],['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog com varrimento do chão','2','5 por lado','—','Core']] }
+  ]},
+{ id:'reab-estenose', nome:'Estenose do canal lombar (claudicação neurogénica)', grupo:'Coluna', pat:'estenose', g:'Core',
+  resumo:'Estreitamento do canal ou dos buracos de conjugação (artrose, discos, ligamentos), mais frequente em pessoas que fizeram muito movimento da coluna. A dor ou o formigueiro nas pernas aparece em pé ou ao caminhar e alivia ao sentar. O programa usa postura de alívio, caminhada em intervalos tolerados e estabilização.',
+  quando:'Estenose lombar confirmada por imagem e avaliação clínica, sem fraqueza progressiva, com autorização médica. Diferente da claudicação vascular: se os pulsos estiverem fracos, a pele fria ou a dor for na barriga da perna, pedir avaliação vascular.',
+  bandeiras:['Perda do controlo da bexiga ou do intestino, ou dormência na zona genital: urgência.','Fraqueza que aumenta ou pé que cai.','Dor na perna com pulsos fracos ou pele fria: pode ser claudicação vascular.','Dor noturna constante, febre ou perda de peso.'],
+  notas:[MCG_NOTA_BASE,'McGill relata bons resultados com extensão tolerável e tração leve em quem não melhora com os conselhos habituais de manter a coluna flectida. A resposta é individual: usar a posição que alivia e, se piorar, parar e rever com o profissional.','Treinar em intervalos curtos e toleráveis, várias vezes ao dia, e aumentar a distância e o tempo sem fazer a dor aparecer.','Em pé durante muito tempo costuma agravar: fazer pausas e usar o apoio dos braços.'],
+  fases:[
+  { nome:'Fase 1 — Postura e alívio', sem:2, freq:5, obj:['Encontrar a postura de alívio.','Preparar a postura em pé.','Começar a caminhar em intervalos.'], criterios:['Dor ou formigueiro a diminuir na posição de alívio.','Caminha 5 min em intervalos sem agravar.'], evitar:['Ficar parado em pé muito tempo.','Extensão forçada sem alívio.'], ex:[['Deitado em prono com almofada (extensão passiva)','3','1-3 min','—','Mobilidade'],['Respiração diafragmática deitado','2','8 respirações','—','Core'],['Caminhada de braços na parede (arm walking)','3','4','30s','Mobilidade'],['Caminhada em intervalos tolerados','4','distância abaixo da dor','—','Cardio'],['Descarga no banco com braços esticados','3','até 1 min','—','Mobilidade']] },
+  { nome:'Fase 2 — Caminhar e estabilizar', sem:4, freq:5, obj:['Aumentar o tempo cumulativo de caminhada sem dor.','Começar a estabilização.'], criterios:['Caminhada acumulada de 20 min.','Bird dog remedial sem dor.'], evitar:['Aumentar distância e velocidade na mesma semana.'], ex:[['Caminhada em intervalos tolerados','5','distância abaixo da dor','—','Cardio'],['Descarga no banco com braços esticados','3','até 1 min','—','Mobilidade'],['Bracing abdominal (co-contração sem encolher)','3','5 × 8 s','30s','Core'],['Bird dog remedial (mão ou joelho a 2,5 cm)','3','5-4-3 por lado × 7 s','—','Core'],['Prancha lateral na parede (remedial)','3','5-4-3 por lado × 7 s','—','Core'],['Ponte de glúteos com pausa','3','8','45s','Glúteos']] },
+  { nome:'Fase 3 — Força de tronco e pernas', sem:4, freq:4, obj:['Estabilidade com os 3 grandes.','Força de pernas com a coluna neutra.'], criterios:['Caminha 30 min acumulados.','Sem formigueiro com o treino.'], evitar:['Cargas axiais pesadas.','Ficar em pé parado.'], ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog','3','5-4-3 por lado × 7 s','—','Core'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Bicicleta estática em intensidade leve','1','10-15 min','—','Cardio']] },
+  { nome:'Fase 4 — Manutenção', sem:4, freq:3, obj:['Manter a caminhada e a estabilidade.'], criterios:['Caminha 45 min acumulados.'], evitar:['Parar o programa quando a dor passa.'], ex:[['Caminhada em intervalos tolerados','4','distância crescente','—','Cardio'],['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas']] }
+  ]},
+{ id:'reab-espondilolistese', nome:'Espondilólise e espondilolistese', grupo:'Coluna', pat:'espondilolistese', g:'Core',
+  resumo:'Defeito do arco neural (espondilólise) com ou sem deslizamento de uma vértebra sobre a outra (espondilolistese). A dor piora em extensão e com cargas de cisalhamento anterior. Mais comum em desportos com hiperextensão repetida. O programa mantém a coluna neutra e treina a estabilidade sem extensão.',
+  quando:'Defeito ou listese confirmados por imagem, com autorização médica, sem sinais neurológicos progressivos. Fase aguda da espondilólise de atleta jovem: seguir indicação do médico.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital: urgência.','Fraqueza na perna, pé que cai ou dor que desce abaixo do joelho.','Dor intensa com sensação de deslizamento ou degrau na lombar.','Dor depois de queda ou traumatismo.'],
+  notas:[MCG_NOTA_BASE,'Teste do apoio: em prono, a tração nos tornozelos e a elevação das pernas provoca dor se a articulação é instável; alivia se a dor vem do disco. É decisão do profissional de saúde.','Evitar extensão lombar, hiperextensões, «cobra», pontes arqueadas e cargas que aumentem o cisalhamento anterior.','Quanto mais instável a listese, mais cuidado com as cargas. Em listeses estáveis, o regresso ao treino é mais rápido.'],
+  fases:[
+  { nome:'Fase 1 — Neutro e conforto', sem:2, freq:5, obj:['Aliviar a dor.','Aprender coluna neutra e bracing.','Mobilidade da anca.'], criterios:['Dor ≤ 3/10.','Hip-hinge sem extensão.'], evitar:['Extensão lombar e hiperextensões.','Saltos.'], ex:[['Respiração diafragmática deitado','2','8 respirações','—','Core'],['Bracing abdominal (co-contração sem encolher)','3','5 × 8 s','30s','Core'],['Hip-hinge com mãos nas coxas','3','8','30s','Pernas'],['Rotação da anca 90/90 sentado','2','8 por lado','—','Mobilidade'],['Caminhada em intervalos tolerados','3','conforme a tolerância','—','Cardio']] },
+  { nome:'Fase 2 — Os 3 grandes sem extensão', sem:4, freq:4, obj:['Estabilidade neutra.','Fortalecer glúteos e flexores do tronco.'], criterios:['Curl-up e prancha lateral sem dor.','Bird dog sem arquear.'], evitar:['Bird dog com arco lombar.','Levantar a perna acima da horizontal.'], ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog remedial (mão ou joelho a 2,5 cm)','3','5-4-3 por lado × 7 s','—','Core'],['Ponte de glúteos com pausa','3','10','45s','Glúteos'],['Clamshell (abdução em decúbito lateral)','3','12','30s','Glúteos']] },
+  { nome:'Fase 3 — Endurance e força de anca', sem:6, freq:4, obj:['Endurance do tronco.','Força de glúteos e pernas com coluna neutra.'], criterios:['Prancha lateral sem diferença entre lados.','Agachamento e dobradiça sem dor.'], evitar:['Peso morto com dobradiça perdida.','Rotação com carga.'], ex:[['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Dead bug','3','8 por lado','45s','Core'],['Agachamento de anca «potty squat» (sem mover a coluna)','3','10','45s','Pernas'],['Ponte de glúteos com uma perna estendida','3','5 por lado','45s','Glúteos']] },
+  { nome:'Fase 4 — Regresso ao desporto', sem:4, freq:3, obj:['Reintroduzir o gesto desportivo com controlo.'], criterios:['Treino completo sem dor.','Controlo sem extensão compensatória.'], evitar:['Voltar à hiperextensão repetida (ginástica, lançamentos, mergulho) sem autorização.'], ex:[['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Prancha com mão ao cotovelo oposto','3','6 por lado','45s','Core'],['Extensão de anca em prancha (pelve bloqueada)','3','6 por lado','45s','Core'],['Prancha lateral','3','30 s por lado','45s','Core']] }
+  ]},
+{ id:'reab-instab', nome:'Instabilidade lombar segmentar («dobradiça»)', grupo:'Coluna', pat:'instab', g:'Core',
+  resumo:'Alguns segmentos da coluna fazem mais do que a sua parte do movimento (uma «dobradiça»), muitas vezes onde a dor aparece e onde surgirão problemas futuros. Há dor com sensação de «falhar» em posições neutras. O objetivo é reforçar a rigidez do segmento com bracing e treino de resistência, em vez de o alongar.',
+  quando:'Dor lombar com sensação de falha ou dobradiça visível no teste de balanço para os calcanhares, avaliação prévia por profissional de saúde.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital: urgência.','Fraqueza progressiva ou formigueiro nas pernas.','Dor depois de queda ou traumatismo.','Sensação frequente de falha ou travamento da coluna: confirmar com médico.'],
+  notas:[MCG_NOTA_BASE,'Evitar mobilizar uma zona dolorosa que já tem mobilidade; o segmento precisa de rigidez e não de alongamento.','Dobradiças lombares melhoram com bracing abdominal; as toracolombares com ativação do grande dorsal (ombros em depressão e caixa torácica elevada).','Não usar alongamentos lombares em posição de flexão extrema ou rotação com a coluna a ceder.'],
+  fases:[
+  { nome:'Fase 1 — Consciência e bracing', sem:2, freq:5, obj:['Identificar onde a coluna cede.','Aprender o bracing e a dobradiça da anca.'], criterios:['Rock back sem dobradiça visível.','Mantém bracing durante hip-hinge.'], evitar:['Alongamentos da zona dolorosa.','Movimentos de ponta de amplitude.'], ex:[['Balanço para os calcanhares com coluna neutra (rock back)','3','8','30s','Mobilidade'],['Bracing abdominal (co-contração sem encolher)','3','5 × 8 s','30s','Core'],['Hip-hinge com mãos nas coxas','3','8','30s','Pernas'],['Agachamento de anca «potty squat» (sem mover a coluna)','2','8','30s','Pernas'],['Respiração diafragmática deitado','2','8 respirações','—','Core']] },
+  { nome:'Fase 2 — Rigidez do segmento', sem:4, freq:4, obj:['Aumentar a rigidez com os 3 grandes.','Controlo da bacia.'], criterios:['Curl-up e prancha lateral sem dor.','Pelve nivelada na prancha com mão ao cotovelo.'], evitar:['Fazer o exercício sem bracing.'], ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog remedial (mão ou joelho a 2,5 cm)','3','5-4-3 por lado × 7 s','—','Core'],['Extensão de coxa em quatro apoios (single thigh extension)','3','6 por lado','30s','Glúteos'],['Ponte de glúteos com pausa','3','10','45s','Glúteos']] },
+  { nome:'Fase 3 — Controlo torsional e endurance', sem:6, freq:4, obj:['Anti-rotação com a coluna rígida.','Endurance dos 3 grandes.'], criterios:['Prancha com mão ao cotovelo oposto sem rodar.','Prancha lateral sem diferença entre lados.'], evitar:['Rotações rápidas.','Treinar à fadiga.'], ex:[['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Prancha com mão ao cotovelo oposto','3','6 por lado','45s','Core'],['Extensão de anca em prancha (pelve bloqueada)','3','6 por lado','45s','Core'],['Ponte de glúteos com uma perna estendida','3','5 por lado','45s','Glúteos']] },
+  { nome:'Fase 4 — Regresso ao treino', sem:4, freq:3, obj:['Aplicar o bracing no treino de força e nas tarefas.'], criterios:['Treino completo sem dor.'], evitar:['Esforços máximos com perda de forma.'], ex:[['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Agachamento goblet com kettlebell','3','8','60s','Pernas'],['Bird dog com varrimento do chão','2','5 por lado','—','Core'],['Prancha lateral','3','30 s por lado','45s','Core']] }
+  ]},
+{ id:'reab-facetaria', nome:'Síndrome facetário lombar', grupo:'Coluna', pat:'facetaria', g:'Core',
+  resumo:'Dor nas articulações zigapofisárias, que pode irradiar para a nádega ou a coxa e piora com extensão e rotação. Costuma ser mais lenta a aparecer e a passar, e muitas vezes é secundária a alterações do disco. O programa evita extensão com rotação e treina a coluna neutra.',
+  quando:'Dor lombar com padrão facetário (extensão com rotação), já avaliada por médico ou fisioterapeuta.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital: urgência.','Fraqueza na perna ou pé que cai.','Dor depois de queda, febre ou perda de peso.','Dor noturna constante.'],
+  notas:[MCG_NOTA_BASE,'Evitar extensão combinada com rotação (por exemplo, olhar para trás com o tronco arqueado).','Como é frequentemente secundária ao disco, vigiar os sinais do disco: dor que piora com flexão sob carga e que irradia.','A recuperação costuma ser lenta: manter paciência e dosear.'],
+  fases:[
+  { nome:'Fase 1 — Neutro e conforto', sem:2, freq:5, obj:['Reduzir a dor.','Aprender a coluna neutra e o hip-hinge.'], criterios:['Dor ≤ 3/10.'], evitar:['Extensão com rotação.','Ficar muito tempo na mesma posição.'], ex:[['Gato-camelo suave','1','5-6 ciclos','—','Mobilidade'],['Respiração diafragmática deitado','2','8 respirações','—','Core'],['Bracing abdominal (co-contração sem encolher)','3','5 × 8 s','30s','Core'],['Hip-hinge com mãos nas coxas','3','8','30s','Pernas'],['Rotação da anca 90/90 sentado','2','8 por lado','—','Mobilidade']] },
+  { nome:'Fase 2 — Estabilização', sem:4, freq:4, obj:['Os 3 grandes em coluna neutra.','Mobilidade da anca e torácica.'], criterios:['Curl-up e prancha lateral sem dor.','Torácica sem restrição para rodar.'], evitar:['Rodar a lombar com carga.'], ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog remedial (mão ou joelho a 2,5 cm)','3','5-4-3 por lado × 7 s','—','Core'],['Extensão torácica sobre foam roller','2','8','30s','Mobilidade'],['Ponte de glúteos com pausa','3','10','45s','Glúteos']] },
+  { nome:'Fase 3 — Endurance e controlo', sem:6, freq:4, obj:['Endurance do tronco.','Controlo de rotação com stop twist.'], criterios:['Stop twist sem dor.','Prancha lateral equilibrada.'], evitar:['Extensão com rotação.'], ex:[['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Stop twist na parede (wall roll)','3','5 por lado','30s','Core'],['Prancha com mão ao cotovelo oposto','3','6 por lado','45s','Core'],['Hip hinge com bastão','3','10','45s','Pernas']] },
+  { nome:'Fase 4 — Regresso ao treino', sem:3, freq:3, obj:['Treino habitual com bracing e técnica.'], criterios:['Treino sem dor facetária.'], evitar:['Voltar a rotações explosivas de uma só vez.'], ex:[['Agachamento goblet com kettlebell','3','8','60s','Pernas'],['Prancha lateral','3','30 s por lado','45s','Core'],['Bird dog com varrimento do chão','2','5 por lado','—','Core']] }
+  ]},
+{ id:'reab-coluna-rigida', nome:'Coluna rígida (hipercontração muscular)', grupo:'Coluna', pat:'rigida', g:'Core',
+  resumo:'Nem toda a coluna dolorosa é instável: algumas estão presas por contração muscular crónica e posturas bloqueadas, muitas vezes por estratégia de proteção depois de uma lesão. A contração é maior do que a necessária. O programa ajusta o bracing à tarefa, trabalha mobilidade (anca e torácica) e respiração, e ensina a soltar.',
+  quando:'Dor com rigidez regional, postura bloqueada ou dificuldade em «soltar» as costas, já avaliada por profissional, sem sinais de alarme.',
+  bandeiras:['Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital: urgência.','Fraqueza progressiva ou formigueiro nas pernas.','Dor intensa depois de queda ou traumatismo.','Febre, perda de peso ou dor noturna constante.'],
+  notas:[MCG_NOTA_BASE,'O bracing deve ser «apenas o suficiente» para a tarefa. Treinar a soltar a tensão faz parte do tratamento.','A mobilidade da anca e da coluna torácica poupa a lombar. Evitar insistir em alongar a zona dolorosa.','Em alguns casos, a rigidez é regional e o movimento concentra-se num só segmento: avaliar a dobradiça (rock back).'],
+  fases:[
+  { nome:'Fase 1 — Soltar e respirar', sem:2, freq:5, obj:['Reduzir a tensão.','Respiração com expansão costal.','Movimento suave.'], criterios:['Dor e rigidez a diminuir.','Respiração fluida.'], evitar:['Alongamentos agressivos.','Contrair de forma contínua.'], ex:[['Respiração com expansão costal lateral','3','8 respirações','—','Mobilidade'],['Respiração diafragmática deitado','2','8 respirações','—','Core'],['Gato-camelo suave','2','6 ciclos','—','Mobilidade'],['Postura da criança','2','30 s','—','Mobilidade'],['Caminhada em intervalos tolerados','3','conforme a tolerância','—','Cardio']] },
+  { nome:'Fase 2 — Mobilidade de anca e torácica', sem:4, freq:4, obj:['Ganhar mobilidade nas ancas e na coluna torácica.','Manter a coluna neutra.'], criterios:['Rotação da anca confortável.','Torácica a soltar.'], evitar:['Forçar a lombar.'], ex:[['Rotação da anca 90/90 sentado','2','8 por lado','—','Mobilidade'],['Extensão torácica sobre foam roller','2','8','30s','Mobilidade'],['Alongamento do flexor da anca em ajoelhamento','2','30 s por lado','—','Mobilidade'],['Alongamento do piriforme deitado (figura 4)','2','30 s por lado','—','Mobilidade'],['Balanço para os calcanhares com coluna neutra (rock back)','2','8','30s','Mobilidade']] },
+  { nome:'Fase 3 — Estabilidade com bracing ajustado', sem:6, freq:4, obj:['Os 3 grandes com bracing mínimo.','Endurance sem tensão excessiva.'], criterios:['Faz o exercício sem prender a respiração.','Dor estável.'], evitar:['Prender a respiração.'], ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog','3','5-4-3 por lado × 7 s','—','Core'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas']] },
+  { nome:'Fase 4 — Regresso ao treino', sem:3, freq:3, obj:['Treino habitual com movimento livre e bracing ajustado.'], criterios:['Treino completo sem rigidez limitante.'], evitar:['Voltar à contração crónica.'], ex:[['Agachamento goblet com kettlebell','3','8','60s','Pernas'],['Rotação da anca 90/90 sentado','2','8 por lado','—','Mobilidade'],['Bird dog com varrimento do chão','2','5 por lado','—','Core']] }
+  ]},
+{ id:'reab-cifose', nome:'Hipercifose torácica (postura)', grupo:'Coluna', pat:'cifose', g:'Corpo inteiro',
+  resumo:'Aumento da curvatura da coluna torácica, por envelhecimento ou por postura mantida (muito tempo sentado, telemóvel, remo, corrida). Reduz a extensão torácica e aumenta a carga na lombar e no pescoço. O programa combina extensão torácica de Lewit, fortalecimento das costas e do peito para trás, e mobilidade da caixa torácica.',
+  quando:'Postura em cifose sem dor intensa nem deformidade estrutural rígida. Em pessoas com osteoporose ou fraturas vertebrais, só com autorização médica.',
+  bandeiras:['Dor aguda intensa ou perda de altura recente: possível fratura vertebral.','Dormência ou fraqueza nas pernas ou alterações da bexiga.','Deformidade rígida e progressiva em adolescente: avaliação ortopédica.','Falta de ar progressiva.'],
+  notas:[MCG_NOTA_BASE,'Extensão torácica de Lewit: 3 a 4 ciclos enquanto a coluna solta em cada ciclo.','Evitar flexão repetida do tronco sob carga. Trabalhar ombros e escápulas em equilíbrio com o peito.','Pausas ativas do trabalho sentado: levantar a cada 30-40 min.'],
+  fases:[
+  { nome:'Fase 1 — Extensão torácica e respiração', sem:3, freq:5, obj:['Soltar a torácica.','Respiração com expansão costal.'], criterios:['Toca a parede com cabeça, costas e glúteos sem esforço.','Sem dor.'], evitar:['Extensão da lombar a compensar.'], ex:[['Extensão torácica de Lewit com cadeira','3','4 ciclos','—','Mobilidade'],['Extensão torácica sobre foam roller','2','8','30s','Mobilidade'],['Respiração com expansão costal lateral','2','8 respirações','—','Mobilidade'],['Postura em pé encostado à parede (cabeça, costas e glúteos)','3','20-30 s','—','Mobilidade'],['Alongamento peitoral na ombreira','2','30 s','—','Ombros']] },
+  { nome:'Fase 2 — Força de costas e escápula', sem:4, freq:4, obj:['Fortalecer retratores escapulares.','Estabilidade com os 3 grandes.'], criterios:['Retração escapular com controlo.','Bird dog sem dor.'], evitar:['Encolher os ombros.'], ex:[['Retração escapular com elástico','3','12','30s','Costas'],['Remada com elástico (postura)','3','12','45s','Costas'],['Retração cervical (queixo para dentro)','2','10','30s','Pescoço'],['Bird dog','3','5-4-3 por lado × 7 s','—','Core'],['Prancha lateral apoiada no joelho','3','5-4-3 por lado × 7 s','—','Core']] },
+  { nome:'Fase 3 — Força e postura no dia a dia', sem:6, freq:3, obj:['Postura ativa sem rigidez.','Força geral.'], criterios:['Mantém postura sem dor por 30 min.'], evitar:['Flexão repetida sob carga.'], ex:[['Remada com elástico (postura)','3','12','45s','Costas'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Extensão torácica de Lewit com cadeira','2','4 ciclos','—','Mobilidade'],['Alongamento do flexor da anca em ajoelhamento','2','30 s por lado','—','Mobilidade']] },
+  { nome:'Fase 4 — Manutenção', sem:4, freq:3, obj:['Manter a mobilidade e a força.'], criterios:['Postura mantida sem dor.'], evitar:['Parar o programa.'], ex:[['Extensão torácica de Lewit com cadeira','2','4 ciclos','—','Mobilidade'],['Remada com elástico (postura)','3','12','45s','Costas'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core']] }
+  ]},
+{ id:'reab-espondilite', nome:'Espondilite anquilosante', grupo:'Coluna', pat:'espondilite', g:'Corpo inteiro',
+  resumo:'Doença inflamatória crónica da coluna e das articulações sacroilíacas, com início lento, rigidez matinal e tendência à postura em flexão. O exercício regular de extensão e mobilidade ajuda a manter a postura e a função, sob acompanhamento de reumatologia.',
+  quando:'Diagnóstico estabelecido por reumatologia, com autorização médica para exercício. Em fases de inflamação ativa, respeitar as indicações do médico.',
+  bandeiras:['Dor muito intensa de início súbito, queda ou traumatismo (coluna rígida fratura com facilidade).','Dormência, fraqueza nas pernas ou alterações da bexiga.','Olho vermelho e doloroso com perda de visão: urgência.','Febre ou dor torácica ao respirar.'],
+  notas:[MCG_NOTA_BASE,'Exercícios de extensão de Lewit, feitos todos os dias, ajudam a postura e a dor.','Priorizar mobilidade torácica, expansão costal e extensão. Treino aeróbico leve a moderado e força com boa técnica.','Em coluna muito rígida, evitar impacto e cargas bruscas.'],
+  fases:[
+  { nome:'Fase 1 — Mobilidade diária', sem:3, freq:6, obj:['Manter a extensão e a expansão torácica.','Reduzir a rigidez matinal.'], criterios:['Faz o programa sem aumentar a dor.'], evitar:['Impacto e movimentos bruscos.'], ex:[['Respiração com expansão costal lateral','3','8 respirações','—','Mobilidade'],['Extensão torácica de Lewit com cadeira','3','4 ciclos','—','Mobilidade'],['Postura em pé encostado à parede (cabeça, costas e glúteos)','3','20-30 s','—','Mobilidade'],['Deitado em prono com almofada (extensão passiva)','2','1-3 min','—','Mobilidade'],['Gato-camelo suave','2','6 ciclos','—','Mobilidade']] },
+  { nome:'Fase 2 — Força e postura', sem:4, freq:4, obj:['Fortalecer costas e glúteos.','Manter a mobilidade da anca.'], criterios:['Retração escapular com controlo.'], evitar:['Flexão repetida sob carga.'], ex:[['Retração escapular com elástico','3','12','30s','Costas'],['Remada com elástico (postura)','3','12','45s','Costas'],['Ponte de glúteos com pausa','3','10','45s','Glúteos'],['Bird dog','3','5-4-3 por lado × 7 s','—','Core'],['Alongamento do flexor da anca em ajoelhamento','2','30 s por lado','—','Mobilidade']] },
+  { nome:'Fase 3 — Condição física', sem:6, freq:4, obj:['Capacidade aeróbica e força.'], criterios:['Treino sem agravamento.'], evitar:['Impacto repetido.'], ex:[['Bicicleta estática em intensidade leve','1','15-20 min','—','Cardio'],['Caminhada em intervalos tolerados','3','10 min','—','Cardio'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Remada com elástico (postura)','3','12','45s','Costas'],['Extensão torácica de Lewit com cadeira','2','4 ciclos','—','Mobilidade']] },
+  { nome:'Fase 4 — Manutenção', sem:4, freq:4, obj:['Manter todos os dias a extensão e a respiração.'], criterios:['Programa diário sem dor.'], evitar:['Interromper o programa.'], ex:[['Respiração com expansão costal lateral','2','8 respirações','—','Mobilidade'],['Extensão torácica de Lewit com cadeira','2','4 ciclos','—','Mobilidade'],['Remada com elástico (postura)','3','12','45s','Costas']] }
+  ]}
+];
+const MCGPREV = [
+{ id:'prev-resist-tronco', prev:true, nome:'Desequilíbrio de resistência do tronco (flexores, laterais e extensores)', grupo:'Prevenção', g:'Core', mod:'Funcional',
+  resumo:'A relação entre a endurance dos flexores, dos laterais e dos extensores do tronco é mais importante do que o valor absoluto. Depois de um episódio de dor lombar, a endurance dos extensores costuma ficar baixa em relação aos outros e a relação mantém-se alterada muito depois de a dor passar. O programa corrige o desequilíbrio com repetições curtas, sem fadiga.',
+  quando:'Cliente sem dor ativa, com tempos de teste de endurance desequilibrados (razões de referência do livro: lado direito/esquerdo da prancha lateral com diferença superior a 5%; flexão/extensão acima de 1,0; prancha lateral/extensão acima de 0,75), ou histórico de dor lombar.',
+  bandeiras:['Dor lombar ativa ou irradiada.','Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital.','Dor depois de queda ou traumatismo.','Febre, perda de peso ou dor noturna.'],
+  notas:[PREV_AQ,MCG_NOTA_BASE,'Não fazer o teste de endurance em dia de dor: a variação diária invalida o resultado. Esperar que esteja sem dor.','Não treinar o teste. Construir endurance com a pirâmide invertida e holds curtos.','Força à frente da endurance e da técnica é a causa de muitas crises: o objetivo é que a técnica se mantenha com carga.'],
+  fases:[
+  { nome:'Fase 1 — Avaliar e corrigir', sem:4, freq:3, obj:['Medir os tempos dos três grupos.','Treinar o grupo mais atrasado.'], criterios:['Diferença entre lados menor que 5%.','Razões a aproximar-se dos valores de referência.'], evitar:['Treinar até à falha.','Fazer os testes com dor.'],
+    sess:[
+    { n:'Sessão A', ex:[['Curl-up de McGill (mãos sob a lombar)','3','5-4-3 × 7 s','—','Core'],['Prancha lateral','3','5-4-3 por lado × 7 s','—','Core'],['Bird dog','3','5-4-3 por lado × 7 s','—','Core'],['Ponte de glúteos com pausa','3','10','45s','Glúteos']] },
+    { n:'Sessão B (reforço do grupo mais fraco)', ex:[['Bird dog com varrimento do chão','3','5 por lado','—','Core'],['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Curl-up de McGill avançado (com bracing prévio)','3','5-4-3 × 7 s','—','Core'],['Hip hinge com bastão','3','10','45s','Pernas']] }
+    ]},
+  { nome:'Fase 2 — Consolidar', sem:4, freq:3, obj:['Manter a endurance equilibrada.','Aumentar a carga com técnica.'], criterios:['Reavaliação com razões normais.'], evitar:['Aumentar a duração dos holds em vez das repetições.'],
+    sess:[
+    { n:'Sessão A', ex:[['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core'],['Bird dog com varrimento do chão','3','5 por lado','—','Core'],['Curl-up de McGill avançado (com bracing prévio)','3','5-4-3 × 7 s','—','Core'],['Transporte de carga (farmer walk)','3','30 m','60s','Corpo inteiro']] }
+    ]}
+  ]},
+{ id:'prev-torsional', prev:true, nome:'Controlo torsional e anti-rotação deficientes', grupo:'Prevenção', g:'Core', mod:'Funcional',
+  resumo:'Quando a caixa torácica e a bacia se desligam na rotação, a coluna lombar fica exposta a torção. Testes simples mostram o défice (mão ao cotovelo oposto em posição de flexão, extensão de anca em prancha, ponte com perna estendida). O programa treina a coluna a manter-se rígida enquanto os ombros e as ancas rodam.',
+  quando:'Atletas e clientes que rodam muito (golfe, ténis, remo, artes marciais) ou com bacia a cair nos testes, sem dor ativa.',
+  bandeiras:['Dor lombar ativa ou irradiada.','Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital.','Dor depois de queda ou traumatismo.','Fraqueza progressiva nas pernas.'],
+  notas:[PREV_AQ,MCG_NOTA_BASE,'Só avançar para treino de rotação com carga depois de passar nos testes torsionais sem desvio da bacia.','A potência deve ser gerada nas ancas e nos ombros, transmitida por um tronco rígido.'],
+  fases:[
+  { nome:'Fase 1 — Anti-rotação', sem:4, freq:3, obj:['Controlo de rotação com os testes torsionais.','Stop twist.'], criterios:['Prancha com mão ao cotovelo sem rodar a bacia.','Extensão de anca em prancha sem elevar a pelve.'], evitar:['Rotações rápidas com carga.'],
+    sess:[
+    { n:'Sessão A', ex:[['Stop twist na parede (wall roll)','3','5 por lado','30s','Core'],['Prancha com mão ao cotovelo oposto','3','6 por lado','45s','Core'],['Extensão de anca em prancha (pelve bloqueada)','3','6 por lado','45s','Core'],['Ponte de glúteos com uma perna estendida','3','5 por lado','45s','Glúteos'],['Pallof press','3','10','45s','Core']] }
+    ]},
+  { nome:'Fase 2 — Rotação com tronco rígido', sem:4, freq:3, obj:['Rotação nas ancas e ombros com tronco rígido.'], criterios:['Mantém a pelve nivelada em todos os exercícios.'], evitar:['Rodar a lombar.'],
+    sess:[
+    { n:'Sessão A', ex:[['Pallof press','3','12','45s','Core'],['Chop semiajoelhado com elástico (PNF)','3','10','45s','Core'],['Prancha com mão ao cotovelo oposto','3','8 por lado','45s','Core'],['Hip hinge com bastão','3','10','45s','Pernas']] }
+    ]}
+  ]},
+{ id:'prev-padrao-coluna', prev:true, nome:'Padrão de movimento: a coluna move em vez da anca', grupo:'Prevenção', g:'Pernas', mod:'Funcional',
+  resumo:'Muitas dores lombares vêm de movimentos repetidos feitos com a coluna em vez da anca (dobrar, levantar, sentar, ir ao chão). Corrige-se ensinando a distinguir o movimento da anca do movimento da coluna e a usar as ferramentas de movimento: hip-hinge, afundo e stop twist.',
+  quando:'Clientes que se dobram pelas costas, que sentem dor ao levantar objetos ou ao sentar, sem dor ativa intensa.',
+  bandeiras:['Dor lombar ativa ou irradiada.','Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital.','Dor depois de queda ou traumatismo.','Fraqueza progressiva.'],
+  notas:[PREV_AQ,MCG_NOTA_BASE,'Técnicas para ensinar: uma mão na barriga e outra na lombar para sentir se a coluna se mexe; bastão ao longo da coluna a manter o contacto; praticar uma vez antes de levantar um peso.','Testes simples: lavar os dentes com hip-hinge e atar o sapato com afundo.'],
+  fases:[
+  { nome:'Fase 1 — Consciência', sem:3, freq:4, obj:['Separar anca de coluna.','Hip-hinge, afundo e stop twist.'], criterios:['Hip-hinge com bastão a manter o contacto.','Atar o sapato sem mexer a coluna.'], evitar:['Báscula pélvica forçada.'],
+    sess:[
+    { n:'Sessão A', ex:[['Hip-hinge com mãos nas coxas','3','8','30s','Pernas'],['Hip hinge com bastão','3','10','30s','Pernas'],['Agachamento de anca «potty squat» (sem mover a coluna)','3','8','30s','Pernas'],['Descida ao chão em afundo (lunge to floor)','2','3','45s','Pernas'],['Stop twist na parede (wall roll)','2','5 por lado','30s','Core']] }
+    ]},
+  { nome:'Fase 2 — Carga leve', sem:4, freq:3, obj:['Aplicar o padrão com carga ligeira.'], criterios:['Mantém a coluna neutra com carga.'], evitar:['Perder a forma sob fadiga.'],
+    sess:[
+    { n:'Sessão A', ex:[['Deadlift (levantamento terra)','3','8','60s','Pernas','Carga ligeira, kettlebell ou trap bar.'],['Agachamento goblet com kettlebell','3','8','60s','Pernas'],['Transporte de carga (farmer walk)','3','20-30 m','60s','Corpo inteiro'],['Prancha lateral','3','5-4-3 por lado × 8 s','—','Core']] }
+    ]}
+  ]},
+{ id:'prev-inib-gluteo', prev:true, nome:'Inibição glútea e dominância dos isquiotibiais', grupo:'Prevenção', g:'Glúteos', mod:'Funcional',
+  resumo:'A dor lombar e da anca costuma provocar inibição do glúteo («amnésia glútea»), e os isquiotibiais passam a dominar a extensão da anca, o que aumenta a carga na parte anterior da anca. Também leva a psoas tenso e coluna a compensar. O programa reativa os glúteos com a coluna neutra e a bacia nivelada.',
+  quando:'Cliente com glúteos que «não ligam» na ponte, bacia a cair em apoio unipodal ou dor lombar e de anca recorrente.',
+  bandeiras:['Dor lombar ativa ou irradiada.','Dificuldade em urinar, perda de controlo da bexiga ou intestino ou dormência na zona genital.','Dor intensa na virilha ou anca com limitação de movimento: avaliar a anca.','Fraqueza progressiva nas pernas.'],
+  notas:[PREV_AQ,MCG_NOTA_BASE,'Dica no bird dog: cerrar o punho e empurrar o calcanhar para longe para aumentar a ativação do glúteo e dos músculos lombares do lado da perna elevada.','Se a mobilidade da anca for diferente entre lados, a coluna tende a rodar: trabalhar a mobilidade de forma equilibrada.'],
+  fases:[
+  { nome:'Fase 1 — Reativar', sem:3, freq:4, obj:['Sentir e ativar os glúteos.','Mobilidade de anca.'], criterios:['Sente o glúteo na ponte.','Bacia nivelada.'], evitar:['Compensar com a lombar ou os isquiotibiais.'],
+    sess:[
+    { n:'Sessão A', ex:[['Ponte de glúteos com pausa','3','10 (5 s)','45s','Glúteos'],['Clamshell (abdução em decúbito lateral)','3','12','30s','Glúteos'],['Extensão de coxa em quatro apoios (single thigh extension)','3','6 por lado','30s','Glúteos'],['Rotação da anca 90/90 sentado','2','8 por lado','—','Mobilidade'],['Alongamento do flexor da anca em ajoelhamento','2','30 s por lado','—','Mobilidade']] }
+    ]},
+  { nome:'Fase 2 — Integrar', sem:4, freq:3, obj:['Glúteos em padrões funcionais.'], criterios:['Ponte com perna estendida sem rodar a bacia.'], evitar:['Exercícios de isquiotibiais isolados.'],
+    sess:[
+    { n:'Sessão A', ex:[['Ponte de glúteos com uma perna estendida','3','5 por lado','45s','Glúteos'],['Bird dog','3','5-4-3 por lado × 8 s','—','Core'],['Hip-hinge com mãos nas coxas','3','10','45s','Pernas'],['Caminhada lateral com mini-banda','3','12 passos','45s','Glúteos'],['Agachamento goblet com kettlebell','3','8','60s','Pernas']] }
+    ]}
+  ]}
+];
+
 const OMBROPROT = [
 { id:'reab-coifa', nome:'Lesão do manguito rotador (rotura parcial ou total)', grupo:'Ombro', pat:'coifa', g:'Ombros',
   resumo:'Rotura parcial ou total de um ou mais tendões do manguito rotador. O tratamento conservador (roturas parciais e algumas totais) assenta em carga progressiva da coifa e da escápula. No pós-operatório, os prazos e as restrições são do cirurgião.',
@@ -9043,7 +9252,7 @@ const ANCAPROT = [
     ex:[['Hip thrust unilateral','3','10','60s','Glúteos'],['Agachamento unilateral até ao banco','3','10','75s','Pernas'],['Step-up alto','3','10','60s','Pernas'],['Prancha lateral','3','35s','45s','Core'],['Passada lateral com mini band','3','12 por lado','45s','Glúteos']] }
   ]}
 ];
-PROTOCOLOS.push(...PREVPROT, ...REABPROT, ...ANCAPROT, ...OMBROPROT, ...COTOVELOPROT, ...PUNHOPROT, ...MAOPROT, ...ESCPROT, ...ELEVPROT, ...CRZPROT, ...VESTPROT, ...HIITPROT, ...SACROPROT);
+PROTOCOLOS.push(...PREVPROT, ...REABPROT, ...ANCAPROT, ...OMBROPROT, ...COTOVELOPROT, ...PUNHOPROT, ...MAOPROT, ...ESCPROT, ...ELEVPROT, ...CRZPROT, ...VESTPROT, ...HIITPROT, ...SACROPROT, ...RADICPROT, ...MCGPROT, ...MCGPREV);
 PATOLOGIAS.isquio = { nome:'Lesão muscular dos isquiotibiais', contra:'sprint, saltos e alongamento forte nas primeiras fases', dias:3, series:3, reps:['8-12','10-15'], rest:75, carga:'RPE 5-6, dor ≤ 3/10', cardio:10, maq:true, grp:'Músculo-esqueléticas',
   ex:/sprint|skipping|salto|jump|burpee|box|pliometr/,
   avisos:['Lesão muscular dos isquiotibiais: começar com isométricos sem dor, avançar para excêntrico e velocidade por critérios (sem reação em 24 h, amplitude completa, força ≥ 85% do lado são) e só depois voltar ao sprint.','Dor súbita e forte atrás da coxa, hematoma extenso ou dor em repouso precisam de avaliação médica.'] };
@@ -9362,6 +9571,90 @@ PATOLOGIAS.vertigem = { nome:'Síndrome vertiginoso (vertigem)', contra:'movimen
   ex:/handstand|pike|invertid|burpee|salto|jump|skipping|corda|box|pliometr|sprint|climber|crunch|sit ?up|v-?up|good morning|bom dia|stiff|romeno|declinado|decline|slam|battle|wall ball|turkish|snatch|clean|jerk|russian|rotac.*(rapid|explosiv)|medicine ball|kettlebell swing|swing|barra fixa|pull ?up|step|escada/,
   avisos:['Síndrome vertiginoso: exercício após diagnóstico médico, com apoio por perto. Tonturas ligeiras (≤ 3-4/10) que passam em minutos fazem parte da adaptação; parar e sentar se forem intensas.','Cefaleia súbita muito intensa, visão dupla, dificuldade em falar, fraqueza de um lado do corpo, perda de audição súbita, desmaio ou dor no peito exigem avaliação urgente. Evitar conduzir durante as crises.'] };
 
+// ---------- BIBLIOTECA: COLUNA (McGill, Low Back Disorders) ----------
+const MCG_EXERCISES = [
+ {nome:'Bracing abdominal (co-contração sem encolher)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','estenose'], notas:'Contrair de forma suave os três planos da parede abdominal, sem puxar a barriga para dentro nem a empurrar para fora. Dica: empurrar os dedos para os lados, nos flancos. Intensidade de 2 a 5% do máximo para quem tolera mal a compressão, até 20% para levantar e carregar. Respirar com normalidade.', variantes:['Deitado','Em pé','Durante a dobradiça da anca']},
+ {nome:'Curl-up de McGill (mãos sob a lombar)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','rigida'], notas:'De costas, uma perna fletida a 90° e a outra estendida, mãos sob a curva lombar (não achatar a lombar no chão). Levantar só a cabeça e os ombros uns centímetros, como um bloco rígido, com a rotação na coluna torácica e sem mexer no pescoço. Holds de 7-8 s, depois descansar. Língua no céu da boca ajuda a ativar os flexores profundos do pescoço.', variantes:['Cotovelos levantados (intermédio)','Com bracing prévio (avançado)']},
+ {nome:'Curl-up de McGill avançado (com bracing prévio)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','instab','rigida'], notas:'Fazer o bracing abdominal antes de levantar. A resistência vem do bracing, quase sem movimento. Manter a respiração, para o diafragma trabalhar de forma independente. Cabeça e pescoço movem-se como um bloco.', variantes:['Com respiração profunda','Com cotovelos levantados']},
+ {nome:'Prancha lateral na parede (remedial)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','estenose'], notas:'Em pé, de lado, antebraço contra a parede e pés afastados. Mover-se de forma fluida para a posição de prancha, rodando sobre as pontas dos pés, com a caixa torácica bloqueada na bacia (calcanhar da mão na bacia e dedos nas costelas, para sentir se a coluna se mexe). 5 repetições por lado, holds de 7-8 s.', variantes:['Mais afastado da parede','De joelhos no chão (seguinte)']},
+ {nome:'Bird dog remedial (mão ou joelho a 2,5 cm)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','estenose'], notas:'Em quatro apoios, mãos sob os ombros e joelhos sob as ancas, coluna neutra. Levantar só uma mão ou um joelho cerca de 2,5 cm. Quando for sem dor, passar a levantar mão e joelho opostos ao mesmo tempo. Dica: cerrar o punho e empurrar o calcanhar para longe.', variantes:['Só uma mão','Só um joelho','Mão e joelho opostos']},
+ {nome:'Bird dog com varrimento do chão', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','instab','rigida'], notas:'Depois de estender o braço e a perna oposta, varrer o chão com a mão e o joelho sem apoiar o peso, e voltar a estender. O varrimento reoxigena o músculo e aumenta o desafio motor. Pelve nivelada, sem roda ou arco na lombar.', variantes:['Com calcanhar a empurrar','Com cotovelo ao joelho']},
+ {nome:'Extensão de coxa em quatro apoios (single thigh extension)', grupo:'Glúteos', equip:'Peso corporal', padrao:'isolamento', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria'], notas:'Em quatro apoios, estender uma coxa de cada vez, empurrando o calcanhar, sem arquear a lombar nem rodar a bacia. 6 a 8 repetições por lado, holds curtos. Etapa antes do bird dog completo.', variantes:['Com bracing','Joelho a 90°']},
+ {nome:'Hip-hinge com mãos nas coxas', grupo:'Pernas', equip:'Peso corporal', padrao:'dobradica', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','estenose','rigida'], notas:'Pés à largura das ancas, mãos nas coxas. Deslizar as mãos até aos joelhos, levando a bacia para trás e mantendo a curva lombar neutra («levanta a cauda»). Empurrar o peso do tronco pelos braços para endurecer o tronco. Subir puxando as ancas para a frente, sem puxar com as costas. Serve para levantar objetos, lavar os dentes e sair da cadeira.', variantes:['Com bastão ao longo da coluna','À frente do lavatório']},
+ {nome:'Agachamento de anca «potty squat» (sem mover a coluna)', grupo:'Pernas', equip:'Peso corporal', padrao:'agachamento', pats:['lombar','hernia','radic','instab','espondilolistese','facetaria','estenose'], notas:'Agachamento parcial lento em que a bacia desce para trás e para baixo numa linha a 45°, como sentar-se na sanita, sem movimento da coluna. 8 a 10 repetições.', variantes:['Com suporte na mão','Com bracing']},
+ {nome:'Descida ao chão em afundo (lunge to floor)', grupo:'Pernas', equip:'Peso corporal', padrao:'afundo', pats:['lombar','hernia','radic','instab','espondilolistese','estenose'], notas:'Para ir ao chão e levantar-se sem sobrecarregar a coluna e os joelhos: dar um passo, descer até um joelho ao chão, depois o outro, e apoiar as mãos em quatro apoios com a coluna rígida. Para levantar, repetir ao contrário. Usar afundo, e não agachamento, para ir ao chão.', variantes:['Com apoio de uma cadeira','Com bastão para controlar a coluna']},
+ {nome:'Stop twist na parede (wall roll)', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['lombar','hernia','instab','espondilolistese','facetaria'], notas:'Em prancha com os dois cotovelos na parede. Tirar um cotovelo da parede pivotando sobre as pontas dos pés, com a caixa torácica bloqueada na bacia e sem rodar a coluna. O movimento acontece nos ombros e nas ancas. Aplica-se a empurrar e a puxar portas.', variantes:['Mais inclinado','Com mão ao cotovelo oposto']},
+ {nome:'Deitado em prono com almofada (extensão passiva)', grupo:'Mobilidade', equip:'Almofada', padrao:'mobilidade', pats:['estenose','hernia','radic','espondilite'], notas:'Deitado de barriga para baixo, com uma almofada sob a bacia se a extensão incomodar. Respirar e deixar a lombar descer. Ficar na posição de menor dor, de 1 a 3 minutos, repetido ao longo do dia. Em cada fase, escolher a variante mais tolerável (mãos sob o queixo, nos cotovelos).', variantes:['Mãos sob o queixo','Nos cotovelos','Com a cabeça flectida (raiz nervosa «presa»)']},
+ {nome:'Caminhada de braços na parede (arm walking)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['estenose','cifose','espondilite'], notas:'De frente para a parede, subir as mãos pela parede uma sobre a outra e levar as ancas para a parede para ficar numa postura vertical sem esforço. Prepara para caminhar com menos tensão. 3 a 5 repetições.', variantes:['Com ancas a aproximar-se da parede']},
+ {nome:'Descarga no banco com braços esticados', grupo:'Mobilidade', equip:'Banco', padrao:'mobilidade', pats:['estenose'], notas:'Durante a caminhada, quando começa o desconforto, ir ao banco, ficar de pé com as ancas junto ao banco e apoiar o peso nos braços esticados, para obter uma extensão tolerável e alguma tração. Manter o tempo que for confortável, no máximo cerca de 1 minuto. Depois retomar a caminhada.', variantes:['Em prancha inclinada na parede']},
+ {nome:'Caminhada em intervalos tolerados', grupo:'Cardio', equip:'Peso corporal', padrao:'cardio', pats:['estenose','lombar','hernia','radic','instab','espondilite','rigida'], notas:'Caminhar uma distância menor do que aquela em que começa a dor (por exemplo, se a dor surge aos 10 m, caminhar 7 m) e repetir várias vezes ao dia. Ir aumentando a distância e o tempo entre intervalos. Parar sempre antes de a dor aparecer.', variantes:['Com paragem no banco','Passadeira sem inclinação']},
+ {nome:'Extensão torácica de Lewit com cadeira', grupo:'Mobilidade', equip:'Cadeira', padrao:'mobilidade', pats:['cifose','espondilite','rigida'], notas:'De joelhos, mãos entrelaçadas atrás da cabeça, antebraços apoiados numa cadeira, com a lombar neutra. Empurrar os cotovelos para baixo cerca de 2 kg durante 10 s e depois largar o esforço, levando as nádegas para os calcanhares e soltando o tórax em extensão. 3 a 4 ciclos, enquanto a coluna torácica solta em cada ciclo.', variantes:['Com ajuda de um parceiro','Contra a parede']},
+ {nome:'Postura em pé encostado à parede (cabeça, costas e glúteos)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['cifose','espondilite'], notas:'Em pé, calcanhares a 10 cm da parede, glúteos, omoplatas e cabeça a tocar a parede, olhar em frente. Manter 20-30 s e respirar, sem arquear a lombar. Repetir várias vezes ao dia.', variantes:['Com braços em «W»','Com braços acima']},
+ {nome:'Respiração com expansão costal lateral', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['espondilite','cifose','rigida'], notas:'Sentado ou deitado, mãos nas costelas laterais. Inspirar pelo nariz e abrir as costelas para os lados; expirar devagar. 8 a 10 respirações, a mobilizar o tórax.', variantes:['Com elástico à volta das costelas','Em quatro apoios']},
+ {nome:'Prancha com mão ao cotovelo oposto', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['instab','facetaria','lombar'], notas:'Em posição de flexão (ou joelhos), levantar uma mão e levá-la ao cotovelo oposto, sem rodar a bacia nem a caixa torácica. Mostra e treina o controlo torsional. 5 a 8 repetições por lado.', variantes:['De joelhos','Com pés afastados']},
+ {nome:'Extensão de anca em prancha (pelve bloqueada)', grupo:'Glúteos', equip:'Peso corporal', padrao:'core', pats:['instab','facetaria','lombar'], notas:'Em prancha, levantar uma perna estendida a partir da anca, sem levantar a bacia. A bacia fica presa à caixa torácica. Subir o pé a 15-20 cm, 6 a 8 por lado.', variantes:['De joelhos','Com mini-banda']},
+ {nome:'Ponte de glúteos com uma perna estendida', grupo:'Glúteos', equip:'Peso corporal', padrao:'ponte', pats:['instab','lombar','radic'], notas:'Em ponte de glúteos, estender uma perna sem deixar a bacia cair ou rodar. Só depois de dominar a ponte com os dois pés. 5 a 8 por lado, holds de 5 s.', variantes:['Com pé elevado','Com mini-banda']},
+ {nome:'Balanço para os calcanhares com coluna neutra (rock back)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['instab','rigida','lombar'], notas:'Em quatro apoios, mãos sob os ombros e joelhos sob as ancas. Levar as nádegas para os calcanhares mantendo a lombar neutra. Se a coluna flectir num ponto (dobradiça), a zona mostra-se como alvo para o bracing e para a consciência de posição. 8 repetições.', variantes:['Com bastão ao longo da coluna','Com bracing']},
+ {nome:'Rotação da anca 90/90 sentado', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['rigida','lombar','facetaria','instab','espondilite'], notas:'Sentado no chão com as duas pernas a 90°, rodar o tronco e a anca de um lado para o outro, mantendo a coluna neutra. A mobilidade da anca poupa a coluna. 8 a 10 repetições por lado.', variantes:['Com apoio das mãos','Com extensão torácica']}
+];
+const MCG_TAG = {
+  lombar:['Respiração diafragmática deitado','Gato-camelo suave','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Dead bug','Dead bug com braços','Ponte de glúteos com pausa','Hip hinge com bastão','Concha com elástico (clamshell)','Clamshell (abdução em decúbito lateral)','Prancha Frontal','Agachamento com bola na parede'],
+  hernia:['Gato-camelo suave','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Hip hinge com bastão'],
+  instab:['Respiração diafragmática deitado','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Dead bug','Dead bug com braços','Ponte de glúteos com pausa','Hip hinge com bastão','Prancha Frontal','Caminhada lateral com mini-banda'],
+  espondilolistese:['Respiração diafragmática deitado','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Dead bug','Dead bug com braços','Ponte de glúteos com pausa','Hip hinge com bastão','Prancha Frontal','Concha com elástico (clamshell)'],
+  facetaria:['Respiração diafragmática deitado','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Dead bug','Dead bug com braços','Ponte de glúteos com pausa','Hip hinge com bastão','Gato-camelo suave','Postura da criança','Extensão torácica sobre foam roller'],
+  estenose:['Respiração diafragmática deitado','Prancha lateral','Prancha lateral apoiada no joelho','Bird dog','Bird dog lento com pausa','Dead bug','Ponte de glúteos com pausa','Bicicleta estática em intensidade leve','Alongamento do flexor da anca em ajoelhamento'],
+  rigida:['Respiração diafragmática deitado','Gato-camelo suave','Postura da criança','Extensão torácica sobre foam roller','Alongamento do flexor da anca em ajoelhamento','Alongamento do piriforme deitado (figura 4)','Bicicleta estática em intensidade leve','Bird dog','Bird dog lento com pausa','Prancha lateral apoiada no joelho'],
+  cifose:['Extensão torácica sobre foam roller','Retração escapular com elástico','Remada com elástico (postura)','Retração cervical (queixo para dentro)','Alongamento do peitoral na porta','Alongamento do flexor da anca em ajoelhamento','Prancha lateral apoiada no joelho','Bird dog','Respiração diafragmática deitado'],
+  espondilite:['Extensão torácica sobre foam roller','Retração escapular com elástico','Retração cervical (queixo para dentro)','Alongamento do peitoral na porta','Alongamento do flexor da anca em ajoelhamento','Gato-camelo suave','Respiração diafragmática deitado','Bicicleta estática em intensidade leve','Bird dog','Ponte de glúteos com pausa']
+};
+function mcgEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const by = new Map(list.map(e=>[normName(e.nome), e]));
+  const tag = (x,k)=>{ x.patologias = x.patologias||[]; if(!x.patologias.includes(k)) x.patologias.push(k); };
+  let n = 0;
+  MCG_EXERCISES.forEach(m=>{
+    let x = by.get(normName(m.nome));
+    if(!x){
+      x = { id: uid(), nome: m.nome, grupo: m.grupo, equip: m.equip, notas: m.notas, padrao: m.padrao, modalidade:'Reabilitação', patologias:[], variantes: m.variantes.slice(), imagem:'', videoLink:'', videoData:'' };
+      list.push(x); by.set(normName(m.nome), x); n++;
+    }
+    m.pats.forEach(k=>tag(x,k));
+  });
+  Object.keys(MCG_TAG).forEach(k=>MCG_TAG[k].forEach(nm=>{ const x = by.get(normName(nm)); if(x) tag(x,k); }));
+  return n;
+}
+
+// ---------- BIBLIOTECA: RADICULOPATIA LOMBAR ----------
+const RADIC_EXERCISES = [
+ {nome:'Deslize neural do ciático sentado (slider)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['radic'], notas:'Sentado, costas direitas. Estende o joelho enquanto baixa a cabeça (queixo ao peito); ao flectir o joelho, levanta a cabeça. O movimento é de vaivém, sem manter o alongamento. 10 repetições, sem reproduzir dor irradiada intensa (máx. 3/10).', variantes:['Com pé em flexão plantar','Com pé em dorsiflexão (mais difícil)']},
+ {nome:'Deslize neural do ciático deitado', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['radic'], notas:'De costas, com a anca fletida a 90° e as mãos atrás da coxa. Estende o joelho devagar e volta a fletir, sem manter a posição final. 10 repetições por lado, sem aumentar a dor na perna.', variantes:['Com toalha ou banda no pé','Com cabeça levantada (mais difícil)']},
+ {nome:'Deslize neural do femoral em decúbito lateral', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['radic'], notas:'Só para dor na frente da coxa (raízes L2-L4). De lado, segura o joelho de baixo junto ao peito; flete o joelho de cima e leva o calcanhar à nádega, e volta a estender. 10 repetições, sem dor intensa.', variantes:['Com cabeça em flexão','Com anca em ligeira extensão']},
+ {nome:'Joelhos ao peito (flexão lombar suave)', grupo:'Mobilidade', equip:'Peso corporal', padrao:'mobilidade', pats:['radic'], notas:'De costas, leva os dois joelhos ao peito de forma lenta, até onde conforta. Mantém 5 s e volta. 8-10 repetições. Indicado se a dor melhora ao fletir a coluna (por exemplo, estenose foraminal).', variantes:['Um joelho de cada vez','Com bola de apoio']},
+ {nome:'Descanso 90/90 com pernas sobre cadeira', grupo:'Core', equip:'Cadeira', padrao:'core', pats:['radic'], notas:'De costas, gémeos apoiados numa cadeira ou sofá, ancas e joelhos a 90°. Respira devagar durante 2-5 minutos. Posição de alívio nas crises.', variantes:['Com almofada sob a cabeça','Com mãos na barriga']},
+ {nome:'Caminhada graduada em plano', grupo:'Cardio', equip:'Peso corporal', padrao:'cardio', pats:['radic'], notas:'Caminhada em plano, a passo confortável, com tempos curtos e frequentes (5-10 min, várias vezes por dia). Aumentar 10% por semana, enquanto a dor na perna não aumentar.', variantes:['Passadeira sem inclinação','Em piso regular ao ar livre']},
+ {nome:'Marcha em pontas dos pés e em calcanhares', grupo:'Pernas', equip:'Peso corporal', padrao:'core', pats:['radic'], notas:'Caminhar 10 passos em pontas dos pés (S1) e 10 em calcanhares (L4-L5). Serve para vigiar a força: dificuldade nova ou diferença entre lados deve ser comunicada ao médico ou fisioterapeuta.', variantes:['Perto de uma parede','Mais lenta']}
+];
+const RADIC_TAG = {
+  radic:['Respiração diafragmática deitado','Báscula pélvica deitado','Extensão lombar em prono (McKenzie)','Ativação do transverso do abdómen','Postura da criança','Gato-camelo suave','Dead bug com braços','Dead bug','Bird dog lento com pausa','Bird dog','Ponte de glúteos com pausa','Prancha lateral apoiada no joelho','Prancha lateral','Prancha Frontal','Clamshell (abdução em decúbito lateral)','Concha com elástico (clamshell)','Hip hinge com bastão','Dobradiça da anca (hip hinge) com bastão','Agachamento com bola na parede','Peso morto com kettlebell','Remada com elástico (postura)','Bicicleta estática em intensidade leve','Sentar e levantar da cadeira','Alongamento do flexor da anca em ajoelhamento','Alongamento do piriforme deitado (figura 4)']
+};
+function radicEnsure(list){
+  if(!Array.isArray(list) || !list.length) return 0;
+  const by = new Map(list.map(e=>[normName(e.nome), e]));
+  const tag = (x,k)=>{ x.patologias = x.patologias||[]; if(!x.patologias.includes(k)) x.patologias.push(k); };
+  let n = 0;
+  RADIC_EXERCISES.forEach(m=>{
+    let x = by.get(normName(m.nome));
+    if(!x){
+      x = { id: uid(), nome: m.nome, grupo: m.grupo, equip: m.equip, notas: m.notas, padrao: m.padrao, modalidade:'Reabilitação', patologias:[], variantes: m.variantes.slice(), imagem:'', videoLink:'', videoData:'' };
+      list.push(x); by.set(normName(m.nome), x); n++;
+    }
+    m.pats.forEach(k=>tag(x,k));
+  });
+  Object.keys(RADIC_TAG).forEach(k=>RADIC_TAG[k].forEach(nm=>{ const x = by.get(normName(nm)); if(x) tag(x,k); }));
+  return n;
+}
+
 // ---------- BIBLIOTECA: SACROILÍACA ----------
 const SACRO_EXERCISES = [
  {nome:'Respiração com ativação do pavimento pélvico', grupo:'Core', equip:'Peso corporal', padrao:'core', pats:['sacro'], notas:'De costas, joelhos fletidos. Inspira e expande as costelas; ao expirar, contrai de forma suave o pavimento pélvico e o abdómen profundo, sem prender a respiração. 10 respirações.', variantes:['Sentado','Em quatro apoios']},
@@ -9566,6 +9859,40 @@ PATOLOGIAS.sacro = { nome:'Disfunção da articulação sacroilíaca', contra:'c
   ex:/salto|jump|burpee|skipping|corda|box|pliometr|sprint|bulgar|afundo|lunge|cossack|pistol|sumo|passada/,
   avisos:['Disfunção sacroilíaca: dor junto à espinha ilíaca posterior, que pode irradiar à nádega e à coxa. Evitar assimetrias de carga e passos longos, e fortalecer glúteos, core e musculatura estabilizadora. Dor que desce abaixo do joelho, fraqueza ou alterações da bexiga exigem avaliação médica.'] };
 MOB_BY_PAT.sacro = ['lombar','anca','ativacao'];
+PATOLOGIAS.radic = { nome:'Radiculopatia lombar (dor irradiada à perna)', contra:'flexão lombar sob carga, torções, cargas axiais pesadas, impacto e alongamentos fortes do ciático', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, lombar ≤ 3/10 e sem aumento da dor na perna', cardio:10, maq:true, grp:'Coluna',
+  ex:/skipping|corda|deadlift|dead lift|peso morto|good morning|bom dia|romeno|stiff|crunch|abdominal|sit ?up|v-?up|russian|rotac|rotation|toque|back squat|front squat|overhead|swing|hiperext|salto|jump|burpee|climber|remada curvada|remada alta|leg press|agachamento.*profundo|snatch|clean|jerk|sled|wall ball|box|pliometr|sprint|afundo|lunge|bulgar/,
+  avisos:['Radiculopatia lombar: dor que irradia à perna, por vezes com formigueiro. Priorizar a posição e a direção que alivia, a estabilização neutra do tronco, a caminhada e a força de glúteos e pernas, sem agravar a dor na perna. Evitar flexão lombar sob carga, torções e impacto.','Dificuldade em urinar, perda de controlo da bexiga ou do intestino, dormência na zona genital, fraqueza que aumenta, pé que cai ou sintomas nas duas pernas exigem avaliação médica urgente.'] };
+MOB_BY_PAT.radic = ['lombar','anca','toracica'];
+PATOLOGIAS.estenose = { nome:'Estenose do canal lombar', contra:'cargas axiais pesadas, impacto e ficar em pé parado muito tempo; usar a posição que alivia', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, sem formigueiro nem dor na perna', cardio:10, maq:true, grp:'Coluna',
+  ex:/salto|jump|burpee|skipping|corda|box|pliometr|sprint|snatch|clean|jerk|wall ball|good morning|bom dia|back squat|front squat|overhead|swing|climber|crunch|sit ?up|v-?up|russian|rotac|rotation|deadlift|dead lift/,
+  avisos:['Estenose lombar: dor ou formigueiro nas pernas em pé ou a caminhar, que alivia ao sentar. A caminhada em intervalos curtos e a postura de alívio são a base. Quando a dor passa a ser na barriga da perna com pulsos fracos ou pele fria, pode ser claudicação vascular: avaliar.','Dificuldade em urinar, perda de controlo da bexiga ou intestino, dormência na zona genital ou fraqueza que aumenta exigem avaliação urgente.'] };
+MOB_BY_PAT.estenose = ['lombar','anca','ativacao'];
+PATOLOGIAS.espondilolistese = { nome:'Espondilólise / espondilolistese', contra:'extensão lombar, hiperextensões e cargas de cisalhamento anterior', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, sem dor', cardio:10, maq:true, grp:'Coluna',
+  ex:/hiperext|hyperext|superman|cobra|extensao lombar|back extension|extensao reversa|good morning|bom dia|romeno|stiff|deadlift|dead lift|peso morto|overhead|snatch|clean|jerk|salto|jump|burpee|skipping|corda|box|pliometr|sprint|swing|wheel|roda|sit ?up|crunch|abdominal|v-?up|russian|rotac|rotation/,
+  avisos:['Espondilólise ou espondilolistese: manter a coluna neutra e evitar extensão e cisalhamento anterior. Quanto maior o deslizamento, mais cuidado com a carga.','Fraqueza na perna, dor abaixo do joelho, alterações da bexiga ou do intestino exigem avaliação médica urgente.'] };
+MOB_BY_PAT.espondilolistese = ['anca','ativacao'];
+PATOLOGIAS.instab = { nome:'Instabilidade lombar segmentar', contra:'amplitudes extremas, alongamentos da zona dolorosa, rotações rápidas e cargas sem bracing', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, com bracing e sem dor', cardio:10, maq:true, grp:'Coluna',
+  ex:/hiperext|hyperext|good morning|bom dia|stiff|romeno|toque|crunch|sit ?up|v-?up|russian|rotac|rotation|salto|jump|burpee|skipping|corda|box|pliometr|sprint|swing|snatch|clean|jerk/,
+  avisos:['Instabilidade lombar segmentar: a coluna cede num ponto («dobradiça»). Treinar o bracing e a resistência do tronco; não alongar a zona que já tem mobilidade.','Fraqueza progressiva, formigueiro nas pernas ou alterações da bexiga exigem avaliação médica urgente.'] };
+MOB_BY_PAT.instab = ['anca','toracica','ativacao'];
+PATOLOGIAS.facetaria = { nome:'Síndrome facetário lombar', contra:'extensão combinada com rotação, hiperextensões e rotações com carga', dias:3, series:2, reps:['10-12','10-15'], rest:75, carga:'RPE 5-6, sem dor', cardio:10, maq:true, grp:'Coluna',
+  ex:/hiperext|hyperext|superman|cobra|extensao reversa|back extension|russian|rotac|rotation|toque|overhead|snatch|clean|jerk|salto|jump|burpee|skipping|corda|box|pliometr|sprint|swing|wall ball|good morning|bom dia/,
+  avisos:['Síndrome facetário: dor com extensão e rotação, mais lenta a passar. Manter a coluna neutra e evitar extensão com rotação.','Dor que desce abaixo do joelho, fraqueza ou alterações da bexiga exigem avaliação médica.'] };
+MOB_BY_PAT.facetaria = ['anca','toracica','lombar'];
+PATOLOGIAS.rigida = { nome:'Coluna rígida (hipercontração)', contra:'bracing contínuo, alongamentos agressivos da zona dolorosa e impacto', dias:3, series:2, reps:['10-12','10-15'], rest:60, carga:'RPE 4-5, respiração fluida', cardio:15, maq:true, grp:'Coluna',
+  ex:/skipping|corda|salto|jump|burpee|box|pliometr|sprint|snatch|clean|jerk|wall ball|good morning|bom dia|crunch|sit ?up|v-?up/,
+  avisos:['Coluna rígida: a rigidez é muitas vezes uma estratégia de proteção. O bracing deve ser apenas o suficiente para a tarefa; trabalhar a mobilidade da anca e da torácica e a respiração.','Fraqueza progressiva, formigueiro nas pernas ou alterações da bexiga exigem avaliação médica.'] };
+MOB_BY_PAT.rigida = ['anca','toracica','lombar'];
+PATOLOGIAS.cifose = { nome:'Hipercifose torácica', contra:'flexão repetida do tronco sob carga e excesso de trabalho de peito sem costas', dias:3, series:2, reps:['10-12','12-15'], rest:60, carga:'RPE 5-6, sem dor', cardio:10, maq:false, grp:'Coluna',
+  ex:/crunch|sit ?up|v-?up|russian|good morning|bom dia|salto|jump|burpee|skipping|corda|box|pliometr|sprint|snatch|jerk/,
+  avisos:['Hipercifose torácica: priorizar extensão torácica (Lewit), força de costas e escápula, e mobilidade da caixa torácica. Em osteoporose ou fraturas vertebrais, só com autorização médica.','Dor aguda intensa, perda de altura recente, fraqueza ou dormência nas pernas exigem avaliação médica.'] };
+MOB_BY_PAT.cifose = ['toracica','ombro','cervical'];
+PATOLOGIAS.espondilite = { nome:'Espondilite anquilosante', contra:'impacto, cargas bruscas e flexão repetida; manter a extensão', dias:4, series:2, reps:['10-12','12-15'], rest:60, carga:'RPE 5-6, sem agravamento', cardio:15, maq:true, grp:'Coluna',
+  ex:/salto|jump|burpee|skipping|corda|box|pliometr|sprint|snatch|clean|jerk|wall ball|good morning|bom dia|crunch|sit ?up|v-?up|russian|rotac|rotation|swing/,
+  avisos:['Espondilite anquilosante: exercício diário de extensão e mobilidade torácica, sob acompanhamento de reumatologia. Evitar impacto e movimentos bruscos.','Queda ou traumatismo, dor muito intensa de início súbito, dormência, fraqueza ou olho vermelho e doloroso com perda de visão exigem avaliação urgente.'] };
+MOB_BY_PAT.espondilite = ['toracica','lombar','anca'];
+
+
 
 // ---------- SECÇÃO «PREVENÇÃO E REABILITAÇÃO» (interface) ----------
 const PREV_REG = [['cervical','Pescoço'],['ombro','Ombro'],['cotovelo','Cotovelo e punho'],['tronco','Coluna e tronco'],['anca','Anca e virilha'],['coxa','Coxa (isquiotibiais, quadríceps)'],['joelho','Joelho'],['tornozelo','Tornozelo e pé'],['canela','Canela e tendão de Aquiles']];
@@ -10071,7 +10398,7 @@ function monitCalcHtml(){
 }
 
 // ---------- BIOMECÂNICA NA PRESCRIÇÃO: nível de carga por região, bloqueio, análise e equilíbrio do treino ----------
-var BIOM_REGIAO = { lombar:['lombar','hernia'], joelho:['joelho','oa','patelar'], ombro:['ombro','supra'] };
+var BIOM_REGIAO = { lombar:['lombar','hernia','radic','estenose','espondilolistese','instab','facetaria','rigida'], joelho:['joelho','oa','patelar'], ombro:['ombro','supra'] };
 var BIOM_LIMITE = {};   // todas as condições bloqueiam o nível 3 de carga na região
 var BIOM_NIV = {
   lombar:[
@@ -10745,7 +11072,7 @@ async function ptAutoPublicar(){
 LIBOK = true;
 try{
   let _ch = false;
-  [['piriV',piriEnsure],['ancaV',ancaEnsure],['ombroV',ombroEnsure],['cotV',cotoveloEnsure],['punV',punhoEnsure],['maoV',maoEnsure],['escV',escEnsure],['elevV',elevEnsure],['crzV',crzEnsure],['vestV',vestEnsure],['sacV',sacroEnsure]].forEach(([k,fn])=>{
+  [['piriV',piriEnsure],['ancaV',ancaEnsure],['ombroV',ombroEnsure],['cotV',cotoveloEnsure],['punV',punhoEnsure],['maoV',maoEnsure],['escV',escEnsure],['elevV',elevEnsure],['crzV',crzEnsure],['vestV',vestEnsure],['sacV',sacroEnsure],['radV',radicEnsure],['mcgV',mcgEnsure]].forEach(([k,fn])=>{
     if(!DATA[k] && (DATA.exercises||[]).length){ fn(DATA.exercises); DATA[k] = 1; _ch = true; }
   });
   if(_ch) localStorage.setItem(STORE_KEY, JSON.stringify(DATA));

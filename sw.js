@@ -1,6 +1,6 @@
 // Service worker da app Kairós — permite abrir sem rede.
 // Quando atualizares a app no GitHub, muda a versão abaixo (ex.: ciclo-v2) para forçar a atualização.
-const CACHE = 'ciclo-v101';
+const CACHE = 'ciclo-v104';
 const ASSETS = ['./', './index.html', './pt-sync.js', './cliente.html', './kairos-lockup.png', './kairos-lockup-full.png', './kairos-symbol.png', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 const XLSX = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
 
