@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0C1F2E">
-<title>MeTa — Os Meus Treinos</title>
+<meta name="theme-color" content="#0B1220">
+<title>Kairós — Os Meus Treinos</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap">
 <style>
   /* ===================== CONFIGURAÇÃO ===================== */
   /* O URL da aplicação web vai no script, mais abaixo (URL_API). */
 
   :root{
-    --bg:#f4f6fa; --card:#fff; --txt:#0C1F2E; --sub:#64748b; --linha:#e2e8f0;
-    --pri:#21E1B0; --pri2:#18C79C; --navy:#0C1F2E; --ontexto:#062A22; --azul:#2563eb; --aviso:#d97706; --erro:#dc2626;
+    --bg:#f4f6fa; --card:#fff; --txt:#0B1220; --sub:#64748b; --linha:#e2e8f0;
+    --pri:#1FD6A5; --pri2:#17A887; --navy:#0B1220; --ontexto:#062A22; --azul:#3B4BFF; --aviso:#8B5CF6; --erro:#F43F6E;
     --raio:14px;
   }
   @media (prefers-color-scheme: dark){
@@ -21,7 +21,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--txt);
     font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4}
-  header{position:sticky;top:0;z-index:5;background:#0C1F2E;color:#fff;
+  header{position:sticky;top:0;z-index:5;background:#0B1220;color:#fff;
     padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px}
   header h1{font-family:'Oswald','Arial Narrow',system-ui,sans-serif;font-weight:600;letter-spacing:.5px;font-size:20px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .meta-logo{height:30px;width:auto;flex:0 0 auto}
@@ -44,7 +44,7 @@
   .linha > *{flex:1}
   .tabs{display:flex;gap:6px;margin-bottom:14px}
   .tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--linha);background:var(--card);color:var(--txt);font:inherit}
-  .tabs button.on{background:#0C1F2E;color:#fff;border-color:#0C1F2E}
+  .tabs button.on{background:#0B1220;color:#fff;border-color:#0B1220}
   .ex{border-top:1px solid var(--linha);padding:12px 0}
   .ex:first-child{border-top:0;padding-top:4px}
   .ex-top{display:flex;gap:12px;align-items:flex-start}
@@ -87,7 +87,7 @@
   .semana i{flex:1;height:8px;border-radius:4px;background:var(--linha)}
   .semana i.on{background:var(--pri)}
   .toast{position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top));transform:translateX(-50%);
-    background:#0C1F2E;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;
+    background:#0B1220;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;
     max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.25)}
   .feito-ecra{text-align:center;padding:40px 10px}
   .feito-ecra .big{font-size:64px}
@@ -96,7 +96,7 @@
 </head>
 <body>
 <header>
-  <img class="meta-logo" src="meta-lockup.png" alt="MeTa"><h1 id="titulo">Os Meus Treinos</h1>
+  <img class="meta-logo" src="kairos-lockup.png" alt="Kairós"><h1 id="titulo">Os Meus Treinos</h1>
   <button id="btnSair" hidden onclick="sair()">Sair</button>
 </header>
 <main id="app"></main>
@@ -157,7 +157,7 @@ async function iniciar(){
 function renderLogin(erro){
   $('#btnSair').hidden = true; $('#titulo').textContent = 'Os Meus Treinos';
   $('#app').innerHTML = `
-    <div style="background:#0C1F2E;border-radius:14px;padding:22px 18px;margin-top:12px;text-align:center"><img src="meta-lockup-full.png" alt="MeTa" style="width:100%;max-width:340px;height:auto"></div>
+    <div style="background:#0B1220;border-radius:14px;padding:22px 18px;margin-top:12px;text-align:center"><img src="kairos-lockup-full.png" alt="Kairós" style="width:100%;max-width:340px;height:auto"></div>
     <div class="card" style="margin-top:14px">
       <h2>Entrar</h2>
       <p class="sub">Escreve o código pessoal que o teu treinador te deu.</p>

@@ -1,13 +1,13 @@
 {
-  "name": "MeTa · Ciclos de Treino",
-  "short_name": "MeTa",
+  "name": "Kairós · Ciclos de Treino",
+  "short_name": "Kairós",
   "description": "Prescrição de treino e gestão de ciclos para personal trainers.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0C1F2E",
-  "theme_color": "#0C1F2E",
+  "background_color": "#0B1220",
+  "theme_color": "#0B1220",
   "lang": "pt-PT",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

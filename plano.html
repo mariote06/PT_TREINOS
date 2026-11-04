@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#171614">
+<meta name="theme-color" content="#0B1220">
 <meta name="robots" content="noindex, nofollow">
 <title>O meu plano de treino</title>
 <style>
   :root{
-    --bg:#171614; --surface:#211f1c; --raised:#2a2824; --line:#3a3731; --text:#f1ece2; --dim:#a59f92;
-    --ochre:#C69214; --ok:#6aa874; --font:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --bg:#0B1220; --surface:#111B2E; --raised:#18243A; --line:#27364F; --text:#F3F6FB; --dim:#A9B6C9;
+    --ochre:#1FD6A5; --onacc:#0B1220; --ok:#1FD6A5; --font:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   @media (prefers-color-scheme: light){
-    :root{ --bg:#f6f2ea; --surface:#ffffff; --raised:#f0ebe0; --line:#ddd5c5; --text:#25221d; --dim:#6f685b; --ok:#3f8a4d; }
+    :root{ --bg:#F3F6FB; --surface:#ffffff; --raised:#E8EEF8; --line:#D5DEEC; --text:#0B1220; --dim:#5B6B82; --ok:#3B4BFF; --ochre:#3B4BFF; --onacc:#ffffff; }
   }
   *{ box-sizing:border-box; }
   html{ -webkit-text-size-adjust:100%; }
@@ -25,7 +25,7 @@
   .tabs{ display:flex; gap:8px; overflow-x:auto; padding:4px 0 10px; position:sticky; top:0; background:var(--bg); z-index:5; scrollbar-width:none; }
   .tabs::-webkit-scrollbar{ display:none; }
   .tab{ flex:0 0 auto; border:1px solid var(--line); background:var(--surface); color:var(--text); border-radius:999px; padding:8px 16px; font-size:15px; font-weight:600; cursor:pointer; min-height:40px; }
-  .tab.on{ background:var(--ochre); border-color:var(--ochre); color:#1a1405; }
+  .tab.on{ background:var(--ochre); border-color:var(--ochre); color:var(--onacc); }
   .prog{ background:var(--surface); border-left:3px solid var(--ochre); border-radius:8px; padding:10px 12px; margin:6px 0 12px; font-size:14px; }
   .bar{ height:8px; border-radius:99px; background:var(--raised); overflow:hidden; margin:6px 0 4px; }
   .bar > i{ display:block; height:100%; background:var(--ok); width:0; transition:width .25s; }
@@ -52,7 +52,7 @@
   .rx span b{ color:var(--text); }
   .rx span{ color:var(--dim); }
   .nt{ color:var(--dim); font-size:13px; margin-top:2px; }
-  .met{ display:inline-block; background:var(--ochre); color:#1a1405; border-radius:5px; padding:0 6px; font-size:11px; font-weight:800; margin-left:6px; vertical-align:middle; }
+  .met{ display:inline-block; background:var(--ochre); color:var(--onacc); border-radius:5px; padding:0 6px; font-size:11px; font-weight:800; margin-left:6px; vertical-align:middle; }
   .gl{ border-left:3px solid var(--ochre); padding:4px 10px; margin-top:10px; font-size:13px; color:var(--dim); }
   .gl b{ color:var(--text); }
   .empty{ text-align:center; padding:60px 20px; color:var(--dim); }
@@ -94,7 +94,7 @@
     const ask = (msg)=>{
       app.innerHTML = '<div class="empty" style="padding-top:80px"><div class="kicker">Plano de treino</div><h1>Introduz o PIN</h1><p>O teu treinador enviou-te um PIN para abrires este plano.</p>'
         + '<form id="pf"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="PIN" style="font-size:24px;text-align:center;letter-spacing:.3em;width:200px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text)"><br><br>'
-        + '<button class="tab on" type="submit" style="padding:12px 28px;font-size:16px">Abrir plano</button></form><p id="pm" style="color:#d9776a;min-height:22px">'+esc(msg||'')+'</p></div>';
+        + '<button class="tab on" type="submit" style="padding:12px 28px;font-size:16px">Abrir plano</button></form><p id="pm" style="color:#F43F6E;min-height:22px">'+esc(msg||'')+'</p></div>';
       const inp = document.getElementById('pin'); inp.focus();
       document.getElementById('pf').onsubmit = async (ev)=>{
         ev.preventDefault(); const pin = inp.value.trim(); if(!pin) return;
