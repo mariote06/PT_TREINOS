@@ -410,20 +410,6 @@
 </head>
 <body>
 
-  <!-- Módulo de Inteligência Clínico-Desportiva Kairós -->
-<div class="modulo-ia-kairos" style="margin: 20px; padding: 20px; background-color: #0b132b; border-radius: 8px; color: #fff; border: 1px solid #48cae4;">
-  <h3 style="color: #48cae4; margin-top: 0; font-family: inherit;">✨ Assistente de Planeamento Clínico (IA Offline)</h3>
-  <p style="font-size: 14px; color: #ccc;">Insira o relatório da RM ou descreva os sintomas/queixas de dor do aluno:</p>
-  
-  <textarea id="relatorioRM" placeholder="Ex: Aluno com dor na face anterior do joelho ao agachar... ou cole aqui o texto da Ressonância Magnética." rows="5" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #1c2541; background-color: #1c2541; color: #fff; font-family: inherit; resize: vertical;"></textarea>
-  
-  <button id="btnGerarTreino" onclick="triggerPeriodizacaoIA()" style="margin-top: 10px; width: 100%; padding: 12px; border: none; border-radius: 4px; background-color: #48cae4; color: #0b132b; font-weight: bold; cursor: pointer; font-size: 15px;">
-    Gerar Mesociclo de 4 Semanas
-  </button>
-
-  <div id="containerResultadosIA" style="margin-top: 15px;"></div>
-</div>
-
 <div class="app">
   <div class="rail">
     <div class="rail-brand"><img class="meta-lockup" src="kairos-lockup.png" alt="Kairós"><small class="rail-sub">PLANEAMENTO</small></div>
@@ -1116,6 +1102,53 @@
 </div>
 
 <script>
+async function triggerPeriodizacaoIA() {
+  var botao = document.getElementById("btnGerarTreino");
+  var entrada = document.getElementById("relatorioRM").value;
+  var container = document.getElementById("containerResultadosIA");
+
+  if (!entrada.trim()) {
+    alert("Por favor, insira o caso clinico ou sintomas.");
+    return;
+  }
+
+  botao.disabled = true;
+  botao.innerText = "A processar com IA...";
+  container.innerHTML = "<p style='color: #48cae4;'>A ligar ao Ollama local...</p>";
+
+  try {
+    var response = await fetch("http://localhost:11434/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "treinador-ia",
+        format: "json",
+        stream: false,
+        messages: [
+          { role: "system", content: "Atuas como especialista no Kairos. Cria um plano em JSON com as chaves: paciente, analise, contraindicacoes. Responde estritamente em JSON." },
+          { role: "user", content: "Paciente com: " + entrada }
+        ]
+      })
+    });
+
+    var data = await response.json();
+    var resultado = JSON.parse(data.message.content);
+
+    container.innerHTML = "<div style='margin-top:15px; padding:15px; background:#1c2541; border-radius:4px;'>" +
+                          "<h4>Analise: " + (resultado.analise || "Concluida") + "</h4>" +
+                          "<p style='color:#ff4d6d;'><strong>A evitar:</strong> " + (resultado.contraindicacoes || "Nenhum") + "</p>" +
+                          "</div>";
+
+  } catch (error) {
+    console.error(error);
+    container.innerHTML = "<p style='color: #ff4d6d;'>Erro ao ligar ao motor da IA.</p>";
+  } finally {
+    botao.disabled = false;
+    botao.innerText = "Gerar Mesociclo de 4 Semanas";
+  }
+}
+
+
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const STORE_KEY = 'ciclo_pt_data_v1';
 
@@ -10786,71 +10819,6 @@ const LINHAS = {
   DFAL:{nome:'Linha Profunda Anterior do Braço', trilho:'peitoral menor → bíceps → rádio → polegar', f:'Controlo fino da omoplata e da mão; ligação ao polegar.', pista:'Omoplata projetada para a frente.', forca:'rosca bíceps, push-up plus, remada supinada', mob:'peitoral menor, bíceps'}
 };
 const LINHAS_REG_EXTRA = [
-  async function triggerPeriodizacaoIA() {
-  const botao = document.getElementById('btnGerarTreino');
-  const entradaUtilizador = document.getElementById('relatorioRM').value;
-  const container = document.getElementById('containerResultadosIA');
-
-  if (!entradaUtilizador.trim()) {
-    alert('Por favor, insira uma descrição de sintomas ou relatório clínico.');
-    return;
-  }
-
-  botao.disabled = true;
-  botao.innerText = '⚡ A IA está a analisar o caso e a periodizar...';
-  container.innerHTML = '<p style="color: #48cae4;">A processar o mesociclo de 4 semanas 100% offline...</p>';
-
-  // Puxa os termos compatíveis com o Kairós
-  const exerciciosPermitidos = ['bicicleta estatica', 'mobilidade de anca 90/90', 'open book', 'dead bug', 'prancha lateral', 'bird-dog', 'squat', 'step-up'];
-
-  try {
-    const response = await fetch('http://localhost:11434/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'treinador-ia',
-        format: 'json',
-        stream: false,
-        messages: [
-          {
-            role: 'system',
-            content: 'Atuas como um Especialista de Elite em Fisioterapia e Treino no ecossistema Kairós. O teu objetivo é criar um mesociclo de 4 semanas em formato JSON. Regras: 1. Identifica a regiao em risco e lista os movimentos contraindicados. 2. Seleciona exercicios ESTRITAMENTE a partir da lista fornecida. 3. Responde obrigatoriamente nesta estrutura JSON: { "paciente": "Nome", "analise_clinica_efetuada": "string", "movimentos_contraindicados": ["string"], "semanas": [ { "semana_numero": 1, "foco": "string", "exercicios": [ { "nome": "termo exato", "series": 3, "repeticoes": 10, "rpe": 6, "nota": "string" } ] } ] }'
-          },
-          {
-            role: 'user',
-            content: 'LISTA DE EXERCÍCIOS PERMITIDOS:\n' + exerciciosPermitidos.join(', ') + '\n\nSINTOMAS/RM:\n' + entradaUtilizador
-          }
-        ]
-      })
-    });
-
-    const data = await response.json();
-    const mesocicloObjeto = JSON.parse(data.message.content);
-    
-    // Desenha o resultado visualmente na interface do Kairós
-    let htmlGerado = `<div style="margin-top:20px; padding:15px; border-left:4px solid #48cae4; background:#1c2541; border-radius:4px;">`;
-    htmlGerado += `<h4>Análise Kairós: ${mesocicloObjeto.analise_clinica_efetuada}</h4>`;
-    htmlGerado += `<p style="color:#ff4d6d;"><strong>Contraindicações:</strong> ${mesocicloObjeto.movimentos_contraindicados.join(', ')}</p>`;
-    
-    mesocicloObjeto.semanas.forEach(sem => {
-      htmlGerado += `<div style="margin-top:15px; background:#0b132b; padding:10px; border-radius:4px;">`;
-      htmlGerado += `<strong style="color:#48cae4;">Semana ${sem.semana_numero} - ${sem.foco}</strong><ul style="margin-top:5px; padding-left:20px; color:#fff;">`;
-      sem.exercicios.forEach(ex => {
-        htmlGerado += `<li>${ex.nome} - ${ex.series}x${ex.repeticoes} (RPE ${ex.rpe}) <span style="color:#48cae4; font-size:12px;">(IA)</span></li>`;
-      });
-      htmlGerado += `</ul></div>`;
-    });
-    htmlGerado += `</div>`;
-    container.innerHTML = htmlGerado;
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = '<p style="color: #ff4d6d;">Erro: Garanta que o Ollama está ativo no computador.</p>';
-  } finally {
-    botao.disabled = false;
-    botao.innerText = '✨ Gerar Mesociclo Adaptado';
-  }
-}
   [/extensao (do )?pulso|extensores? do antebraco|rosca inversa|reverse curl/, 'SBAL'],
   [/flexao (do )?pulso|rosca de punho|flexores do antebraco|antebraco|grip|pegada/, 'SFAL'],
   [/tricipe|pushdown|gymstick|kickback de triceps|testa|frances/, 'DBAL'],
