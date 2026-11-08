@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 116</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 117</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -3046,7 +3046,7 @@ function toggleTreinosSel(){ treinosSelMode = !treinosSelMode; treinosSel.clear(
 function treinoSelToggle(id, on){ if(on) treinosSel.add(id); else treinosSel.delete(id); renderWorkouts(); }
 function treinosSelAll(mode){
   treinosSel.clear();
-  DATA.workouts.forEach(w=>{ if(mode==='all' || (mode==='unused' && !treinoUsed(w.id))) treinosSel.add(w.id); });
+  treinosVisiveis().forEach(w=>{ if(mode==='all' || (mode==='unused' && !treinoUsed(w.id))) treinosSel.add(w.id); });
   renderWorkouts();
 }
 function deleteSelectedWorkouts(){
@@ -3059,6 +3059,43 @@ function deleteSelectedWorkouts(){
   treinosSel.clear(); treinosSelMode = false;
   saveData();
 }
+// Separadores por cliente: um treino pertence aos clientes dos ciclos onde está prescrito
+let treinosTab = (()=>{ try{ return localStorage.getItem('ciclo_treinos_tab') || 'todos'; }catch(e){ return 'todos'; } })();
+function treinosPorCliente(){
+  const map = {};   // workoutId -> [{cid, cy}]
+  DATA.cycles.forEach(cy=>{
+    const cids = cycleClientIds(cy);
+    const ws = new Set();
+    (cy.semanas||[]).forEach(sm=>(sm.dias||[]).forEach(d=>{ if(d.workoutId) ws.add(d.workoutId); }));
+    ws.forEach(wid=>cids.forEach(cid=>{ (map[wid] = map[wid] || []).push({ cid, cy }); }));
+  });
+  return map;
+}
+function treinosVisiveis(){
+  if(treinosTab === 'todos') return DATA.workouts.slice();
+  const map = treinosPorCliente();
+  if(treinosTab === 'sem') return DATA.workouts.filter(w=>!(map[w.id]||[]).length);
+  return DATA.workouts.filter(w=>(map[w.id]||[]).some(x=>x.cid===treinosTab));
+}
+function treinosSetTab(t){
+  treinosTab = t;
+  try{ localStorage.setItem('ciclo_treinos_tab', t); }catch(e){}
+  renderWorkouts();
+}
+function treinosTabsHtml(map){
+  const cont = {};
+  Object.values(map).forEach(l=>new Set(l.map(x=>x.cid)).forEach(cid=>{ cont[cid] = (cont[cid]||0) + 1; }));
+  const sem = DATA.workouts.filter(w=>!(map[w.id]||[]).length).length;
+  const clis = DATA.clients.filter(c=>cont[c.id]).sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+  if(treinosTab!=='todos' && treinosTab!=='sem' && !cont[treinosTab]) treinosTab = 'todos';
+  if(treinosTab==='sem' && !sem) treinosTab = 'todos';
+  const tab = (id, label, n)=>`<button class="btn btn-sm${treinosTab===id ? ' btn-primary' : ''}" style="flex:0 0 auto;" onclick="treinosSetTab('${id}')">${esc(label)} <span style="opacity:.7;">${n}</span></button>`;
+  return `<div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:12px; border-bottom:1px solid var(--line);">`
+    + tab('todos', 'Todos', DATA.workouts.length)
+    + clis.map(c=>tab(c.id, c.nome.split(' ').slice(0,2).join(' '), cont[c.id])).join('')
+    + (sem ? tab('sem', 'Sem cliente', sem) : '')
+    + `</div>`;
+}
 function renderWorkouts(){
   const list = document.getElementById('treinos-list');
   if(DATA.workouts.length===0){
@@ -3068,7 +3105,10 @@ function renderWorkouts(){
   const bar = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">` + (treinosSelMode
     ? `<button class="btn btn-sm" onclick="treinosSelAll('all')">Selecionar todos</button><button class="btn btn-sm" onclick="treinosSelAll('unused')">Selecionar os que não estão em ciclos</button><button class="btn btn-sm" onclick="treinosSelAll('none')">Limpar</button><button class="btn btn-sm btn-danger" ${treinosSel.size?'':'disabled'} onclick="deleteSelectedWorkouts()">Eliminar selecionados (${treinosSel.size})</button><button class="btn btn-ghost btn-sm" onclick="toggleTreinosSel()">Cancelar</button>`
     : `<button class="btn btn-sm" onclick="toggleTreinosSel()">☑ Selecionar para eliminar</button>`) + `</div>`;
-  list.innerHTML = bar + `<div class="list">` + DATA.workouts.map(w=>`
+  const map = treinosPorCliente();
+  const tabs = treinosTabsHtml(map);
+  const vis = treinosVisiveis();
+  const linha = w=>`
     <div class="list-row" style="align-items:flex-start;">
       ${treinosSelMode ? `<label style="padding:4px 10px 0 0; cursor:pointer;"><input type="checkbox" ${treinosSel.has(w.id)?'checked':''} onchange="treinoSelToggle('${w.id}', this.checked)" style="width:20px; height:20px;"></label>` : ''}
       <div class="list-row-main">
@@ -3082,7 +3122,26 @@ function renderWorkouts(){
         <button class="btn btn-ghost btn-sm" onclick="openWorkoutModal('${w.id}')">Editar</button>
         <button class="btn btn-ghost btn-sm btn-danger" onclick="deleteWorkout('${w.id}')">Remover</button>
       </div>
-    </div>`).join('') + `</div>`;
+    </div>`;
+  let corpo;
+  if(treinosTab !== 'todos' && treinosTab !== 'sem'){
+    // agrupar por ciclo (mais recente primeiro)
+    const ciclos = DATA.cycles.filter(cy=>cycleClientIds(cy).includes(treinosTab)).sort((a,b)=>String(b.inicio||'').localeCompare(String(a.inicio||'')));
+    const vistos = new Set();
+    corpo = ciclos.map(cy=>{
+      const ws = vis.filter(w=>!vistos.has(w.id) && (map[w.id]||[]).some(x=>x.cy===cy));
+      ws.forEach(w=>vistos.add(w.id));
+      if(!ws.length) return '';
+      const outro = cycleClientIds(cy).filter(i=>i!==treinosTab).map(i=>(DATA.clients.find(c=>c.id===i)||{}).nome).filter(Boolean);
+      return `<div class="view-sub" style="margin:14px 0 6px; font-weight:600;">${esc(cy.nome||'Ciclo')}${cy.inicio ? ' · início ' + esc(cy.inicio.split('-').reverse().join('/')) : ''}${outro.length ? ' · PT Grupo com ' + esc(outro.join(', ')) : ''}</div><div class="list">` + ws.map(linha).join('') + `</div>`;
+    }).join('');
+  }else{
+    corpo = vis.length ? `<div class="list">` + vis.map(w=>{
+      const cls = treinosTab==='todos' ? [...new Set((map[w.id]||[]).map(x=>x.cid))].map(i=>(DATA.clients.find(c=>c.id===i)||{}).nome).filter(Boolean) : [];
+      return linha(w).replace('<div class="list-row-title">', cls.length ? `<div class="list-row-meta" style="margin-bottom:2px;">👤 ${esc(cls.join(', '))}</div><div class="list-row-title">` : '<div class="list-row-title">');
+    }).join('') + `</div>` : `<div class="empty">Sem treinos neste separador.</div>`;
+  }
+  list.innerHTML = tabs + bar + corpo;
 }
 
 // ---------- FICHA DO CLIENTE ----------
