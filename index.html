@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 117</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 119</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -4111,6 +4111,10 @@ function mcSend(txt){
   const inp = document.getElementById('mc-in');
   const q = (txt || inp.value).trim(); if(!q) return;
   inp.value = '';
+  if(!/^\s*planear\b/i.test(q)){
+    let acao = null; try{ acao = mcAcao(q); }catch(e){ acao = null; }
+    if(acao){ mcPush('user', esc(q)); mcPush('bot', esc(acao)); MC_IA.hist.push({ role:'user', content:q }, { role:'assistant', content:acao }); return; }
+  }
   if(mcIAOn() && !/^\s*planear\b/i.test(q)) return mcSendIA(q);
   mcPush('user', esc(q));
   let r;
@@ -4553,18 +4557,20 @@ function mcIACliente(c){
   if(pk.length) L.push('Patologias: '+pk.map(k=>PATOLOGIAS[k].nome+' (evitar: '+PATOLOGIAS[k].contra+')').join('; '));
   if(c.limitacoes) L.push('Limitações: '+c.limitacoes);
   if(c.notas) L.push('Notas: '+String(c.notas).slice(0,400));
-  try{
-    const ciclos = DATA.cycles.filter(x=>x.clienteId===c.id || x.clientId===c.id).slice(-2);
-    ciclos.forEach(x=>L.push('Ciclo: '+(x.nome||'')+' ('+(x.numSemanas||(x.semanas||[]).length)+' semanas)'));
-  }catch(e){}
+  try{ const h = aiHistorico(c, 1800); if(h) L.push(h); }catch(e){}
   return L.join('\n');
 }
 async function mcIAContexto(q){
   const qn = normName(q);
-  let cli = mcFindClient(qn);
-  if(!cli && MC_CH.cli) cli = DATA.clients.find(c=>c.id===MC_CH.cli);
+  const achados = aiClientesNoTexto(qn);
+  let ambTxt = '';
+  let cli = null;
+  if(achados.amb.length){ ambTxt = 'ATENÇÃO: há vários clientes com o nome indicado (' + achados.amb[0].map(c=>c.nome).join('; ') + '). Não assumas qual é: pede ao treinador que indique o apelido.'; }
+  else cli = achados[0] || null;
+  if(!cli && !ambTxt && MC_CH.cli) cli = DATA.clients.find(c=>c.id===MC_CH.cli);
   if(cli) MC_CH.cli = cli.id;
   const partes = [];
+  if(ambTxt) partes.push(ambTxt);
   const fc = mcIACliente(cli); if(fc) partes.push(fc);
   let hits = [];
   try{ hits = mcSearch(q, null, cli ? clientPats(cli) : null).filter(h=>h.d.tipo!=='cliente').slice(0, 6); }catch(e){}
@@ -4602,6 +4608,9 @@ async function mcSendIA(q){
   box.appendChild(d); box.scrollTop = box.scrollHeight;
   const ctx = await mcIAContexto(q);
   const sistema = 'És o Kairós, o assistente de inteligência artificial da app Kairós de um personal trainer em Portugal. Escreves sempre em português de Portugal, de forma prática, clara e curta (no máximo uns 200 palavras, salvo se pedirem mais). Segues as diretrizes ACSM e NSCA. Quando o CONTEXTO DA APP tiver informação relevante, usa-a e diz que vem da app; não inventes dados de clientes. Não fazes diagnósticos: perante dor forte, sinais de alarme ou dúvida clínica, recomenda avaliação por médico ou fisioterapeuta. Respeita sempre as contraindicações das patologias indicadas. Usa os excertos de referência como base, mas nunca cites fontes, livros, autores, páginas nem números entre parênteses retos: responde só com o conteúdo prático.'
+    + ' Se te pedirem para gerar, criar ou prescrever um ciclo ou plano completo, não o escrevas na conversa: explica que basta escrever «gera um ciclo para <nome e apelido do cliente>» ou usar o botão «✦ Gerar com Kairós» nos Ciclos, porque aí a app aplica os limites de segurança e importa o plano.'
+    + ' Quando te perguntarem como usar a app, responde só com base no GUIA DA APP; se o guia não tiver a resposta, diz que não tens a certeza em vez de inventar.'
+    + (aiPerguntaApp(normName(q)) ? '\n\n' + KAIROS_GUIA : '')
     + (ctx.texto ? '\n\nCONTEXTO DA APP:\n' + ctx.texto : '');
   MC_IA.hist.push({ role:'user', content:q });
   MC_IA.hist = MC_IA.hist.slice(-10);
@@ -4633,7 +4642,7 @@ async function mcSendIA(q){
     const fonte = (ctx.cli ? '<div class="view-sub" style="margin-top:6px;">Com a ficha de '+esc(ctx.cli.nome)+' · '+esc(modelo)+'</div>' : '<div class="view-sub" style="margin-top:6px;">'+esc(modelo)+'</div>');
     d.innerHTML = mcMd(txt) + fonte;
     MC_IA.hist.push({ role:'assistant', content:txt });
-    MC_CH.msgs.push({ who:'user', html:esc(q) }, { who:'bot', html:d.innerHTML });
+    MC_CH.msgs.push({ who:'bot', html:d.innerHTML });
   }catch(e){
     if(e.name==='AbortError'){ d.innerHTML = mcMd(txt) + '<div class="view-sub">(parado)</div>'; if(txt) MC_IA.hist.push({ role:'assistant', content:txt }); }
     else { d.innerHTML = 'Erro: ' + esc(aiErroOllama(e)); MC_IA.hist.pop(); }
@@ -5662,6 +5671,196 @@ async function aiTestar(){
   await aiCarregarModelos(false);
 }
 
+// ---------- KAIRÓS IA: limites das regras, histórico, guia da app e ações ----------
+function aiLimites(objetivo, nivel, keys){
+  const cfg = PLAN_OBJ[objetivo] || PLAN_OBJ['Condição física geral'];
+  let [sMain, sAcc] = cfg.series[nivel] || cfg.series['Intermédio'];
+  let reps = cfg.reps.slice(), rest = cfg.rest.slice();
+  let carga = nivel === 'Iniciante' ? 'RPE 6-7' : cfg.carga, diasMax = 6;
+  const pats = (keys || []).map(k=>PATOLOGIAS[k]).filter(Boolean);
+  if(pats.length){
+    const sMax = Math.min(...pats.map(x=>x.series));
+    sMain = Math.min(sMain, sMax); sAcc = Math.min(sAcc, sMax);
+    reps = pats[0].reps.slice();
+    const rMin = Math.max(...pats.map(x=>x.rest));
+    rest = [Math.max(rest[0], rMin), Math.max(rest[1], rMin)];
+    carga = pats.map(x=>x.carga).join(' / ');
+    diasMax = Math.min(...pats.map(x=>x.dias));
+  }
+  return { sMain, sAcc, reps, rest, carga, diasMax, comPat: pats.length > 0, nomes: pats.map(x=>x.nome) };
+}
+function aiSeg(t){
+  t = String(t || '').toLowerCase().replace(',', '.'); let m;
+  if((m = t.match(/(\d+)\s*:\s*(\d{2})/))) return +m[1] * 60 + +m[2];
+  if((m = t.match(/(\d+(?:\.\d+)?)\s*(min|m\b|')/))) return Math.round(parseFloat(m[1]) * 60);
+  if((m = t.match(/(\d+)/))) return +m[1];
+  return null;
+}
+function aiRpeMax(txt){
+  const m = String(txt || '').match(/RPE\s*(\d+(?:[.,]\d)?)(?:\s*[-–]\s*(\d+(?:[.,]\d)?))?/i);
+  return m ? parseFloat((m[2] || m[1]).replace(',', '.')) : null;
+}
+function aiAplicarLimites(treinos, lim){
+  let n = 0;
+  const rpeMax = aiRpeMax(lim.carga);
+  const rpeTxt = (String(lim.carga).match(/RPE\s*[\d.,]+(?:\s*[-–]\s*[\d.,]+)?/i) || [lim.carga])[0];
+  treinos.forEach(t=>{
+    const k = Math.ceil(t.exercicios.length / 2);
+    t.exercicios.forEach((x, i)=>{
+      const principal = i < k;
+      const sMax = principal ? lim.sMain : lim.sAcc;
+      if(x.series > sMax){ x.series = sMax; n++; }
+      if(!lim.comPat) return;
+      const rMin = principal ? lim.rest[0] : lim.rest[1];
+      const sg = aiSeg(x.descanso);
+      if(sg === null || sg < rMin){ x.descanso = rMin + 's'; n++; }
+      const rr = principal ? lim.reps[0] : lim.reps[1];
+      const lo = parseInt(rr), got = parseInt(String(x.reps).match(/\d+/) || '');
+      if(lo && (!got || got < lo)){ x.reps = rr; n++; }
+      if(rpeMax){
+        const rp = aiRpeMax(x.carga);
+        const rirM = String(x.carga).match(/(\d+)\s*RIR/i);
+        const rirRpe = rirM ? 10 - +rirM[1] : null;
+        if((rp && rp > rpeMax) || (rirRpe !== null && rirRpe > rpeMax) || (!rp && rirRpe === null)){ x.carga = rpeTxt; n++; }
+      }
+    });
+  });
+  return n;
+}
+function aiHistorico(c, maxChars){
+  if(!c) return '';
+  const L = [];
+  let now = null; try{ now = monitCycleNow(c.id); }catch(e){}
+  const cys = DATA.cycles.filter(cy=>cycleClientIds(cy).includes(c.id)).sort((a,b)=>String(b.inicio||'').localeCompare(String(a.inicio||'')));
+  const cy = (now && now.cy) || cys[0];
+  if(cy){
+    L.push(`Ciclo ${now ? 'atual' : 'mais recente'}: «${cy.nome || 'Ciclo'}»${cy.inicio ? ', início ' + cy.inicio : ''}, ${(cy.semanas||[]).length} semanas${now ? ' (vai na semana ' + (now.wi + 1) + ')' : ''}${cy.clientId2 ? ' (PT Grupo)' : ''}`);
+    const ids = [];
+    (cy.semanas||[]).forEach(s=>(s.dias||[]).forEach(d=>{ if(d.workoutId && !ids.includes(d.workoutId)) ids.push(d.workoutId); }));
+    ids.slice(0, 6).forEach(id=>{
+      const w = DATA.workouts.find(x=>x.id===id); if(!w) return;
+      L.push(`- ${w.nome}: ` + (w.exercicios||[]).map(l=>`${exerciseName(l.exId)} ${l.series}x${l.reps}${l.carga ? ' @ ' + l.carga : ''}`).join('; '));
+    });
+    const ant = cys.filter(x=>x!==cy).slice(0, 3);
+    if(ant.length) L.push('Ciclos anteriores: ' + ant.map(x=>`«${x.nome}»${x.inicio ? ' (' + x.inicio + ')' : ''}`).join(', '));
+  }
+  const regs = (c.registos||[]).slice().sort((a,b)=>String(b.data).localeCompare(String(a.data))).slice(0, 6);
+  if(regs.length) L.push('Últimos treinos registados: ' + regs.map(r=>`${r.data} ${r.nome}${r.rpe ? ' RPE ' + r.rpe : ''}${r.min ? ' ' + r.min + ' min' : ''}${r.nota ? ' («' + String(r.nota).slice(0, 60) + '»)' : ''}`).join('; '));
+  try{
+    const a = monitAnalyze(c.id);
+    if(a) L.push(`Monitorização (${a.n} registos, último ${a.last.data}): estado ${a.estado}${a.motivos.length ? ' — ' + a.motivos.join('; ') : ''}; CMJ ${a.last.cmj || '—'} cm${a.cmjBase ? ' (média ' + a.cmjBase.toFixed(1) + ')' : ''}, sono ${a.last.sono || '—'} h, bem-estar ${a.bem || '—'}/25${a.pct ? '; a app sugere reduzir a carga ' + a.pct + '%' : ''}.`);
+  }catch(e){}
+  return L.join('\n').slice(0, maxChars || 2000);
+}
+
+const KAIROS_GUIA = `GUIA DA APP KAIRÓS (menu à esquerda; os dados ficam só neste browser):
+- Hoje: agenda do dia com as sessões dos ciclos (dia anterior/seguinte). Ligação ao Google Calendar com o Client ID OAuth; «↻ Ajustar ciclos ao calendário» acerta as datas.
+- Clientes: lista de clientes («+ Novo cliente», «Importar Excel» e «Modelo Excel», «Cliente de teste»). Cada cliente é PT ou só plano. Ao clicar num cliente abre a ficha: dados, objetivo, nível, dias, patologias, limitações, notas, anamnese, «Registar treino» (data, treino, RPE da sessão, minutos, nota), ciclos do cliente e os botões «⚡ Gerar plano», «🧭 Kairós» (planear macrociclo) e «+ Novo ciclo».
+- Biblioteca: exercícios para montar os treinos («+ Novo exercício», «Carregar biblioteca completa», «Esquemas», vídeo de cada exercício).
+- Protocolos: protocolos de treino (provas e performance por fases), de prevenção e de patologias; criam o treino de uma fase ou o ciclo completo para um cliente; «+ Patologia» cria patologias próprias.
+- Treinos: sessões com exercícios, séries, repetições e carga, organizadas em separadores por cliente (e «Sem cliente»). Cada treino tem «Biomecânica» («Equilibrar o treino»), «Editar» e «Remover»; «☑ Selecionar para eliminar» atua no separador aberto.
+- Ciclos: periodização por cliente em semanas e sessões. «⚡ Gerar plano» gera por regras (o mais seguro para patologias); «✦ Gerar com Kairós» gera com a IA local para um cliente, para PT Grupo (escolher o 2.º cliente) ou para vários clientes de uma vez («Para quem» → «Vários clientes»); «🧭 Kairós» é o assistente de planeamento; «💬 Perguntar» é esta conversa; «📚 Bibliografia»; «Aulas de grupo»; «+ Novo ciclo». Em cada ciclo: «⚙ Ajustar plano» (inclui o 2.º cliente de PT Grupo), «📄 Exportar PDF», «🔗 Enviar ao cliente» e «Remover ciclo».
+- Prevenção: princípios, triagem de risco por cliente, programas de prevenção por região, reabilitação por fases e critérios de regresso.
+- Monitorização: registo diário de CMJ (melhor de 3 saltos), horas de sono e bem-estar (5 itens de 1 a 5). Compara com a média do próprio cliente e propõe reduzir a carga dos treinos que faltam na semana (20% em amarelo, 30% em vermelho).
+- Cópia de segurança: guardar e restaurar uma cópia dos dados (ficam só neste browser).
+- Kairós IA: corre no Ollama do computador do treinador, só nesse PC e com o Ollama aberto. Configura-se em «✦ Gerar com Kairós» → «Definições do Kairós» (motor, endereço, modelo, «Testar ligação»). A «📚 Bibliografia» indexa uma pasta de PDF e EPUB (por exemplo do OneDrive) com o modelo bge-m3; os AZW3 do Kindle não são lidos.
+- Pedidos que o Kairós executa nesta conversa: «gera um ciclo para a Ana», «gera um ciclo de PT Grupo para a Ana e o Rui», «gera planos para todos os clientes PT», «gera um plano por regras para a Ana», «abre a ficha da Ana», «mostra os treinos da Ana», «abre a monitorização da Ana», «abre a bibliografia».`;
+function aiPerguntaApp(qn){
+  return /\b(como|onde|app|kairos|botao|separador|menu|ecra|janela|funciona|faco|configur|export|envi|import|sincroniz|backup|copia|registo|registar|ficha|ollama|bibliografia|calendar)\b/.test(qn);
+}
+
+// --- ações pedidas na conversa ---
+function aiClientesNoTexto(qn){
+  const words = new Set(qn.split(' '));
+  const achados = [];
+  DATA.clients.forEach(c=>{
+    const nn = normName(c.nome).split(' ').filter(w=>w.length > 2); if(!nn.length) return;
+    const extra = nn.slice(1).filter(w=>words.has(w)).length;
+    const sc = qn.includes(normName(c.nome)) ? 10 : words.has(nn[0]) ? 2 + extra : 0;
+    if(sc) achados.push({ c, sc, pos: qn.indexOf(nn[0]), first: nn[0] });
+  });
+  const grupos = {};
+  achados.forEach(a=>{ (grupos[a.first] = grupos[a.first] || []).push(a); });
+  const out = [], amb = [];
+  Object.values(grupos).forEach(g=>{
+    const top = Math.max(...g.map(a=>a.sc));
+    const best = g.filter(a=>a.sc === top).sort((a,b)=>a.pos - b.pos);
+    out.push(best[0]);
+    if(best.length > 1) amb.push(best.map(a=>a.c));
+  });
+  const res = out.sort((a,b)=>a.pos - b.pos).map(a=>a.c);
+  res.amb = amb;
+  return res;
+}
+function aiAmbiguoMsg(amb){
+  const l = amb[0];
+  const ex = l.map(c=>{
+    const p = c.nome.split(' ').filter(w=>w.length > 2);
+    const outros = l.filter(o=>o!==c).map(o=>normName(o.nome).split(' '));
+    const unico = p.slice(1).reverse().find(w=>!outros.some(o=>o.includes(normName(w))));
+    return unico ? p[0] + ' ' + unico : c.nome;
+  });
+  return 'Tens ' + l.length + ' clientes com esse nome: ' + l.map(c=>c.nome).join(' · ') + '. Escreve também o apelido, por exemplo «' + ex.join('» ou «') + '».';
+}
+function aiNav(view){ const b = document.querySelector('.rail-btn[data-view="' + view + '"]'); if(b) b.click(); }
+function mcAcao(q){
+  const qn = normName(q);
+  if(/^(como|porque|porqu|qual|quais|quando|devo|deveria|sera|e se)\b/.test(qn)) return null;
+  const cls = aiClientesNoTexto(qn);
+  const pede = /\b(gera|gerar|gere|cria|criar|crie|faz|faca|prescreve|prescrever|prescreva|monta|montar|monte|prepara|preparar|prepare)\b/.test(qn);
+  const plano = /\b(ciclo|ciclos|plano|planos|treino|treinos|programa|programas|mesociclo)\b/.test(qn);
+  const abrir = /\b(abre|abrir|abra|mostra|mostrar|mostre|ver|vai|ir|lista|listar)\b/.test(qn);
+  const temAcao = (pede && plano) || ((abrir || /\bregist/.test(qn)) && /\b(ficha|treinos?|ciclos?|monitoriza\w*)\b/.test(qn));
+  if(temAcao && cls.amb.length) return aiAmbiguoMsg(cls.amb);
+  if(pede && plano){
+    const lote = /\b(todos|todas|varios|varias|lote)\b/.test(qn);
+    if(!lote && !cls.length) return null;
+    const regras = /\b(regras|automatico)\b/.test(qn);
+    closeModal('modal-mesochat');
+    if(regras && cls[0] && !lote){ openPlanModal(cls[0].id); return `Abri o «⚡ Gerar plano» (por regras) para ${cls[0].nome}.`; }
+    openAIModal();
+    const g = id=>document.getElementById(id);
+    const setSel = (id, val)=>{ const el = g(id); if(el && Array.from(el.options).some(o=>o.value===val || o.text===val)){ el.value = Array.from(el.options).find(o=>o.value===val || o.text===val).value; return true; } return false; };
+    const det = [];
+    if(lote){
+      g('ai-modo').value = 'lote'; aiModoChange();
+      if(cls.length >= 2){ document.querySelectorAll('#ai-lote-lista input').forEach(i=>{ i.checked = cls.some(c=>c.id===i.value); }); det.push(cls.length + ' clientes marcados'); }
+      else if(/\bpt\b/.test(qn)){ aiLoteMarcar('pt'); det.push('clientes PT marcados'); }
+      else { aiLoteMarcar('todos'); det.push('todos os clientes marcados'); }
+    }else{
+      g('ai-modo').value = 'um'; aiModoChange();
+      g('ai-cliente').value = cls[0].id; prefillAI();
+      if(cls[1] && /\b(grupo|juntos|e)\b/.test(qn)){ g('ai-cliente2').value = cls[1].id; det.push('PT Grupo: ' + aiPrimeiro(cls[0]) + ' + ' + aiPrimeiro(cls[1])); }
+      else det.push(cls[0].nome);
+    }
+    const objs = [['hipertrofia','Hipertrofia'],['forca','Força'],['gordura|emagrec','Perda de gordura'],['condicao fisica|condicao geral','Condição física geral'],['tonific','Tonificação'],['performance|rendimento','Performance'],['reabilit','Reabilitação']];
+    for(const [re, v] of objs) if(new RegExp('\\b(' + re + ')').test(qn) && setSel('ai-objetivo', v)){ det.push(v); break; }
+    for(const [re, v] of [['iniciante','Iniciante'],['intermedio','Intermédio'],['avancado','Avançado']]) if(new RegExp('\\b' + re).test(qn) && setSel('ai-nivel', v)){ det.push(v); break; }
+    let m;
+    if((m = qn.match(/\b(\d{1,2}) semanas?\b/))){ g('ai-semanas').value = Math.min(12, Math.max(2, +m[1])); det.push(m[1] + ' semanas'); }
+    if((m = qn.match(/\b([1-6]) ?(x|vezes|dias|treinos)\b/))){ g('ai-dias').value = m[1]; det.push(m[1] + ' dias/semana'); }
+    if((m = qn.match(/\b(30|45|60) ?min/))){ setSel('ai-duracao', m[1]); det.push(m[1] + ' min'); }
+    const msg = 'Preenchido a partir do teu pedido (' + det.join(', ') + '). Confirma os campos e carrega em «Gerar».';
+    g('ai-status').textContent = msg;
+    return 'Abri o «✦ Gerar com Kairós»: ' + det.join(', ') + '. Confirma os campos e carrega em «Gerar».';
+  }
+  if(abrir && /\bbibliografia\b/.test(qn)){ closeModal('modal-mesochat'); bibOpen(); return 'Abri a 📚 Bibliografia.'; }
+  if(abrir && cls[0] && /\bficha\b/.test(qn)){ closeModal('modal-mesochat'); openFicha(cls[0].id); return `Abri a ficha de ${cls[0].nome}.`; }
+  if((abrir || /\bregist/.test(qn)) && /\bmonitoriza/.test(qn)){
+    closeModal('modal-mesochat'); aiNav('monit');
+    if(cls[0]){ const s = document.getElementById('monit-cliente'); if(s){ s.value = cls[0].id; renderMonit(); } }
+    return 'Abri a Monitorização' + (cls[0] ? ' de ' + cls[0].nome : '') + '.';
+  }
+  if(abrir && cls[0] && /\btreinos?\b/.test(qn)){
+    closeModal('modal-mesochat'); aiNav('treinos'); treinosSetTab(cls[0].id);
+    return treinosTab === cls[0].id ? `Abri os treinos de ${cls[0].nome}.` : `${cls[0].nome} ainda não tem treinos em ciclos; abri a lista de todos os treinos.`;
+  }
+  if(abrir && cls[0] && /\bciclos?\b/.test(qn)){
+    closeModal('modal-mesochat'); openFicha(cls[0].id); return `Abri a ficha de ${cls[0].nome}, onde estão os ciclos.`;
+  }
+  return null;
+}
+
 let AI_LOTE = [], AI_LOTE_CTRL = null;
 function aiParamsForm(){
   const g = id=>document.getElementById(id);
@@ -5694,7 +5893,11 @@ async function aiGerarPlano(p, modelo, onStatus, signal){
   const cls = (p.clientes || []).filter(Boolean);
   const grupo = cls.length > 1;
   const keys = [...new Set(cls.flatMap(c=>clientPats(c)))];
-  const { objetivo, nivel, dias, semanas, duracao, equip } = p;
+  const { objetivo, nivel, semanas, duracao, equip } = p;
+  const lim = aiLimites(objetivo, nivel, keys);
+  const dias = Math.min(p.dias, lim.diasMax);
+  const diasCortados = p.dias > dias;
+  const hist = cls.map(c=>{ const h = aiHistorico(c, grupo ? 1100 : 2000); return h ? (grupo ? c.nome + ':\n' : '') + h : ''; }).filter(Boolean).join('\n\n');
   const lims = grupo
     ? cls.map((c, i)=>{ const l = (i === 0 ? p.limitacoes : (c.limitacoes || '')).trim(); return l ? aiPrimeiro(c) + ': ' + l.slice(0, 200) : ''; }).filter(Boolean).join('; ')
     : (p.limitacoes || '');
@@ -5730,6 +5933,12 @@ ${quem}- Objetivo: ${objetivo}
 - Duração de cada treino: ${duracao} minutos
 - Equipamento: ${equip}
 ${pats ? 'Patologias' + (grupo ? ' dos clientes' : ' do cliente') + ':\n' + pats + '\n' : ''}${lims ? '- Limitações indicadas: ' + lims + '\n' : ''}
+Limites da app (OBRIGATÓRIOS${lim.comPat ? ', por causa das patologias' : ''}):
+- Séries: até ${lim.sMain} nos exercícios principais (primeira metade do treino) e até ${lim.sAcc} nos acessórios.
+- Repetições${lim.comPat ? '' : ' (referência)'}: ${lim.reps[0]} nos principais, ${lim.reps[1]} nos acessórios.
+- Descanso${lim.comPat ? ' mínimo' : ' de referência'}: ${lim.rest[0]}s nos principais, ${lim.rest[1]}s nos acessórios.
+- Intensidade${lim.comPat ? ' máxima' : ' de referência'}: ${lim.carga}.
+${hist ? '\nHistórico' + (grupo ? ' dos clientes' : ' do cliente') + ' (usa-o para progredir: não repitas o ciclo anterior tal e qual, varia exercícios e progride cargas de forma coerente; se a monitorização estiver amarela ou vermelha ou o RPE registado for alto, começa mais leve):\n' + hist + '\n' : ''}
 ${evid.length ? 'Evidência da bibliografia do treinador (usa-a para decidir volume, intensidade, descanso e cuidados):\n' + evid.map((x,i)=>`[${i+1}] «${x.titulo}»${x.ref ? ', ' + x.ref : ''}: ${x.texto.replace(/\s+/g,' ').slice(0, 900)}`).join('\n') + '\n\n' : ''}Exercícios disponíveis (usa APENAS estes nomes, escritos exatamente assim):
 ${catalogo}
 
@@ -5809,12 +6018,13 @@ ${grupo ? '8' : '7'}. "avisos": 1 a ${avMax} notas práticas de segurança ou t�
       return { nome, exercicios };
     }).filter(t=>t.exercicios.length);
     if(!treinos.length) throw new Error('A resposta da IA veio incompleta. Tenta gerar de novo.');
+    const nAjustes = aiAplicarLimites(treinos, lim);
 
     const prog = Array.isArray(r.progressao) ? r.progressao : [];
     const nomeBase = grupo ? `PT Grupo ${cls.map(aiPrimeiro).join(' + ')} — ${objetivo}` : `${objetivo} — ${semanas} semanas`;
     return {
       nome: String(grupo ? nomeBase : (r.nome || nomeBase)).slice(0, 80),
-      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0, avMax) : []), ...(evid.length ? ['Fontes: ' + evid.map((x,i)=>`[${i+1}] ${x.titulo}${x.ref ? ', ' + x.ref : ''}`).join('; ')] : []), 'Plano gerado pelo Kairós (IA local): revê os exercícios e as cargas antes de o entregar ao cliente.'],
+      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0, avMax) : []), ...(diasCortados ? [`Dias por semana reduzidos de ${p.dias} para ${dias} pelo limite de ${lim.nomes.join(' + ')}.`] : []), ...(nAjustes ? [`O Kairós corrigiu ${nAjustes} valor(es) da IA para cumprir os limites da app (séries${lim.comPat ? ', descanso, repetições e intensidade' : ''}).`] : []), ...(evid.length ? ['Fontes: ' + evid.map((x,i)=>`[${i+1}] ${x.titulo}${x.ref ? ', ' + x.ref : ''}`).join('; ')] : []), 'Plano gerado pelo Kairós (IA local): revê os exercícios e as cargas antes de o entregar ao cliente.'],
       treinos,
       semanas: Array.from({ length: semanas }, (_, i)=>({
         numero: i+1,
