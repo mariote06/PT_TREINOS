@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 119</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 120</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -735,7 +735,7 @@
         <option value="lote">Vários clientes (um plano para cada)</option>
       </select>
     </div>
-    <div id="ai-box-um" class="row-2">
+    <div id="ai-box-um" class="row-2" onchange="document.getElementById('ai-pats-nota2').style.display = document.getElementById('ai-cliente2').value ? '' : 'none';">
       <div class="field">
         <label>Cliente</label>
         <select id="ai-cliente" onchange="prefillAI()"></select>
@@ -795,6 +795,12 @@
           <option>Casa, com elásticos</option>
         </select>
       </div>
+    </div>
+    <div class="field" id="ai-pat-field">
+      <label>Patologias (vêm da ficha; podes acrescentar ou retirar para este plano)</label>
+      <div id="ai-pats-box"></div>
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--chalk-dim); margin-top:6px; cursor:pointer;"><input type="checkbox" id="ai-pats-guardar" style="width:auto; margin:0;"> Guardar estas patologias na ficha do cliente</label>
+      <div class="view-sub" id="ai-pats-nota2" style="display:none; margin-top:4px;">No PT Grupo, as patologias do 2.º cliente vêm da ficha dele e também são respeitadas.</div>
     </div>
     <div class="field" id="ai-lim-field">
       <label>Limitações ou lesões (opcional)</label>
@@ -5516,6 +5522,8 @@ function prefillAI(){
   if(c.nivel) document.getElementById('ai-nivel').value = c.nivel;
   if(c.diasSemana) document.getElementById('ai-dias').value = c.diasSemana;
   document.getElementById('ai-limitacoes').value = c.limitacoes || '';
+  document.getElementById('ai-pats-box').innerHTML = patPickerHtml('ai-pats', clientPats(c));
+  document.getElementById('ai-pats-guardar').checked = false;
 }
 function aiExercisePool(equipChoice, withCF, equipList){
   const allowed = (equipList !== undefined) ? (equipList===null ? null : ['', 'Peso corporal', ...equipList]) : {
@@ -5764,7 +5772,7 @@ const KAIROS_GUIA = `GUIA DA APP KAIRÓS (menu à esquerda; os dados ficam só n
 - Monitorização: registo diário de CMJ (melhor de 3 saltos), horas de sono e bem-estar (5 itens de 1 a 5). Compara com a média do próprio cliente e propõe reduzir a carga dos treinos que faltam na semana (20% em amarelo, 30% em vermelho).
 - Cópia de segurança: guardar e restaurar uma cópia dos dados (ficam só neste browser).
 - Kairós IA: corre no Ollama do computador do treinador, só nesse PC e com o Ollama aberto. Configura-se em «✦ Gerar com Kairós» → «Definições do Kairós» (motor, endereço, modelo, «Testar ligação»). A «📚 Bibliografia» indexa uma pasta de PDF e EPUB (por exemplo do OneDrive) com o modelo bge-m3; os AZW3 do Kindle não são lidos.
-- Pedidos que o Kairós executa nesta conversa: «gera um ciclo para a Ana», «gera um ciclo de PT Grupo para a Ana e o Rui», «gera planos para todos os clientes PT», «gera um plano por regras para a Ana», «abre a ficha da Ana», «mostra os treinos da Ana», «abre a monitorização da Ana», «abre a bibliografia».`;
+- Pedidos que o Kairós executa nesta conversa: «gera um ciclo para a Ana», «gera um ciclo de PT Grupo para a Ana e o Rui», «gera planos para todos os clientes PT», «gera um plano por regras para a Ana», «abre a ficha da Ana», «mostra os treinos da Ana», «abre a monitorização da Ana», «abre a bibliografia». Se o nome não existir nos clientes (ex.: «gera um ciclo para o João Silva com hipertensão»), o Kairós pergunta se deve criar a ficha e, com «sim», cria-a e abre o gerador. O gerador tem um campo de Patologias que vem da ficha e pode ser alterado para esse plano (com opção de guardar na ficha).`;
 function aiPerguntaApp(qn){
   return /\b(como|onde|app|kairos|botao|separador|menu|ecra|janela|funciona|faco|configur|export|envi|import|sincroniz|backup|copia|registo|registar|ficha|ollama|bibliografia|calendar)\b/.test(qn);
 }
@@ -5803,47 +5811,125 @@ function aiAmbiguoMsg(amb){
   return 'Tens ' + l.length + ' clientes com esse nome: ' + l.map(c=>c.nome).join(' · ') + '. Escreve também o apelido, por exemplo «' + ex.join('» ou «') + '».';
 }
 function aiNav(view){ const b = document.querySelector('.rail-btn[data-view="' + view + '"]'); if(b) b.click(); }
+function aiPatsNoTexto(qn){
+  const stop = /^(doenca|lesao|cronica|estavel|tipo|lateral|medial|tenista|golfista|instabilidade|anca|dor)$/;
+  const out = [];
+  Object.entries(PATOLOGIAS).forEach(([k, v])=>{
+    const ws = normName(v.nome).split(' ').filter(w=>w.length >= 4 && !stop.test(w) && !/^\d/.test(w));
+    const chaves = [ws[0], k.length >= 3 ? k : null].filter(Boolean);
+    if(chaves.some(w=>new RegExp('\\b' + w).test(qn))) out.push(k);
+  });
+  return out;
+}
+function aiExtrair(qn){
+  const ex = { pats: aiPatsNoTexto(qn) };
+  const objs = [['hipertrofia','Hipertrofia'],['forca','Força'],['gordura|emagrec','Perda de gordura'],['condicao fisica|condicao geral','Condição física geral'],['tonific','Tonificação'],['performance|rendimento','Performance'],['reabilit','Reabilitação']];
+  for(const [re, v] of objs) if(new RegExp('\\b(' + re + ')').test(qn)){ ex.objetivo = v; break; }
+  for(const [re, v] of [['iniciante','Iniciante'],['intermedio','Intermédio'],['avancado','Avançado']]) if(new RegExp('\\b' + re).test(qn)){ ex.nivel = v; break; }
+  let m;
+  if((m = qn.match(/\b(\d{1,2}) semanas?\b/))) ex.semanas = Math.min(12, Math.max(2, +m[1]));
+  if((m = qn.match(/\b([1-6]) ?(x|vezes|dias|treinos)\b/))) ex.dias = +m[1];
+  if((m = qn.match(/\b(30|45|60) ?min/))) ex.duracao = m[1];
+  return ex;
+}
+function aiNomeNovo(q){
+  const t = String(q).replace(/[«»"“”]/g, ' ');
+  const m = t.match(/\bchamad[oa]\s+([A-Za-zÀ-ÿ' ]+)/i)
+    || t.match(/\bpara\s+(?:o|a)\s+(?:(?:novo|nova)\s+)?(?:cliente\s+)?([A-Za-zÀ-ÿ' ]+)/i)
+    || t.match(/\bpara\s+(?:(?:um|uma)\s+)?(?:(?:novo|nova)\s+)?cliente\s+([A-Za-zÀ-ÿ' ]+)/i)
+    || t.match(/\bpara\s+([A-ZÀ-Ý][A-Za-zÀ-ÿ']+(?:\s+[A-Za-zÀ-ÿ']+)*)/);
+  if(!m) return '';
+  let nome = m[1].split(/\s+(?:com|em|que|durante|por|para|sem|focad\w*|nivel|nível|objetivo|e\s+(?:o|a|gera|cria))\b|\s+d[eo]\s+(?=\d|hipertrofia|for[cç]a|perda|condi|tonifica|performance|reabilita|treino|ciclo|plano)|\s+\d/i)[0].trim();
+  const stop = /^(hipertrofia|for[cç]a|iniciante|interm[eé]dio|avan[cç]ado|ciclo|plano|treino|semanas?|dias|todos|todas|mim|ele|ela|eles|elas|cliente|clientes|pt|grupo|novo|nova|um|uma|o|a|os|as)$/i;
+  const ws = nome.split(/\s+/).filter(Boolean).slice(0, 5);
+  while(ws.length && stop.test(ws[0])) ws.shift();
+  while(ws.length && (stop.test(ws[ws.length-1]) || /^(da|de|do|das|dos|e)$/i.test(ws[ws.length-1]))) ws.pop();
+  if(!ws.length) return '';
+  nome = ws.map(w=>/^(da|de|do|das|dos|e)$/i.test(w) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  return nome.replace(/[^A-Za-zÀ-ÿ]/g, '').length >= 3 ? nome : '';
+}
+function aiClienteExiste(nome){
+  const ws = normName(nome).split(' ').filter(w=>w.length > 2);
+  if(!ws.length) return true;
+  return DATA.clients.some(c=>{ const cw = normName(c.nome).split(' '); return ws.every(w=>cw.includes(w)); });
+}
+// Abre o gerador preenchido; devolve a lista do que foi preenchido
+function aiAbrirGerador(cls, qn, lote){
+  const g = id=>document.getElementById(id);
+  const setSel = (id, val)=>{ const el = g(id); const o = el && Array.from(el.options).find(o=>o.value===val || o.text===val); if(o){ el.value = o.value; return true; } return false; };
+  closeModal('modal-mesochat');
+  openAIModal();
+  const det = [];
+  const ex = aiExtrair(qn);
+  if(lote){
+    g('ai-modo').value = 'lote'; aiModoChange();
+    if(cls.length >= 2){ document.querySelectorAll('#ai-lote-lista input').forEach(i=>{ i.checked = cls.some(c=>c.id===i.value); }); det.push(cls.length + ' clientes marcados'); }
+    else if(/\bpt\b/.test(qn)){ aiLoteMarcar('pt'); det.push('clientes PT marcados'); }
+    else { aiLoteMarcar('todos'); det.push('todos os clientes marcados'); }
+  }else{
+    g('ai-modo').value = 'um'; aiModoChange();
+    g('ai-cliente').value = cls[0].id; prefillAI();
+    if(cls[1] && /\b(grupo|juntos|e)\b/.test(qn)){ g('ai-cliente2').value = cls[1].id; det.push('PT Grupo: ' + aiPrimeiro(cls[0]) + ' + ' + aiPrimeiro(cls[1])); }
+    else det.push(cls[0].nome);
+    if(ex.pats.length){
+      const atuais = patPickerGet('ai-pats');
+      const novas = ex.pats.filter(k=>!atuais.includes(k));
+      if(novas.length){ patPickerSet('ai-pats', atuais.concat(novas)); det.push('patologias: ' + novas.map(k=>PATOLOGIAS[k].nome).join(', ')); }
+    }
+  }
+  if(ex.objetivo && setSel('ai-objetivo', ex.objetivo)) det.push(ex.objetivo);
+  if(ex.nivel && setSel('ai-nivel', ex.nivel)) det.push(ex.nivel);
+  if(ex.semanas){ g('ai-semanas').value = ex.semanas; det.push(ex.semanas + ' semanas'); }
+  if(ex.dias){ g('ai-dias').value = ex.dias; det.push(ex.dias + ' dias/semana'); }
+  if(ex.duracao && setSel('ai-duracao', ex.duracao)) det.push(ex.duracao + ' min');
+  g('ai-status').textContent = 'Preenchido a partir do teu pedido (' + det.join(', ') + '). Confirma os campos e carrega em «Gerar».';
+  return det;
+}
+function aiCriarClienteEGerar(pd){
+  const qn = normName(pd.q);
+  const ex = aiExtrair(qn);
+  const cat = /\b(externo|externa|online|fora do ginasio)\b/.test(qn) ? 'externo' : /\b(so plano|cliente normal)\b/.test(qn) ? 'normal' : 'pt';
+  const c = { id: uid(), nome: pd.nome, cat, notas: 'Ficha criada pelo Kairós a partir da conversa em ' + new Date().toLocaleDateString('pt-PT') + '. Completar dados.' };
+  if(ex.objetivo) c.objetivo = ex.objetivo;
+  if(ex.nivel) c.nivel = ex.nivel;
+  if(ex.dias) c.diasSemana = String(ex.dias);
+  if(ex.pats.length){ c.patologia = ex.pats[0]; c.patologias = ex.pats.slice(); }
+  DATA.clients.push(c);
+  saveData();
+  const det = aiAbrirGerador([c], qn, false);
+  const tipo = cat === 'pt' ? 'cliente PT' : cat === 'externo' ? 'cliente externo' : 'cliente só com plano';
+  return `Criei a ficha de ${c.nome} (${tipo}${ex.pats.length ? '; ' + ex.pats.map(k=>PATOLOGIAS[k].nome).join(', ') : ''}) e abri o «✦ Gerar com Kairós» (${det.join(', ')}). Confirma os campos e carrega em «Gerar». Depois completa a ficha (idade, limitações, notas) em Clientes.`;
+}
 function mcAcao(q){
   const qn = normName(q);
+  if(MC_IA.pendente){
+    const pd = MC_IA.pendente; MC_IA.pendente = null;
+    if(/^(sim|s|ok|okay|cria|criar|crie|pode|podes|confirmo|claro|avanca|vai|bora|faz|faca)\b/.test(qn)) return aiCriarClienteEGerar(pd);
+    if(/^(nao|n|cancela|cancelar|esquece|deixa)\b/.test(qn)) return 'Está bem, não criei nenhum cliente.';
+  }
   if(/^(como|porque|porqu|qual|quais|quando|devo|deveria|sera|e se)\b/.test(qn)) return null;
   const cls = aiClientesNoTexto(qn);
-  const pede = /\b(gera|gerar|gere|cria|criar|crie|faz|faca|prescreve|prescrever|prescreva|monta|montar|monte|prepara|preparar|prepare)\b/.test(qn);
+  const pede = /\b(gera|gerar|gere|cria|criar|crie|faz|faca|prescreve|prescrever|prescreva|monta|montar|monte|prepara|preparar|prepare|elabora|elaborar|elabore)\b/.test(qn);
   const plano = /\b(ciclo|ciclos|plano|planos|treino|treinos|programa|programas|mesociclo)\b/.test(qn);
   const abrir = /\b(abre|abrir|abra|mostra|mostrar|mostre|ver|vai|ir|lista|listar)\b/.test(qn);
-  const temAcao = (pede && plano) || ((abrir || /\bregist/.test(qn)) && /\b(ficha|treinos?|ciclos?|monitoriza\w*)\b/.test(qn));
-  if(temAcao && cls.amb.length) return aiAmbiguoMsg(cls.amb);
   if(pede && plano){
     const lote = /\b(todos|todas|varios|varias|lote)\b/.test(qn);
-    if(!lote && !cls.length) return null;
-    const regras = /\b(regras|automatico)\b/.test(qn);
-    closeModal('modal-mesochat');
-    if(regras && cls[0] && !lote){ openPlanModal(cls[0].id); return `Abri o «⚡ Gerar plano» (por regras) para ${cls[0].nome}.`; }
-    openAIModal();
-    const g = id=>document.getElementById(id);
-    const setSel = (id, val)=>{ const el = g(id); if(el && Array.from(el.options).some(o=>o.value===val || o.text===val)){ el.value = Array.from(el.options).find(o=>o.value===val || o.text===val).value; return true; } return false; };
-    const det = [];
-    if(lote){
-      g('ai-modo').value = 'lote'; aiModoChange();
-      if(cls.length >= 2){ document.querySelectorAll('#ai-lote-lista input').forEach(i=>{ i.checked = cls.some(c=>c.id===i.value); }); det.push(cls.length + ' clientes marcados'); }
-      else if(/\bpt\b/.test(qn)){ aiLoteMarcar('pt'); det.push('clientes PT marcados'); }
-      else { aiLoteMarcar('todos'); det.push('todos os clientes marcados'); }
-    }else{
-      g('ai-modo').value = 'um'; aiModoChange();
-      g('ai-cliente').value = cls[0].id; prefillAI();
-      if(cls[1] && /\b(grupo|juntos|e)\b/.test(qn)){ g('ai-cliente2').value = cls[1].id; det.push('PT Grupo: ' + aiPrimeiro(cls[0]) + ' + ' + aiPrimeiro(cls[1])); }
-      else det.push(cls[0].nome);
+    if(!lote){
+      const nomeNovo = aiNomeNovo(q);
+      if(nomeNovo && !aiClienteExiste(nomeNovo)){
+        MC_IA.pendente = { nome: nomeNovo, q };
+        return `Não encontrei «${nomeNovo}» nos clientes. Queres que crie a ficha de ${nomeNovo} e abra o gerador já preenchido? Responde «sim» para criar ou «não» para cancelar.`;
+      }
+      if(cls.amb.length) return aiAmbiguoMsg(cls.amb);
+      if(!cls.length) return null;
     }
-    const objs = [['hipertrofia','Hipertrofia'],['forca','Força'],['gordura|emagrec','Perda de gordura'],['condicao fisica|condicao geral','Condição física geral'],['tonific','Tonificação'],['performance|rendimento','Performance'],['reabilit','Reabilitação']];
-    for(const [re, v] of objs) if(new RegExp('\\b(' + re + ')').test(qn) && setSel('ai-objetivo', v)){ det.push(v); break; }
-    for(const [re, v] of [['iniciante','Iniciante'],['intermedio','Intermédio'],['avancado','Avançado']]) if(new RegExp('\\b' + re).test(qn) && setSel('ai-nivel', v)){ det.push(v); break; }
-    let m;
-    if((m = qn.match(/\b(\d{1,2}) semanas?\b/))){ g('ai-semanas').value = Math.min(12, Math.max(2, +m[1])); det.push(m[1] + ' semanas'); }
-    if((m = qn.match(/\b([1-6]) ?(x|vezes|dias|treinos)\b/))){ g('ai-dias').value = m[1]; det.push(m[1] + ' dias/semana'); }
-    if((m = qn.match(/\b(30|45|60) ?min/))){ setSel('ai-duracao', m[1]); det.push(m[1] + ' min'); }
-    const msg = 'Preenchido a partir do teu pedido (' + det.join(', ') + '). Confirma os campos e carrega em «Gerar».';
-    g('ai-status').textContent = msg;
+    const regras = /\b(regras|automatico)\b/.test(qn);
+    if(regras && cls[0] && !lote){ closeModal('modal-mesochat'); openPlanModal(cls[0].id); return `Abri o «⚡ Gerar plano» (por regras) para ${cls[0].nome}.`; }
+    const det = aiAbrirGerador(cls, qn, lote);
     return 'Abri o «✦ Gerar com Kairós»: ' + det.join(', ') + '. Confirma os campos e carrega em «Gerar».';
   }
+  const temAcao = (abrir || /\bregist/.test(qn)) && /\b(ficha|treinos?|ciclos?|monitoriza\w*)\b/.test(qn);
+  if(temAcao && cls.amb.length) return aiAmbiguoMsg(cls.amb);
   if(abrir && /\bbibliografia\b/.test(qn)){ closeModal('modal-mesochat'); bibOpen(); return 'Abri a 📚 Bibliografia.'; }
   if(abrir && cls[0] && /\bficha\b/.test(qn)){ closeModal('modal-mesochat'); openFicha(cls[0].id); return `Abri a ficha de ${cls[0].nome}.`; }
   if((abrir || /\bregist/.test(qn)) && /\bmonitoriza/.test(qn)){
@@ -5873,7 +5959,8 @@ function aiParamsForm(){
     semanas: Math.min(12, Math.max(2, parseInt(g('ai-semanas').value) || 4)),
     duracao: parseInt(g('ai-duracao').value) || 60,
     equip: g('ai-equip').value,
-    limitacoes: g('ai-limitacoes').value.trim().slice(0, 300)
+    limitacoes: g('ai-limitacoes').value.trim().slice(0, 300),
+    pats: patPickerGet('ai-pats')
   };
 }
 async function aiModeloAtual(status){
@@ -5892,7 +5979,8 @@ function aiPrimeiro(c){ return String((c && c.nome) || '').split(' ')[0]; }
 async function aiGerarPlano(p, modelo, onStatus, signal){
   const cls = (p.clientes || []).filter(Boolean);
   const grupo = cls.length > 1;
-  const keys = [...new Set(cls.flatMap(c=>clientPats(c)))];
+  const patsDe = (c, i)=>(i === 0 && Array.isArray(p.pats)) ? p.pats : clientPats(c);
+  const keys = [...new Set(cls.flatMap((c, i)=>patsDe(c, i)))];
   const { objetivo, nivel, semanas, duracao, equip } = p;
   const lim = aiLimites(objetivo, nivel, keys);
   const dias = Math.min(p.dias, lim.diasMax);
@@ -5919,7 +6007,7 @@ async function aiGerarPlano(p, modelo, onStatus, signal){
   }catch(e){}
 
   const nEx = duracao<=30 ? '4-5' : duracao<=45 ? '5-6' : '6-8';
-  const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome}${grupo ? ' (' + cls.filter(c=>clientPats(c).includes(k)).map(aiPrimeiro).join(', ') + ')' : ''} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
+  const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome}${grupo ? ' (' + cls.filter((c, i)=>patsDe(c, i).includes(k)).map(aiPrimeiro).join(', ') + ')' : ''} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
   const sistema = 'És um personal trainer certificado (diretrizes ACSM e NSCA). Escreves em português de Portugal. Crias planos de treino seguros, realistas e progressivos. Respondes apenas com JSON válido no formato pedido.';
   const quem = grupo
     ? `- PT Grupo: plano ÚNICO para 2 clientes que treinam juntos na mesma sessão: ${cls.map(c=>c.nome + (c.objetivo ? ' (objetivo próprio: ' + c.objetivo + ')' : '')).join(' e ')}\n`
@@ -6054,6 +6142,7 @@ async function generateAIOllama(){
   const f = aiParamsForm();
   if(!f.c1){ status.textContent = 'Escolhe o cliente.'; return; }
   if(f.c2 && f.c2.id === f.c1.id){ status.textContent = 'Escolhe dois clientes diferentes para o PT Grupo.'; return; }
+  if(document.getElementById('ai-pats-guardar').checked){ f.c1.patologia = f.pats[0] || ''; f.c1.patologias = f.pats.slice(); saveData(); }
   btn.disabled = true;
   document.getElementById('ai-preview').innerHTML = '';
   document.getElementById('ai-import-btn').style.display = 'none';
@@ -6077,6 +6166,7 @@ function aiModoChange(){
   document.getElementById('ai-box-um').style.display = lote ? 'none' : '';
   document.getElementById('ai-box-lote').style.display = lote ? '' : 'none';
   document.getElementById('ai-lim-field').style.display = lote ? 'none' : '';
+  document.getElementById('ai-pat-field').style.display = lote ? 'none' : '';
   document.getElementById('ai-import-btn').style.display = (!lote && aiResult) ? 'inline-block' : 'none';
   document.getElementById('ai-status').textContent = '';
   if(lote){ aiLoteListaRender(); aiLoteRender(); }
