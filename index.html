@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 114</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 116</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -729,8 +729,33 @@
   <div class="modal" style="max-width:640px;">
     <h3>Gerar ciclo com o Kairós</h3>
     <div class="field">
-      <label>Cliente</label>
-      <select id="ai-cliente" onchange="prefillAI()"></select>
+      <label>Para quem</label>
+      <select id="ai-modo" onchange="aiModoChange()">
+        <option value="um">Um cliente ou PT Grupo (2 clientes juntos)</option>
+        <option value="lote">Vários clientes (um plano para cada)</option>
+      </select>
+    </div>
+    <div id="ai-box-um" class="row-2">
+      <div class="field">
+        <label>Cliente</label>
+        <select id="ai-cliente" onchange="prefillAI()"></select>
+      </div>
+      <div class="field">
+        <label>2.º cliente (PT Grupo, opcional)</label>
+        <select id="ai-cliente2"></select>
+      </div>
+    </div>
+    <div id="ai-box-lote" style="display:none;">
+      <div class="field">
+        <label>Clientes</label>
+        <div style="display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+          <button class="btn" type="button" style="padding:3px 10px; font-size:12px;" onclick="aiLoteMarcar('todos')">Todos</button>
+          <button class="btn" type="button" style="padding:3px 10px; font-size:12px;" onclick="aiLoteMarcar('pt')">Só clientes PT</button>
+          <button class="btn" type="button" style="padding:3px 10px; font-size:12px;" onclick="aiLoteMarcar('nenhum')">Nenhum</button>
+        </div>
+        <div id="ai-lote-lista" style="max-height:200px; overflow-y:auto; border:1px solid var(--line); border-radius:var(--radius-s); padding:0 10px;"></div>
+      </div>
+      <div class="view-sub" style="margin-bottom:12px;">O objetivo, o nível, os dias por semana e as limitações vêm da ficha de cada cliente; quando faltam na ficha, usa os valores abaixo. Semanas, equipamento e duração são iguais para todos. O Kairós gera um cliente de cada vez (cerca de 1 minuto cada).</div>
     </div>
     <div class="row-2">
       <div class="field">
@@ -771,7 +796,7 @@
         </select>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="ai-lim-field">
       <label>Limitações ou lesões (opcional)</label>
       <textarea id="ai-limitacoes" rows="2" placeholder="Ex: desconforto no ombro direito, evitar impacto..."></textarea>
     </div>
@@ -823,6 +848,7 @@
       <button class="btn" onclick="closeModal('modal-ai')">Fechar</button>
       <button class="btn" id="ai-generate-btn" onclick="generateAI()">Gerar</button>
       <button class="btn btn-primary" id="ai-import-btn" style="display:none;" onclick="importAI()">Importar para a app</button>
+      <button class="btn btn-primary" id="ai-lote-import" style="display:none;" onclick="aiLoteImportarTodos()">Importar todos</button>
     </div>
   </div>
 </div>
@@ -4002,15 +4028,13 @@ function mcAnswer(q){
   else if(top.d.tipo==='ex') out.push(mcExHtml(DATA.exercises.find(e=>e.id===top.d.id)));
   else if(top.d.tipo==='teste') out.push(mcTesteHtml(TE[top.d.id]));
   else if(top.d.tipo==='bib'){ const n0 = BIB_NOTAS[parseInt(top.d.id.slice(1))]; out.push('<b>'+esc(n0.t)+'</b><br>'+esc(n0.x)); }
-  if(top.d.tipo!=='bib' && bib.length){ const n = BIB_NOTAS[parseInt(bib[0].d.id.slice(1))]; out.push('<b>Da bibliografia:</b> '+esc(n.t)+'. '+esc(n.x)); }
+  if(top.d.tipo!=='bib' && bib.length){ const n = BIB_NOTAS[parseInt(bib[0].d.id.slice(1))]; out.push('<b>Nota:</b> '+esc(n.t)+'. '+esc(n.x)); }
   const outros = [];
   pt.filter(h=>h.d!==top.d).slice(0,3).forEach(h=>outros.push('<a href="#" onclick="mcProto(\''+h.d.id+'\');return false;">Protocolo: '+esc(h.d.titulo)+'</a>'));
   pa.filter(h=>h.d!==top.d).slice(0,2).forEach(h=>outros.push('<a href="#" onclick="mcPat(\''+h.d.id+'\');return false;">Patologia: '+esc(h.d.titulo)+'</a>'));
   ex.filter(h=>h.d!==top.d).slice(0,4).forEach(h=>outros.push('<a href="#" onclick="mcEx(\''+h.d.id+'\');return false;">Exercício: '+esc(h.d.titulo)+'</a>'));
   te.filter(h=>h.d!==top.d).slice(0,2).forEach(h=>outros.push('<a href="#" onclick="mcTeste(\''+h.d.id+'\');return false;">Teste: '+esc(h.d.titulo)+'</a>'));
   if(outros.length) out.push('<span class="view-sub">Relacionado na app:</span><br>'+outros.join('<br>'));
-  const refs = [...new Set(bib.map(h=>h.d.ref).filter(Boolean))];
-  if(refs.length) out.push('<span class="view-sub">Fonte: '+refs.map(esc).join('; ')+'</span>');
   return out;
 }
 function mcCli(id){ const c = DATA.clients.find(z=>z.id===id); if(!c) return; MC_CH.cli = id; mcPush('bot', mcFichaHtml(c)); }
@@ -4449,7 +4473,7 @@ function mcIAToggle(){
   mcPush('bot', on ? '✦ Kairós IA ligado: respondo com o modelo do Ollama no teu computador, usando o que está na app como contexto.' : 'Kairós IA desligado: volto a procurar só no que está guardado na app.');
 }
 function mcMd(t){
-  let h = esc(String(t||''));
+  let h = esc(String(t||'').replace(/\s?\[\d+(?:\s*[,;–-]\s*\d+)*\]/g, ''));
   h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>');
   h = h.split('\n').map(l=>{
     if(/^#{1,4}\s+/.test(l)) return '<b>'+l.replace(/^#{1,4}\s+/,'')+'</b>';
@@ -4486,7 +4510,7 @@ async function mcIAContexto(q){
   let hits = [];
   try{ hits = mcSearch(q, null, cli ? clientPats(cli) : null).filter(h=>h.d.tipo!=='cliente').slice(0, 6); }catch(e){}
   const nomes = { proto:'Protocolo', pat:'Patologia', ex:'Exercício da biblioteca', teste:'Teste', bib:'Nota bibliográfica' };
-  hits.forEach(h=>partes.push((nomes[h.d.tipo]||h.d.tipo)+': '+h.d.titulo+'\n'+String(h.d.texto||'').replace(/\s+/g,' ').slice(0, 600)+(h.d.ref?' (Fonte: '+h.d.ref+')':'')));
+  hits.forEach(h=>partes.push((nomes[h.d.tipo]||h.d.tipo)+': '+h.d.titulo+'\n'+String(h.d.texto||'').replace(/\s+/g,' ').slice(0, 600)));
   let bib = [];
   try{
     const ant = MC_IA.hist.filter(m=>m.role==='user').slice(-1).map(m=>m.content).join(' ');
@@ -4494,7 +4518,7 @@ async function mcIAContexto(q){
     bib = await bibProcurar(pq, 4);
   }catch(e){}
   let texto = partes.join('\n\n').slice(0, bib.length ? 3500 : 6000);
-  if(bib.length) texto += '\n\nEXCERTOS DA BIBLIOGRAFIA DO TREINADOR (cita como [n]):\n' + bib.map((x,i)=>`[${i+1}] «${x.titulo}»${x.ref ? ', ' + x.ref : ''}: ${x.texto.replace(/\s+/g,' ').slice(0, 1100)}`).join('\n\n');
+  if(bib.length) texto += '\n\nEXCERTOS DE REFERÊNCIA (usa como base, mas nunca os cites):\n' + bib.map((x,i)=>`- ${x.texto.replace(/\s+/g,' ').slice(0, 1100)}`).join('\n\n');
   return { texto, cli, bib };
 }
 async function mcIAModelo(){
@@ -4518,7 +4542,7 @@ async function mcSendIA(q){
   const d = document.createElement('div'); d.className = 'mc-msg mc-bot'; d.innerHTML = '<span class="view-sub">A pensar…</span>';
   box.appendChild(d); box.scrollTop = box.scrollHeight;
   const ctx = await mcIAContexto(q);
-  const sistema = 'És o Kairós, o assistente de inteligência artificial da app Kairós de um personal trainer em Portugal. Escreves sempre em português de Portugal, de forma prática, clara e curta (no máximo uns 200 palavras, salvo se pedirem mais). Segues as diretrizes ACSM e NSCA. Quando o CONTEXTO DA APP tiver informação relevante, usa-a e diz que vem da app; não inventes dados de clientes. Não fazes diagnósticos: perante dor forte, sinais de alarme ou dúvida clínica, recomenda avaliação por médico ou fisioterapeuta. Respeita sempre as contraindicações das patologias indicadas. Quando usares os excertos da bibliografia, cita-os como [1], [2], etc.'
+  const sistema = 'És o Kairós, o assistente de inteligência artificial da app Kairós de um personal trainer em Portugal. Escreves sempre em português de Portugal, de forma prática, clara e curta (no máximo uns 200 palavras, salvo se pedirem mais). Segues as diretrizes ACSM e NSCA. Quando o CONTEXTO DA APP tiver informação relevante, usa-a e diz que vem da app; não inventes dados de clientes. Não fazes diagnósticos: perante dor forte, sinais de alarme ou dúvida clínica, recomenda avaliação por médico ou fisioterapeuta. Respeita sempre as contraindicações das patologias indicadas. Usa os excertos de referência como base, mas nunca cites fontes, livros, autores, páginas nem números entre parênteses retos: responde só com o conteúdo prático.'
     + (ctx.texto ? '\n\nCONTEXTO DA APP:\n' + ctx.texto : '');
   MC_IA.hist.push({ role:'user', content:q });
   MC_IA.hist = MC_IA.hist.slice(-10);
@@ -4547,7 +4571,7 @@ async function mcSendIA(q){
       }
     }
     if(!txt) throw new Error('O modelo não respondeu. Tenta de novo.');
-    const fonte = bibFontesHtml(ctx.bib) + (ctx.cli ? '<div class="view-sub" style="margin-top:6px;">Com a ficha de '+esc(ctx.cli.nome)+' · '+esc(modelo)+'</div>' : '<div class="view-sub" style="margin-top:6px;">'+esc(modelo)+'</div>');
+    const fonte = (ctx.cli ? '<div class="view-sub" style="margin-top:6px;">Com a ficha de '+esc(ctx.cli.nome)+' · '+esc(modelo)+'</div>' : '<div class="view-sub" style="margin-top:6px;">'+esc(modelo)+'</div>');
     d.innerHTML = mcMd(txt) + fonte;
     MC_IA.hist.push({ role:'assistant', content:txt });
     MC_CH.msgs.push({ who:'user', html:esc(q) }, { who:'bot', html:d.innerHTML });
@@ -5418,6 +5442,7 @@ function aiEndpoint(){ return localStorage.getItem('ciclo_ai_endpoint') || AI_EN
 let aiResult = null;
 function prefillAI(){
   const c = DATA.clients.find(x=>x.id===document.getElementById('ai-cliente').value);
+  if(c) fillClient2('ai-cliente2', c.id, document.getElementById('ai-cliente2').value);
   if(!c) return;
   if(c.objetivo) document.getElementById('ai-objetivo').value = c.objetivo;
   if(c.nivel) document.getElementById('ai-nivel').value = c.nivel;
@@ -5447,11 +5472,15 @@ function openAIModal(){
   document.getElementById('ai-preview').innerHTML = '';
   document.getElementById('ai-import-btn').style.display = 'none';
   aiResult = null;
+  document.getElementById('ai-modo').value = (AI_LOTE.length || AI_LOTE_CTRL) ? 'lote' : 'um';
+  aiModoChange();
+  if(AI_LOTE_CTRL) document.getElementById('ai-status').textContent = 'A gerar em lote…';
   openModal('modal-ai');
 }
 
 async function generateAI(){
   if(aiMotor()==='ollama') return generateAIOllama();
+  if(document.getElementById('ai-modo').value==='lote'){ document.getElementById('ai-status').textContent = 'O modo de vários clientes só funciona com o Ollama.'; return; }
   const status = document.getElementById('ai-status');
   const endpoint = document.getElementById('ai-endpoint').value.trim();
   if(!endpoint){ status.textContent = 'Indica o endereço do serviço de IA nas definições abaixo.'; return; }
@@ -5511,13 +5540,15 @@ function ollamaBase(){
 }
 async function ollamaFetch(path, opts, ms){
   const ctrl = new AbortController();
+  const ext = opts && opts.signal;
+  if(ext){ if(ext.aborted) ctrl.abort(); else ext.addEventListener('abort', ()=>ctrl.abort(), { once:true }); }
   const t = setTimeout(()=>ctrl.abort(), ms||8000);
   try{
     const res = await fetch(ollamaBase() + path, Object.assign({}, opts||{}, { signal: ctrl.signal }));
     if(!res.ok){ const txt = await res.text().catch(()=> ''); throw new Error('Ollama respondeu ' + res.status + (txt ? ': ' + txt.slice(0,200) : '')); }
     return await res.json();
   }catch(e){
-    if(e.name==='AbortError') throw new Error('O Ollama demorou demasiado a responder.');
+    if(e.name==='AbortError') throw new Error(ext && ext.aborted ? 'Parado.' : 'O Ollama demorou demasiado a responder.');
     throw e;
   }finally{ clearTimeout(t); }
 }
@@ -5572,55 +5603,74 @@ async function aiTestar(){
   await aiCarregarModelos(false);
 }
 
-async function generateAIOllama(){
-  const status = document.getElementById('ai-status');
-  const btn = document.getElementById('ai-generate-btn');
+let AI_LOTE = [], AI_LOTE_CTRL = null;
+function aiParamsForm(){
+  const g = id=>document.getElementById(id);
+  return {
+    c1: DATA.clients.find(x=>x.id===g('ai-cliente').value) || null,
+    c2: DATA.clients.find(x=>x.id===g('ai-cliente2').value) || null,
+    objetivo: g('ai-objetivo').value,
+    nivel: g('ai-nivel').value,
+    dias: Math.min(6, Math.max(1, parseInt(g('ai-dias').value) || 3)),
+    semanas: Math.min(12, Math.max(2, parseInt(g('ai-semanas').value) || 4)),
+    duracao: parseInt(g('ai-duracao').value) || 60,
+    equip: g('ai-equip').value,
+    limitacoes: g('ai-limitacoes').value.trim().slice(0, 300)
+  };
+}
+async function aiModeloAtual(status){
   let modelo = document.getElementById('ai-model').value;
   if(!modelo){
     status.textContent = 'A procurar modelos no Ollama…';
-    if(!(await aiCarregarModelos(false))) return;
+    if(!(await aiCarregarModelos(false))) return '';
     modelo = document.getElementById('ai-model').value;
-    if(!modelo) return;
   }
-  aiCfgSave({ modelo, ollama: ollamaBase() });
+  if(modelo) aiCfgSave({ modelo, ollama: ollamaBase() });
+  return modelo;
+}
+function aiPrimeiro(c){ return String((c && c.nome) || '').split(' ')[0]; }
 
-  const client = DATA.clients.find(x=>x.id===document.getElementById('ai-cliente').value);
-  const keys = clientPats(client);
-  const objetivo = document.getElementById('ai-objetivo').value;
-  const nivel = document.getElementById('ai-nivel').value;
-  const dias = Math.min(6, Math.max(1, parseInt(document.getElementById('ai-dias').value) || 3));
-  const semanas = Math.min(12, Math.max(2, parseInt(document.getElementById('ai-semanas').value) || 4));
-  const duracao = parseInt(document.getElementById('ai-duracao').value) || 60;
-  const equip = document.getElementById('ai-equip').value;
-  const limitacoes = document.getElementById('ai-limitacoes').value.trim().slice(0, 300);
+// Gera um plano com o Ollama. p.clientes = [c1] ou [c1, c2] (PT Grupo).
+async function aiGerarPlano(p, modelo, onStatus, signal){
+  const cls = (p.clientes || []).filter(Boolean);
+  const grupo = cls.length > 1;
+  const keys = [...new Set(cls.flatMap(c=>clientPats(c)))];
+  const { objetivo, nivel, dias, semanas, duracao, equip } = p;
+  const lims = grupo
+    ? cls.map((c, i)=>{ const l = (i === 0 ? p.limitacoes : (c.limitacoes || '')).trim(); return l ? aiPrimeiro(c) + ': ' + l.slice(0, 200) : ''; }).filter(Boolean).join('; ')
+    : (p.limitacoes || '');
 
-  // Só exercícios da biblioteca, sem os contraindicados para as patologias do cliente
+  // Só exercícios da biblioteca, sem os contraindicados para as patologias de qualquer um dos clientes
   let pool = aiExercisePool(equip).filter(e=>!keys.some(k=>contraAlert(e,k)));
   if(nivel!=='Avançado') pool = pool.filter(e=>{ const n = normText(e.nome); return !PLAN_COMPLEX.test(n) && !PLAN_ODD.test(n); });
   const grupos = {};
   pool.forEach(e=>{ const g = e.padrao || e.grupo || 'outro'; (grupos[g] = grupos[g] || []).push(e); });
   const porGrupo = Math.max(6, Math.min(25, Math.ceil(140 / Math.max(1, Object.keys(grupos).length))));
   const nomes = [...new Set(Object.values(grupos).flatMap(l=>l.slice().sort((a,b)=>(b.notas?1:0)-(a.notas?1:0)).slice(0, porGrupo)).map(e=>e.nome))];
-  if(nomes.length < 8){ status.textContent = 'A biblioteca tem poucos exercícios compatíveis com este equipamento e estas patologias (' + nomes.length + '). Adiciona exercícios ou muda o equipamento.'; return; }
+  if(nomes.length < 8) throw new Error('A biblioteca tem poucos exercícios compatíveis com este equipamento e estas patologias (' + nomes.length + '). Adiciona exercícios ou muda o equipamento.');
   const catalogo = Object.entries(grupos).map(([g,l])=>g + ': ' + l.filter(e=>nomes.includes(e.nome)).map(e=>e.nome).join('; ')).filter(x=>!/: $/.test(x)).join('\n');
 
   let evid = [];
   try{
-    status.textContent = 'A procurar na bibliografia…';
-    evid = await bibProcurar(`prescrição de treino de força para ${objetivo.toLowerCase()}, nível ${nivel.toLowerCase()}${keys.length ? ', ' + keys.map(k=>PATOLOGIAS[k].nome).join(', ') : ''}${limitacoes ? ', ' + limitacoes : ''}: séries, repetições, intensidade, descanso e progressão`, 4);
+    if(onStatus) onStatus('A procurar na bibliografia…');
+    evid = await bibProcurar(`prescrição de treino de força para ${objetivo.toLowerCase()}, nível ${nivel.toLowerCase()}${keys.length ? ', ' + keys.map(k=>PATOLOGIAS[k].nome).join(', ') : ''}${lims ? ', ' + lims : ''}: séries, repetições, intensidade, descanso e progressão`, 4);
   }catch(e){}
-  status.textContent = '';
+
   const nEx = duracao<=30 ? '4-5' : duracao<=45 ? '5-6' : '6-8';
-  const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
+  const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome}${grupo ? ' (' + cls.filter(c=>clientPats(c).includes(k)).map(aiPrimeiro).join(', ') + ')' : ''} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
   const sistema = 'És um personal trainer certificado (diretrizes ACSM e NSCA). Escreves em português de Portugal. Crias planos de treino seguros, realistas e progressivos. Respondes apenas com JSON válido no formato pedido.';
+  const quem = grupo
+    ? `- PT Grupo: plano ÚNICO para 2 clientes que treinam juntos na mesma sessão: ${cls.map(c=>c.nome + (c.objetivo ? ' (objetivo próprio: ' + c.objetivo + ')' : '')).join(' e ')}\n`
+    : '';
+  const avMax = grupo ? 4 : 3;
   const pedido = `Cria um ciclo de treino com estes dados:
-- Objetivo: ${objetivo}
+${quem}- Objetivo: ${objetivo}
 - Nível: ${nivel}
 - Treinos diferentes por semana: ${dias}
 - Duração do ciclo: ${semanas} semanas
 - Duração de cada treino: ${duracao} minutos
 - Equipamento: ${equip}
-${pats ? 'Patologias do cliente:\n' + pats + '\n' : ''}${limitacoes ? '- Limitações indicadas: ' + limitacoes + '\n' : ''}
+${pats ? 'Patologias' + (grupo ? ' dos clientes' : ' do cliente') + ':\n' + pats + '\n' : ''}${lims ? '- Limitações indicadas: ' + lims + '\n' : ''}
 ${evid.length ? 'Evidência da bibliografia do treinador (usa-a para decidir volume, intensidade, descanso e cuidados):\n' + evid.map((x,i)=>`[${i+1}] «${x.titulo}»${x.ref ? ', ' + x.ref : ''}: ${x.texto.replace(/\s+/g,' ').slice(0, 900)}`).join('\n') + '\n\n' : ''}Exercícios disponíveis (usa APENAS estes nomes, escritos exatamente assim):
 ${catalogo}
 
@@ -5630,14 +5680,14 @@ Regras:
 3. Equilibra empurrar/puxar e membros superiores/inferiores ao longo da semana; não repitas o mesmo exercício em todos os treinos.
 4. "series" é um número inteiro; "reps" texto (ex: "8-10"); "carga" em RPE ou RIR (ex: "RPE 7" ou "2 RIR"); "descanso" texto (ex: "90s").
 5. Ajusta séries, repetições e descanso ao objetivo e ao nível${keys.length ? ' e respeita as patologias (intensidade moderada, sem chegar à falha)' : ''}.
-6. "progressao" tem exatamente ${semanas} frases curtas, uma por semana, a descrever o que muda; ${semanas>=4 ? 'a cada 4.ª semana faz uma semana de descarga (deload)' : 'progride de forma gradual'}.
-7. "avisos": 1 a 3 notas práticas de segurança ou técnica para este cliente${evid.length ? '; quando te baseares na evidência, cita-a como [1], [2]' : ''}.`;
+${grupo ? '6. Como é PT Grupo: escolhe só exercícios seguros e fáceis de fazer pelos dois em simultâneo; o volume e a intensidade ficam dentro dos limites do cliente mais restrito.\n' : ''}${grupo ? '7' : '6'}. "progressao" tem exatamente ${semanas} frases curtas, uma por semana, a descrever o que muda; ${semanas>=4 ? 'a cada 4.ª semana faz uma semana de descarga (deload)' : 'progride de forma gradual'}.
+${grupo ? '8' : '7'}. "avisos": 1 a ${avMax} notas práticas de segurança ou técnica${grupo ? '; pelo menos uma com ajustes individuais começada pelo primeiro nome de cada cliente (ex: "' + aiPrimeiro(cls[0]) + ': …; ' + aiPrimeiro(cls[1]) + ': …")' : ' para este cliente'}${evid.length ? '; quando te baseares na evidência, cita-a como [1], [2]' : ''}.`;
 
   const schema = {
     type:'object',
     properties:{
       nome:{ type:'string' },
-      avisos:{ type:'array', items:{ type:'string' }, minItems:1, maxItems:3 },
+      avisos:{ type:'array', items:{ type:'string' }, minItems:1, maxItems:avMax },
       treinos:{ type:'array', minItems:dias, maxItems:dias, items:{
         type:'object',
         properties:{
@@ -5661,15 +5711,12 @@ Regras:
     required:['nome','avisos','treinos','progressao']
   };
 
-  btn.disabled = true;
-  document.getElementById('ai-preview').innerHTML = '';
-  document.getElementById('ai-import-btn').style.display = 'none';
   const t0 = Date.now();
-  const tick = setInterval(()=>{ status.textContent = `A gerar com ${modelo} no teu computador… ${Math.round((Date.now()-t0)/1000)}s (a primeira vez demora mais, enquanto o modelo carrega)`; }, 1000);
-  status.textContent = `A gerar com ${modelo} no teu computador…`;
+  const tick = setInterval(()=>{ if(onStatus) onStatus(`A gerar com ${modelo}… ${Math.round((Date.now()-t0)/1000)}s`); }, 1000);
+  if(onStatus) onStatus(`A gerar com ${modelo}…`);
   try{
     const data = await ollamaFetch('/api/chat', {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
+      method:'POST', headers:{ 'Content-Type':'application/json' }, signal,
       body: JSON.stringify({
         model: modelo, stream:false, keep_alive:'10m', format: schema,
         options:{ temperature:0.4, num_ctx:8192 },
@@ -5705,29 +5752,163 @@ Regras:
     if(!treinos.length) throw new Error('A resposta da IA veio incompleta. Tenta gerar de novo.');
 
     const prog = Array.isArray(r.progressao) ? r.progressao : [];
-    const resultado = {
-      nome: String(r.nome || `${objetivo} — ${semanas} semanas`).slice(0, 80),
-      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0,3) : []), ...(evid.length ? ['Fontes: ' + evid.map((x,i)=>`[${i+1}] ${x.titulo}${x.ref ? ', ' + x.ref : ''}`).join('; ')] : []), 'Plano gerado pelo Kairós (IA local): revê os exercícios e as cargas antes de o entregar ao cliente.'],
+    const nomeBase = grupo ? `PT Grupo ${cls.map(aiPrimeiro).join(' + ')} — ${objetivo}` : `${objetivo} — ${semanas} semanas`;
+    return {
+      nome: String(grupo ? nomeBase : (r.nome || nomeBase)).slice(0, 80),
+      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0, avMax) : []), ...(evid.length ? ['Fontes: ' + evid.map((x,i)=>`[${i+1}] ${x.titulo}${x.ref ? ', ' + x.ref : ''}`).join('; ')] : []), 'Plano gerado pelo Kairós (IA local): revê os exercícios e as cargas antes de o entregar ao cliente.'],
       treinos,
       semanas: Array.from({ length: semanas }, (_, i)=>({
         numero: i+1,
         progressao: String(prog[i] || ((i+1)%4===0 ? 'Semana de descarga: reduzir volume cerca de 40%.' : 'Manter a técnica e progredir carga ou repetições.')).slice(0, 200),
         sessoes: treinos.map(t=>t.nome)
-      }))
+      })),
+      _seg: Math.round((Date.now()-t0)/1000),
+      _modelo: modelo,
+      _keys: keys,
+      _p: { objetivo, nivel, duracao, equipamento: equip }
     };
-    aiResult = resultado;
-    status.textContent = `✓ Gerado em ${Math.round((Date.now()-t0)/1000)}s com ${modelo}.`;
-    renderAIPreview(resultado);
+  }finally{
+    clearInterval(tick);
+  }
+}
+function aiMeta(r){
+  const k = r._keys || [];
+  return { tipo:'plano', p: Object.assign({}, r._p || {}, { patologia: k[0] || '', patologiasExtra: k.slice(1) }) };
+}
+
+// --- um cliente ou PT Grupo ---
+async function generateAIOllama(){
+  if(document.getElementById('ai-modo').value === 'lote') return generateAILote();
+  const status = document.getElementById('ai-status');
+  const btn = document.getElementById('ai-generate-btn');
+  const modelo = await aiModeloAtual(status); if(!modelo) return;
+  const f = aiParamsForm();
+  if(!f.c1){ status.textContent = 'Escolhe o cliente.'; return; }
+  if(f.c2 && f.c2.id === f.c1.id){ status.textContent = 'Escolhe dois clientes diferentes para o PT Grupo.'; return; }
+  btn.disabled = true;
+  document.getElementById('ai-preview').innerHTML = '';
+  document.getElementById('ai-import-btn').style.display = 'none';
+  try{
+    const r = await aiGerarPlano(Object.assign({}, f, { clientes: [f.c1, f.c2] }), modelo, s=>{ status.textContent = s + (/s$/.test(s) ? ' (a primeira vez demora mais, enquanto o modelo carrega)' : ''); });
+    r._c1 = f.c1.id; r._c2 = f.c2 ? f.c2.id : '';
+    aiResult = r;
+    status.textContent = `✓ Gerado em ${r._seg}s com ${r._modelo}${f.c2 ? ' · PT Grupo: ' + aiPrimeiro(f.c1) + ' + ' + aiPrimeiro(f.c2) : ''}.`;
+    renderAIPreview(r);
     document.getElementById('ai-import-btn').style.display = 'inline-block';
   }catch(err){
     status.textContent = 'Erro: ' + aiErroOllama(err);
   }finally{
-    clearInterval(tick);
     btn.disabled = false;
   }
 }
 
-function renderAIPreview(r){
+// --- vários clientes (lote) ---
+function aiModoChange(){
+  const lote = document.getElementById('ai-modo').value === 'lote';
+  document.getElementById('ai-box-um').style.display = lote ? 'none' : '';
+  document.getElementById('ai-box-lote').style.display = lote ? '' : 'none';
+  document.getElementById('ai-lim-field').style.display = lote ? 'none' : '';
+  document.getElementById('ai-import-btn').style.display = (!lote && aiResult) ? 'inline-block' : 'none';
+  document.getElementById('ai-status').textContent = '';
+  if(lote){ aiLoteListaRender(); aiLoteRender(); }
+  else { document.getElementById('ai-preview').innerHTML = aiResult ? aiPreviewHtml(aiResult) : ''; document.getElementById('ai-lote-import').style.display = 'none'; }
+}
+function aiLoteListaRender(){
+  const box = document.getElementById('ai-lote-lista');
+  const marcados = new Set(Array.from(box.querySelectorAll('input:checked')).map(i=>i.value));
+  box.innerHTML = DATA.clients.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt')).map(c=>{
+    const info = [c.objetivo, c.nivel, c.diasSemana ? c.diasSemana + 'x/sem' : '', clientPats(c).length ? '⚕ ' + clientPats(c).map(k=>PATOLOGIAS[k].nome).join(', ') : ''].filter(Boolean).join(' · ');
+    return `<label style="display:flex; gap:8px; align-items:flex-start; padding:5px 0; border-bottom:1px solid var(--line); cursor:pointer; font-size:13px;">
+      <input type="checkbox" value="${c.id}" ${marcados.has(c.id) ? 'checked' : ''} style="width:auto; margin:2px 0 0;">
+      <span><b>${esc(c.nome)}</b>${isSusp(c) ? ' <span class="view-sub">(suspenso)</span>' : ''}${!isPtClient(c) ? ' <span class="view-sub">(só plano)</span>' : ''}<br><span class="view-sub">${esc(info || 'sem objetivo/nível na ficha: usa os valores do formulário')}</span></span>
+    </label>`;
+  }).join('');
+}
+function aiLoteMarcar(modo){
+  document.querySelectorAll('#ai-lote-lista input').forEach(i=>{
+    const c = DATA.clients.find(x=>x.id===i.value);
+    i.checked = modo === 'todos' ? !isSusp(c) : modo === 'pt' ? (isPtClient(c) && !isSusp(c)) : false;
+  });
+}
+function aiLoteRender(){
+  const el = document.getElementById('ai-preview');
+  const imp = document.getElementById('ai-lote-import');
+  if(!AI_LOTE.length){ el.innerHTML = ''; imp.style.display = 'none'; return; }
+  const ico = { espera:'⏳', gerar:'⚙️', ok:'✓', erro:'⚠', importado:'✅', parado:'⏹' };
+  el.innerHTML = `<div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:6px 12px; margin-bottom:6px; max-height:340px; overflow-y:auto;">` + AI_LOTE.map((it, i)=>{
+    const c = DATA.clients.find(x=>x.id===it.cid) || { nome:'(cliente apagado)' };
+    const sub = it.estado==='ok' ? `${it.r.treinos.length} treinos · ${it.r.semanas.length} semanas · ${it.r._seg}s`
+      : it.estado==='erro' ? esc(it.msg || '') : it.estado==='gerar' ? 'a gerar…' : it.estado==='importado' ? 'importado para a app' : it.estado==='parado' ? 'não gerado' : 'à espera';
+    const acts = it.r ? `<button class="btn" style="padding:3px 9px; font-size:12px;" onclick="aiLoteVer(${i})">${it.aberto ? 'Fechar' : 'Ver'}</button>` + (it.estado==='ok' ? ` <button class="btn btn-primary" style="padding:3px 9px; font-size:12px;" onclick="aiLoteImportar(${i})">Importar</button>` : '') : '';
+    return `<div style="padding:8px 0; border-bottom:1px solid var(--line);">
+      <div style="display:flex; gap:8px; align-items:center;"><div style="flex:1;"><b>${ico[it.estado]||''} ${esc(c.nome)}</b><div class="view-sub">${sub}</div></div>${acts}</div>
+      ${it.aberto && it.r ? '<div style="margin-top:8px;">' + aiPreviewHtml(it.r, true) + '</div>' : ''}
+    </div>`;
+  }).join('') + '</div>';
+  imp.style.display = AI_LOTE.some(it=>it.estado==='ok') && !AI_LOTE_CTRL ? 'inline-block' : 'none';
+}
+function aiLoteVer(i){ AI_LOTE[i].aberto = !AI_LOTE[i].aberto; aiLoteRender(); }
+function aiLoteImportar(i){
+  const it = AI_LOTE[i]; if(!it || it.estado!=='ok') return;
+  importResult(it.r, it.cid, null, '', aiMeta(it.r));
+  it.estado = 'importado'; it.aberto = false;
+  aiLoteRender();
+}
+function aiLoteImportarTodos(){
+  const n = AI_LOTE.filter(it=>it.estado==='ok').length; if(!n) return;
+  AI_LOTE.forEach((it, i)=>{ if(it.estado==='ok') aiLoteImportar(i); });
+  document.getElementById('ai-status').textContent = `✓ ${n} ciclo(s) importado(s).`;
+}
+async function generateAILote(){
+  const status = document.getElementById('ai-status');
+  const btn = document.getElementById('ai-generate-btn');
+  if(AI_LOTE_CTRL){ AI_LOTE_CTRL.abort(); status.textContent = 'A parar…'; return; }
+  const ids = Array.from(document.querySelectorAll('#ai-lote-lista input:checked')).map(i=>i.value);
+  if(!ids.length){ status.textContent = 'Marca pelo menos um cliente.'; return; }
+  if(AI_LOTE.some(it=>it.estado==='ok') && !confirm('Há ciclos gerados ainda por importar. Gerar de novo apaga-os desta lista. Continuar?')) return;
+  const modelo = await aiModeloAtual(status); if(!modelo) return;
+  const f = aiParamsForm();
+  AI_LOTE = ids.map(cid=>({ cid, estado:'espera' }));
+  AI_LOTE_CTRL = new AbortController();
+  const sinal = AI_LOTE_CTRL.signal;
+  btn.textContent = 'Parar';
+  aiLoteRender();
+  const t0 = Date.now();
+  try{
+    for(let i = 0; i < AI_LOTE.length; i++){
+      const it = AI_LOTE[i];
+      if(sinal.aborted){ it.estado = 'parado'; continue; }
+      const c = DATA.clients.find(x=>x.id===it.cid);
+      if(!c){ it.estado = 'erro'; it.msg = 'Cliente não encontrado.'; continue; }
+      it.estado = 'gerar'; aiLoteRender();
+      const p = {
+        clientes: [c],
+        objetivo: c.objetivo || f.objetivo,
+        nivel: c.nivel || f.nivel,
+        dias: Math.min(6, Math.max(1, parseInt(c.diasSemana) || f.dias)),
+        semanas: f.semanas, duracao: f.duracao, equip: f.equip,
+        limitacoes: String(c.limitacoes || '').trim().slice(0, 300)
+      };
+      try{
+        it.r = await aiGerarPlano(p, modelo, s=>{ status.textContent = `Cliente ${i+1}/${AI_LOTE.length} · ${aiPrimeiro(c)} — ${s}`; }, sinal);
+        it.estado = 'ok';
+      }catch(err){
+        if(sinal.aborted){ it.estado = 'parado'; }
+        else { it.estado = 'erro'; it.msg = aiErroOllama(err); }
+      }
+      aiLoteRender();
+    }
+  }finally{
+    const ok = AI_LOTE.filter(it=>it.estado==='ok').length, er = AI_LOTE.filter(it=>it.estado==='erro').length;
+    const min = Math.round((Date.now()-t0)/60000);
+    status.textContent = (sinal.aborted ? 'Parado. ' : '✓ ') + `${ok} plano(s) gerado(s)${er ? ', ' + er + ' com erro' : ''}${min ? ' em ' + min + ' min' : ''}. Revê cada um antes de importar.`;
+    AI_LOTE_CTRL = null;
+    btn.textContent = 'Gerar';
+    aiLoteRender();
+  }
+}
+
+function aiPreviewHtml(r, compacto){
   const avisos = Array.isArray(r.avisos) && r.avisos.length
     ? `<div style="border-left:3px solid var(--ochre); padding:8px 12px; margin-bottom:12px; font-size:13px;">${r.avisos.map(a=>esc(String(a))).join('<br>')}</div>` : '';
   const treinos = r.treinos.map(t=>`
@@ -5736,12 +5917,14 @@ function renderAIPreview(r){
       <div class="list-row-meta">${(t.exercicios||[]).map(x=>`${esc(x.exercicio)} ${esc(String(x.series))}x${esc(String(x.reps))}${x.met?' ['+esc(x.met)+']':''}`).join(' · ')}</div>
     </div>`).join('');
   const semanas = r.semanas.map(s=>`<div class="list-row-meta">S${esc(String(s.numero))}: ${esc(s.progressao||'')} (${(s.sessoes||[]).length} sessões)</div>`).join('');
-  document.getElementById('ai-preview').innerHTML = `
-    <div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; margin-bottom:6px; max-height:300px; overflow-y:auto;">
+  const corpo = `
       <div style="font-family:var(--font-display); font-size:17px; margin-bottom:10px;">${esc(r.nome||'Ciclo gerado')}</div>
       ${avisos}${treinos}
-      <div style="margin-top:12px; border-top:1px solid var(--line); padding-top:10px;">${semanas}</div>
-    </div>`;
+      <div style="margin-top:12px; border-top:1px solid var(--line); padding-top:10px;">${semanas}</div>`;
+  return compacto ? corpo : `<div style="border:1px solid var(--line); border-radius:var(--radius-m); padding:14px; margin-bottom:6px; max-height:300px; overflow-y:auto;">${corpo}</div>`;
+}
+function renderAIPreview(r){
+  document.getElementById('ai-preview').innerHTML = aiPreviewHtml(r);
 }
 
 function normText(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }
@@ -5759,7 +5942,8 @@ function findOrCreateExercise(name){
 const AI_SLOTS = {1:[2], 2:[0,3], 3:[0,2,4], 4:[0,1,3,4], 5:[0,1,2,3,4], 6:[0,1,2,3,4,5], 7:[0,1,2,3,4,5,6]};
 function importAI(){
   if(!aiResult) return;
-  const cid = document.getElementById('ai-cliente').value;
+  const cid = aiResult._c1 || document.getElementById('ai-cliente').value;
+  if(aiResult._keys){ importResult(aiResult, cid, null, aiResult._c2 || '', aiMeta(aiResult)); aiResult = null; closeModal('modal-ai'); return; }
   const keys = clientPats(DATA.clients.find(x=>x.id===cid));
   importResult(aiResult, cid, null, '', { tipo:'plano', p:{
     objetivo: document.getElementById('ai-objetivo').value,
