@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 110</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 111</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -773,14 +773,45 @@
       <label>Limitações ou lesões (opcional)</label>
       <textarea id="ai-limitacoes" rows="2" placeholder="Ex: desconforto no ombro direito, evitar impacto..."></textarea>
     </div>
+    <div class="field">
+      <label>Duração de cada treino</label>
+      <select id="ai-duracao">
+        <option value="30">30 min</option>
+        <option value="45">45 min</option>
+        <option value="60" selected>60 min</option>
+      </select>
+    </div>
     <div style="font-size:12px; color:var(--chalk-dim); margin-bottom:12px;">
       Sugestão automática. Não substitui a avaliação de um profissional. Em caso de dor, lesão ou condição de saúde, consulta primeiro o teu treinador ou médico.
     </div>
-    <details style="margin-bottom:12px;">
-      <summary style="cursor:pointer; font-size:13px; color:var(--chalk-dim);">Definições do serviço de IA</summary>
+    <details id="ai-defs" style="margin-bottom:12px;">
+      <summary style="cursor:pointer; font-size:13px; color:var(--chalk-dim);">Definições da IA</summary>
       <div class="field" style="margin-top:10px;">
-        <label>Endereço do serviço</label>
-        <input id="ai-endpoint" type="text" placeholder="https://o-teu-worker.workers.dev">
+        <label>Motor</label>
+        <select id="ai-motor" onchange="aiMotorChange()">
+          <option value="ollama">Ollama (IA offline no meu computador)</option>
+          <option value="cloud">Serviço na nuvem</option>
+        </select>
+      </div>
+      <div id="ai-ollama-box">
+        <div class="row-2">
+          <div class="field">
+            <label>Endereço do Ollama</label>
+            <input id="ai-ollama-url" type="text" placeholder="http://localhost:11434">
+          </div>
+          <div class="field">
+            <label>Modelo</label>
+            <select id="ai-model" onchange="aiCfgSave({modelo:this.value})"><option value="">(a detetar…)</option></select>
+          </div>
+        </div>
+        <button class="btn" type="button" onclick="aiTestar()">Testar ligação</button>
+        <div style="font-size:12px; color:var(--chalk-dim); margin-top:8px;">A IA corre no teu computador: só funciona aqui, com o Ollama aberto. Os dados dos clientes não saem do computador.</div>
+      </div>
+      <div id="ai-cloud-box" style="display:none;">
+        <div class="field">
+          <label>Endereço do serviço</label>
+          <input id="ai-endpoint" type="text" placeholder="https://o-teu-worker.workers.dev">
+        </div>
       </div>
     </details>
     <div id="ai-status" style="font-size:13px; color:var(--chalk-dim); min-height:20px;"></div>
@@ -1102,53 +1133,6 @@
 </div>
 
 <script>
-async function triggerPeriodizacaoIA() {
-  var botao = document.getElementById("btnGerarTreino");
-  var entrada = document.getElementById("relatorioRM").value;
-  var container = document.getElementById("containerResultadosIA");
-
-  if (!entrada.trim()) {
-    alert("Por favor, insira o caso clinico ou sintomas.");
-    return;
-  }
-
-  botao.disabled = true;
-  botao.innerText = "A processar com IA...";
-  container.innerHTML = "<p style='color: #48cae4;'>A ligar ao Ollama local...</p>";
-
-  try {
-    var response = await fetch("http://localhost:11434/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "treinador-ia",
-        format: "json",
-        stream: false,
-        messages: [
-          { role: "system", content: "Atuas como especialista no Kairos. Cria um plano em JSON com as chaves: paciente, analise, contraindicacoes. Responde estritamente em JSON." },
-          { role: "user", content: "Paciente com: " + entrada }
-        ]
-      })
-    });
-
-    var data = await response.json();
-    var resultado = JSON.parse(data.message.content);
-
-    container.innerHTML = "<div style='margin-top:15px; padding:15px; background:#1c2541; border-radius:4px;'>" +
-                          "<h4>Analise: " + (resultado.analise || "Concluida") + "</h4>" +
-                          "<p style='color:#ff4d6d;'><strong>A evitar:</strong> " + (resultado.contraindicacoes || "Nenhum") + "</p>" +
-                          "</div>";
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = "<p style='color: #ff4d6d;'>Erro ao ligar ao motor da IA.</p>";
-  } finally {
-    botao.disabled = false;
-    botao.innerText = "Gerar Mesociclo de 4 Semanas";
-  }
-}
-
-
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const STORE_KEY = 'ciclo_pt_data_v1';
 
@@ -4939,6 +4923,10 @@ function openAIModal(){
   document.getElementById('ai-cliente').innerHTML = DATA.clients.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   prefillAI();
   document.getElementById('ai-endpoint').value = aiEndpoint();
+  const cfg = aiCfg();
+  document.getElementById('ai-motor').value = cfg.motor;
+  document.getElementById('ai-ollama-url').value = cfg.ollama;
+  aiMotorChange(true);
   document.getElementById('ai-status').textContent = '';
   document.getElementById('ai-preview').innerHTML = '';
   document.getElementById('ai-import-btn').style.display = 'none';
@@ -4947,6 +4935,7 @@ function openAIModal(){
 }
 
 async function generateAI(){
+  if(aiMotor()==='ollama') return generateAIOllama();
   const status = document.getElementById('ai-status');
   const endpoint = document.getElementById('ai-endpoint').value.trim();
   if(!endpoint){ status.textContent = 'Indica o endereço do serviço de IA nas definições abaixo.'; return; }
@@ -4988,6 +4977,234 @@ async function generateAI(){
   }
 }
 
+// ---------- IA OFFLINE (Ollama no computador do treinador) ----------
+function aiCfg(){
+  let c = {}; try{ c = JSON.parse(localStorage.getItem('ciclo_ai_cfg')||'{}') || {}; }catch(e){}
+  return { motor: c.motor || 'ollama', ollama: c.ollama || 'http://localhost:11434', modelo: c.modelo || '' };
+}
+function aiCfgSave(patch){
+  const c = Object.assign(aiCfg(), patch||{});
+  try{ localStorage.setItem('ciclo_ai_cfg', JSON.stringify(c)); }catch(e){}
+  return c;
+}
+function aiMotor(){ const el = document.getElementById('ai-motor'); return el ? el.value : aiCfg().motor; }
+function ollamaBase(){
+  const el = document.getElementById('ai-ollama-url');
+  const v = ((el && el.value.trim()) || aiCfg().ollama || 'http://localhost:11434').replace(/\/+$/,'');
+  return /^https?:\/\//i.test(v) ? v : 'http://' + v;
+}
+async function ollamaFetch(path, opts, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms||8000);
+  try{
+    const res = await fetch(ollamaBase() + path, Object.assign({}, opts||{}, { signal: ctrl.signal }));
+    if(!res.ok){ const txt = await res.text().catch(()=> ''); throw new Error('Ollama respondeu ' + res.status + (txt ? ': ' + txt.slice(0,200) : '')); }
+    return await res.json();
+  }catch(e){
+    if(e.name==='AbortError') throw new Error('O Ollama demorou demasiado a responder.');
+    throw e;
+  }finally{ clearTimeout(t); }
+}
+async function ollamaModelos(){
+  const d = await ollamaFetch('/api/tags', {}, 6000);
+  return (d.models||[]).map(m=>m.name).filter(n=>n && !/embed|nomic|bge|minilm/i.test(n));
+}
+function aiModeloSugerido(lista){
+  const pref = [/treinador/i, /qwen2\.5.*(7|14)b/i, /qwen3/i, /qwen/i, /llama3\.1.*8b/i, /llama3/i, /gemma/i, /mistral/i];
+  for(const r of pref){ const m = lista.find(n=>r.test(n)); if(m) return m; }
+  return lista[0] || '';
+}
+function aiErroOllama(e){
+  const msg = (e && e.message) || String(e);
+  if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg) || (e && e.name==='TypeError')){
+    return 'Não consegui ligar ao Ollama em ' + ollamaBase() + '. Confirma que o Ollama está aberto e que a variável OLLAMA_ORIGINS inclui ' + (location.origin==='null' || location.protocol==='file:' ? 'null' : location.origin) + ' (depois reinicia o Ollama). Se o Chrome pedir acesso à rede local, aceita.';
+  }
+  return msg;
+}
+async function aiCarregarModelos(silencioso){
+  const sel = document.getElementById('ai-model'), status = document.getElementById('ai-status');
+  try{
+    const lista = await ollamaModelos();
+    if(!lista.length){
+      sel.innerHTML = '<option value="">(nenhum modelo)</option>';
+      if(!silencioso) status.textContent = 'O Ollama está ligado mas não tem modelos. No terminal: ollama pull qwen2.5:7b';
+      return false;
+    }
+    const guardado = aiCfg().modelo;
+    const escolha = lista.includes(guardado) ? guardado : aiModeloSugerido(lista);
+    sel.innerHTML = lista.map(n=>`<option value="${esc(n)}"${n===escolha?' selected':''}>${esc(n)}</option>`).join('');
+    aiCfgSave({ modelo: escolha, ollama: ollamaBase() });
+    if(!silencioso) status.textContent = '✓ Ligado ao Ollama. ' + lista.length + ' modelo(s) disponível(is).';
+    return true;
+  }catch(e){
+    sel.innerHTML = '<option value="">(sem ligação)</option>';
+    if(!silencioso) status.textContent = aiErroOllama(e);
+    else document.getElementById('ai-defs').open = true;
+    return false;
+  }
+}
+function aiMotorChange(silencioso){
+  const m = aiMotor();
+  document.getElementById('ai-ollama-box').style.display = m==='ollama' ? '' : 'none';
+  document.getElementById('ai-cloud-box').style.display = m==='cloud' ? '' : 'none';
+  aiCfgSave({ motor: m });
+  if(m==='ollama') aiCarregarModelos(silencioso===true);
+}
+async function aiTestar(){
+  document.getElementById('ai-status').textContent = 'A ligar ao Ollama…';
+  aiCfgSave({ ollama: ollamaBase() });
+  await aiCarregarModelos(false);
+}
+
+async function generateAIOllama(){
+  const status = document.getElementById('ai-status');
+  const btn = document.getElementById('ai-generate-btn');
+  let modelo = document.getElementById('ai-model').value;
+  if(!modelo){
+    status.textContent = 'A procurar modelos no Ollama…';
+    if(!(await aiCarregarModelos(false))) return;
+    modelo = document.getElementById('ai-model').value;
+    if(!modelo) return;
+  }
+  aiCfgSave({ modelo, ollama: ollamaBase() });
+
+  const client = DATA.clients.find(x=>x.id===document.getElementById('ai-cliente').value);
+  const keys = clientPats(client);
+  const objetivo = document.getElementById('ai-objetivo').value;
+  const nivel = document.getElementById('ai-nivel').value;
+  const dias = Math.min(6, Math.max(1, parseInt(document.getElementById('ai-dias').value) || 3));
+  const semanas = Math.min(12, Math.max(2, parseInt(document.getElementById('ai-semanas').value) || 4));
+  const duracao = parseInt(document.getElementById('ai-duracao').value) || 60;
+  const equip = document.getElementById('ai-equip').value;
+  const limitacoes = document.getElementById('ai-limitacoes').value.trim().slice(0, 300);
+
+  // Só exercícios da biblioteca, sem os contraindicados para as patologias do cliente
+  let pool = aiExercisePool(equip).filter(e=>!keys.some(k=>contraAlert(e,k)));
+  if(nivel!=='Avançado') pool = pool.filter(e=>{ const n = normText(e.nome); return !PLAN_COMPLEX.test(n) && !PLAN_ODD.test(n); });
+  const grupos = {};
+  pool.forEach(e=>{ const g = e.padrao || e.grupo || 'outro'; (grupos[g] = grupos[g] || []).push(e); });
+  const porGrupo = Math.max(6, Math.min(25, Math.ceil(140 / Math.max(1, Object.keys(grupos).length))));
+  const nomes = [...new Set(Object.values(grupos).flatMap(l=>l.slice().sort((a,b)=>(b.notas?1:0)-(a.notas?1:0)).slice(0, porGrupo)).map(e=>e.nome))];
+  if(nomes.length < 8){ status.textContent = 'A biblioteca tem poucos exercícios compatíveis com este equipamento e estas patologias (' + nomes.length + '). Adiciona exercícios ou muda o equipamento.'; return; }
+  const catalogo = Object.entries(grupos).map(([g,l])=>g + ': ' + l.filter(e=>nomes.includes(e.nome)).map(e=>e.nome).join('; ')).filter(x=>!/: $/.test(x)).join('\n');
+
+  const nEx = duracao<=30 ? '4-5' : duracao<=45 ? '5-6' : '6-8';
+  const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
+  const sistema = 'És um personal trainer certificado (diretrizes ACSM e NSCA). Escreves em português de Portugal. Crias planos de treino seguros, realistas e progressivos. Respondes apenas com JSON válido no formato pedido.';
+  const pedido = `Cria um ciclo de treino com estes dados:
+- Objetivo: ${objetivo}
+- Nível: ${nivel}
+- Treinos diferentes por semana: ${dias}
+- Duração do ciclo: ${semanas} semanas
+- Duração de cada treino: ${duracao} minutos
+- Equipamento: ${equip}
+${pats ? 'Patologias do cliente:\n' + pats + '\n' : ''}${limitacoes ? '- Limitações indicadas: ' + limitacoes + '\n' : ''}
+Exercícios disponíveis (usa APENAS estes nomes, escritos exatamente assim):
+${catalogo}
+
+Regras:
+1. Exatamente ${dias} treinos, cada um com nome curto (ex: "Treino A — Corpo inteiro").
+2. ${nEx} exercícios por treino; compostos primeiro, isolamentos e core no fim.
+3. Equilibra empurrar/puxar e membros superiores/inferiores ao longo da semana; não repitas o mesmo exercício em todos os treinos.
+4. "series" é um número inteiro; "reps" texto (ex: "8-10"); "carga" em RPE ou RIR (ex: "RPE 7" ou "2 RIR"); "descanso" texto (ex: "90s").
+5. Ajusta séries, repetições e descanso ao objetivo e ao nível${keys.length ? ' e respeita as patologias (intensidade moderada, sem chegar à falha)' : ''}.
+6. "progressao" tem exatamente ${semanas} frases curtas, uma por semana, a descrever o que muda; ${semanas>=4 ? 'a cada 4.ª semana faz uma semana de descarga (deload)' : 'progride de forma gradual'}.
+7. "avisos": 1 a 3 notas práticas de segurança ou técnica para este cliente.`;
+
+  const schema = {
+    type:'object',
+    properties:{
+      nome:{ type:'string' },
+      avisos:{ type:'array', items:{ type:'string' }, minItems:1, maxItems:3 },
+      treinos:{ type:'array', minItems:dias, maxItems:dias, items:{
+        type:'object',
+        properties:{
+          nome:{ type:'string' },
+          exercicios:{ type:'array', minItems:3, maxItems:9, items:{
+            type:'object',
+            properties:{
+              exercicio:{ type:'string', enum:nomes },
+              series:{ type:'integer' },
+              reps:{ type:'string' },
+              carga:{ type:'string' },
+              descanso:{ type:'string' }
+            },
+            required:['exercicio','series','reps','carga','descanso']
+          }}
+        },
+        required:['nome','exercicios']
+      }},
+      progressao:{ type:'array', items:{ type:'string' }, minItems:semanas, maxItems:semanas }
+    },
+    required:['nome','avisos','treinos','progressao']
+  };
+
+  btn.disabled = true;
+  document.getElementById('ai-preview').innerHTML = '';
+  document.getElementById('ai-import-btn').style.display = 'none';
+  const t0 = Date.now();
+  const tick = setInterval(()=>{ status.textContent = `A gerar com ${modelo} no teu computador… ${Math.round((Date.now()-t0)/1000)}s (a primeira vez demora mais, enquanto o modelo carrega)`; }, 1000);
+  status.textContent = `A gerar com ${modelo} no teu computador…`;
+  try{
+    const data = await ollamaFetch('/api/chat', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        model: modelo, stream:false, keep_alive:'10m', format: schema,
+        options:{ temperature:0.4, num_ctx:8192 },
+        messages:[ { role:'system', content:sistema }, { role:'user', content:pedido } ]
+      })
+    }, 300000);
+    let r;
+    try{ r = JSON.parse((data.message && data.message.content) || ''); }
+    catch(e){ throw new Error('O modelo não devolveu JSON válido. Tenta gerar de novo ou escolhe outro modelo.'); }
+
+    const porNome = {}; pool.forEach(e=>{ porNome[normText(e.nome)] = e.nome; });
+    const usados = new Set();
+    const treinos = (Array.isArray(r.treinos) ? r.treinos : []).slice(0, dias).map((t,i)=>{
+      let nome = String((t && t.nome) || ('Treino ' + String.fromCharCode(65+i))).trim().slice(0, 60);
+      while(usados.has(nome)) nome += ' ' + String.fromCharCode(65+i);
+      usados.add(nome);
+      const vistos = new Set();
+      const exercicios = (Array.isArray(t && t.exercicios) ? t.exercicios : []).map(x=>{
+        const real = porNome[normText(x && x.exercicio)];
+        if(!real || vistos.has(real)) return null;
+        vistos.add(real);
+        return {
+          exercicio: real,
+          series: Math.min(6, Math.max(1, parseInt(x.series) || 3)),
+          reps: String(x.reps || '10').slice(0, 20),
+          carga: String(x.carga || '').slice(0, 40),
+          descanso: String(x.descanso || '60s').slice(0, 20),
+          met: ''
+        };
+      }).filter(Boolean);
+      return { nome, exercicios };
+    }).filter(t=>t.exercicios.length);
+    if(!treinos.length) throw new Error('A resposta da IA veio incompleta. Tenta gerar de novo.');
+
+    const prog = Array.isArray(r.progressao) ? r.progressao : [];
+    const resultado = {
+      nome: String(r.nome || `${objetivo} — ${semanas} semanas`).slice(0, 80),
+      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0,3) : []), 'Plano gerado por IA local: revê os exercícios e as cargas antes de o entregar ao cliente.'],
+      treinos,
+      semanas: Array.from({ length: semanas }, (_, i)=>({
+        numero: i+1,
+        progressao: String(prog[i] || ((i+1)%4===0 ? 'Semana de descarga: reduzir volume cerca de 40%.' : 'Manter a técnica e progredir carga ou repetições.')).slice(0, 200),
+        sessoes: treinos.map(t=>t.nome)
+      }))
+    };
+    aiResult = resultado;
+    status.textContent = `✓ Gerado em ${Math.round((Date.now()-t0)/1000)}s com ${modelo}.`;
+    renderAIPreview(resultado);
+    document.getElementById('ai-import-btn').style.display = 'inline-block';
+  }catch(err){
+    status.textContent = 'Erro: ' + aiErroOllama(err);
+  }finally{
+    clearInterval(tick);
+    btn.disabled = false;
+  }
+}
+
 function renderAIPreview(r){
   const avisos = Array.isArray(r.avisos) && r.avisos.length
     ? `<div style="border-left:3px solid var(--ochre); padding:8px 12px; margin-bottom:12px; font-size:13px;">${r.avisos.map(a=>esc(String(a))).join('<br>')}</div>` : '';
@@ -5020,7 +5237,15 @@ function findOrCreateExercise(name){
 const AI_SLOTS = {1:[2], 2:[0,3], 3:[0,2,4], 4:[0,1,3,4], 5:[0,1,2,3,4], 6:[0,1,2,3,4,5], 7:[0,1,2,3,4,5,6]};
 function importAI(){
   if(!aiResult) return;
-  importResult(aiResult, document.getElementById('ai-cliente').value);
+  const cid = document.getElementById('ai-cliente').value;
+  const keys = clientPats(DATA.clients.find(x=>x.id===cid));
+  importResult(aiResult, cid, null, '', { tipo:'plano', p:{
+    objetivo: document.getElementById('ai-objetivo').value,
+    nivel: document.getElementById('ai-nivel').value,
+    duracao: parseInt(document.getElementById('ai-duracao').value)||60,
+    equipamento: document.getElementById('ai-equip').value,
+    patologia: keys[0]||'', patologiasExtra: keys.slice(1)
+  }});
   aiResult = null;
   closeModal('modal-ai');
 }
@@ -6353,7 +6578,7 @@ function renderPtAgenda(){
 }
 function renderCycles(){
   renderPtAgenda();
-  document.getElementById('btn-ai').style.display = aiEndpoint() ? '' : 'none';
+  document.getElementById('btn-ai').style.display = '';
   populateClientFilter();
   const filterId = document.getElementById('cycle-client-filter').value;
   const list = document.getElementById('ciclos-list');
