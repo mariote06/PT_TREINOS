@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 111</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 114</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -541,8 +541,9 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="openPlanModal()">⚡ Gerar plano automático</button>
-          <button class="btn" onclick="openAssistente()">🧭 Meso</button>
+          <button class="btn" onclick="openAssistente()">🧭 Kairós</button>
           <button class="btn" onclick="mcOpen()">💬 Perguntar</button>
+          <button class="btn" onclick="bibOpen()">📚 Bibliografia</button>
           <button class="btn btn-primary" onclick="openWorkoutModal()">+ Novo treino</button>
         </div>
       </div>
@@ -558,10 +559,11 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="openPlanModal()">⚡ Gerar plano</button>
-          <button class="btn" onclick="openAssistente()">🧭 Meso</button>
+          <button class="btn" onclick="openAssistente()">🧭 Kairós</button>
           <button class="btn" onclick="mcOpen()">💬 Perguntar</button>
+          <button class="btn" onclick="bibOpen()">📚 Bibliografia</button>
           <button class="btn" onclick="openAulasModal()">Aulas de grupo</button>
-          <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com IA</button>
+          <button class="btn" id="btn-ai" style="display:none;" onclick="openAIModal()">✦ Gerar com Kairós</button>
           <button class="btn btn-primary" onclick="openCycleModal()">+ Novo ciclo</button>
         </div>
       </div>
@@ -725,7 +727,7 @@
 <!-- MODAL: gerar ciclo com IA -->
 <div class="modal-backdrop" id="modal-ai">
   <div class="modal" style="max-width:640px;">
-    <h3>Gerar ciclo com IA</h3>
+    <h3>Gerar ciclo com o Kairós</h3>
     <div class="field">
       <label>Cliente</label>
       <select id="ai-cliente" onchange="prefillAI()"></select>
@@ -785,7 +787,7 @@
       Sugestão automática. Não substitui a avaliação de um profissional. Em caso de dor, lesão ou condição de saúde, consulta primeiro o teu treinador ou médico.
     </div>
     <details id="ai-defs" style="margin-bottom:12px;">
-      <summary style="cursor:pointer; font-size:13px; color:var(--chalk-dim);">Definições da IA</summary>
+      <summary style="cursor:pointer; font-size:13px; color:var(--chalk-dim);">Definições do Kairós</summary>
       <div class="field" style="margin-top:10px;">
         <label>Motor</label>
         <select id="ai-motor" onchange="aiMotorChange()">
@@ -805,7 +807,8 @@
           </div>
         </div>
         <button class="btn" type="button" onclick="aiTestar()">Testar ligação</button>
-        <div style="font-size:12px; color:var(--chalk-dim); margin-top:8px;">A IA corre no teu computador: só funciona aqui, com o Ollama aberto. Os dados dos clientes não saem do computador.</div>
+        <button class="btn" type="button" onclick="bibOpen()">📚 Bibliografia</button>
+        <div style="font-size:12px; color:var(--chalk-dim); margin-top:8px;">O Kairós corre no teu computador: só funciona aqui, com o Ollama aberto. Os dados dos clientes não saem do computador.</div>
       </div>
       <div id="ai-cloud-box" style="display:none;">
         <div class="field">
@@ -3793,7 +3796,7 @@ const BIB_NOTAS = [
  {b:'pe', t:'Pé e tornozelo: terminologia, inspeção e palpação', k:'pe tornozelo terminologia supinacao pronacao inspecao palpacao arco longitudinal plano cavo musculos extrinsecos intrinsecos', x:'Supinação do pé = flexão plantar do tornozelo + inversão da subtalar + adução da mediotársica; pronação = extensão do tornozelo + eversão da subtalar + abdução da mediotársica. Inspeção: sapato, coluna lombar, pé sem carga, contorno e número de dedos, arco longitudinal (alto = cavo, ausente = plano), coloração, calosidades, edema. Palpação: pele, sensibilidade, pulsos (pedioso e tibial posterior), tornozelo, subtalar, mediotársica (Chopart), tarsometatársica (Lisfranc). Extrínsecos: extensores, flexores, inversores e eversores; intrínsecos: abdutor e adutor do hálux, flexores curtos, lumbricais e interósseos.'},
  {b:'pe', t:'Pé e tornozelo: marcha e biomecânica', k:'pe marcha ciclo apoio oscilante corrida carga arco medial lateral rotacao tibia subtalar pronacao', x:'Ciclo da marcha: fase de apoio cerca de 60% e oscilante cerca de 40%. Na marcha lenta aumenta o duplo apoio; na corrida desaparece e a carga chega a 2 a 2,5 vezes o peso corporal; o primeiro pico no impacto é de cerca de 110% do peso. Rotação externa da tíbia equivale a inversão do calcâneo e rotação interna a eversão. O arco medial é o arco dinâmico; o lateral é mais estável. Elevam o arco: rotação externa da tíbia, adução do antepé e dorsiflexão dos dedos; deprimem-no: rotação interna, eversão do calcâneo e abdução do antepé. Pedir marcha em pontas, calcanhares e nas bordas do pé.'},
  {b:'pe', t:'Pé e tornozelo: testes especiais', k:'pe tornozelo testes thompson gaveta anterior varo valgo sindesmose jack coleman muitos dedos mulder neuroma mcbride lisfranc', x:'Testes descritos: amplitude do tornozelo com joelho estendido e fletido (distingue gémeos de sóleo), Thompson (tendão do tríceps sural), gaveta anterior (ligamento fibulotalar anterior), estresse em varo (fibulocalcâneo) e valgo (deltóide), rotação do talo e gaveta posterior da fíbula (sindesmose), compressão lateral da perna, teste da ponta dos pés, Jack (hiperextensão passiva do hálux; eleva o arco; bom prognóstico no pé plano flexível), blocos de Coleman (pé cavo varo flexível), sinal dos muitos dedos (insuficiência do tibial posterior), McBride (hálux valgo), hipermobilidade do 1.º raio, compressão látero-lateral do antepé com sinal de Mulder (neuroma de Morton) e redutibilidade das garras (Kelikian-Ducroquet).'},
- {b:'atlas', t:'Atlas de anatomia: uso na app', k:'atlas anatomia netter sobotta neumann origem insercao inervacao imagem referencia', x:'Livros de imagem para confirmar origem, inserção, inervação e relações anatómicas. Os ficheiros recebidos são sobretudo imagens ou digitalizações sem texto pesquisável, por isso o conteúdo detalhado não foi carregado no Meso. Quando precisares de uma estrutura concreta, consulta o atlas diretamente.'},
+ {b:'atlas', t:'Atlas de anatomia: uso na app', k:'atlas anatomia netter sobotta neumann origem insercao inervacao imagem referencia', x:'Livros de imagem para confirmar origem, inserção, inervação e relações anatómicas. Os ficheiros recebidos são sobretudo imagens ou digitalizações sem texto pesquisável, por isso o conteúdo detalhado não foi carregado no Kairós. Quando precisares de uma estrutura concreta, consulta o atlas diretamente.'},
  {b:'mageep', t:'Osteoporose: números, riscos e o que observar', k:'osteoporose osteopenia t-score densidade ossea fratura vertebral anca queda cifose dor lombar', x:'T-score entre −1 e −2,5 é osteopenia; −2,5 ou menos é osteoporose. Uma em cada duas mulheres e um em cada quatro homens com mais de 50 anos terão uma fratura por osteoporose. As fraturas não vertebrais representam 73% do total e 90% das fraturas da anca resultam de queda, por isso o treino não deve focar só coluna e anca e deve incluir equilíbrio. As fraturas vertebrais podem acontecer em tarefas domésticas e passar despercebidas: a dor lombar é muitas vezes atribuída a \'artrose\' ou à idade. A cifose desloca o centro de massa para a frente e faz aumentar o momento flector sobre a coluna. O objetivo é melhorar a função e prevenir fraturas: força, flexibilidade, amplitude, equilíbrio, postura e educação.'},
  {b:'mageep', t:'Osteoporose: como treinar', k:'osteoporose exercicio treino lei de wolff carga impacto resistencia flexao crunch cifose acsm 65 anos', x:'O osso responde à carga (lei de Wolff), mas perde massa quando o estímulo pára, por isso o programa tem de ser contínuo. Três princípios: intensidade suficiente para desafiar o sistema, específico para a zona do esqueleto e variado (10 repetições de abdução com elástico leve três vezes por semana durante um mês não chegam). Programas que juntam impacto ou carga variada com treino de resistência aumentam a massa óssea da anca e da lombar; o impacto sozinho só melhora a anca. Um programa multimodal de intensidade alta (aquecimento aeróbio, equilíbrio estático e dinâmico, força isométrica, alongamentos, força de braços e exercícios em casa) deu melhores resultados e menos quedas do que um programa leve. ACSM para idosos ou doenças crónicas: 30 min de atividade moderada 5 dias por semana ou 20 min vigorosa 3 dias, mais 8 a 10 exercícios de força de 10 a 15 repetições 2 a 3 vezes por semana. Cuidado: um abdominal que é seguro com osso normal pode fraturar a frente de uma vértebra em quem tem osteoporose e cifose marcada; evitar flexão carregada da coluna nesses casos.'},
  {b:'mageep', t:'Fibromialgia e dor miofascial: como prescrever', k:'fibromialgia dor miofascial exercicio aerobio comecar devagar isometrico excentrico passos aquaterapia alongamento', x:'Tratamento multimodal. Na fibromialgia a base é o exercício aeróbio (caminhada, bicicleta, marcha nórdica, natação em água quente) que começa em baixa intensidade e sobe em semanas até intensidade moderada: \'começar baixo, avançar devagar\'. Meta de pelo menos 20 min, 2 a 3 vezes por semana; pode usar-se contador de passos, subindo 1000 por dia até cerca de 5000 acima da base. No início evitar trabalho isométrico e excêntrico, que pode hiperexcitar o sistema nervoso central; mais tarde alguns doentes toleram força moderada a alta. Na dor miofascial o alongamento suave e sustentado em toda a amplitude restaura a mobilidade e depois entra a força e a resistência. A janela de tolerância é estreita e a adesão é difícil.'},
@@ -3803,7 +3806,7 @@ const BIB_NOTAS = [
  {b:'mageep', t:'Entorse do tornozelo: reabilitação e prevenção de recidiva', k:'entorse tornozelo ligamento lateral instabilidade cronica recidiva dorsiflexao proprioception peroneais inversao', x:'As lesões do ligamento lateral são 15% a 25% das lesões desportivas e subestimadas. O fator de risco mais forte é uma entorse anterior; em basquetebolistas a recidiva chega a 80% e até 30% desenvolvem instabilidade crónica, por isso evitar recidivas é um objetivo central. Mecanismo: flexão plantar mais inversão (primeiro o ligamento talofibular anterior, depois o calcaneofibular). Na primeira a terceira semana proteger da inversão e trabalhar no plano sagital, mas começar a mexer cedo: dentro de dias pode haver mobilidade ativa sem dor (bombas do tornozelo, \'crunch\' do pé). Perder dorsiflexão é comum: são precisos pelo menos 10° para andar e 20 a 30° para correr; mobilizar o tálus para trás e a fíbula ajuda. Força: de isométrico a elástico, com ênfase excêntrica nos peroneais e dorsiflexores; depois cadeia fechada (elevação de gémeos, agachamento, afundo), salto e corrida sem coxear. Se coxeia, incha ou a dor sobe, a progressão está demasiado rápida.'},
  {b:'mageep', t:'Tendinopatia de Aquiles e dor na perna por exercício', k:'aquiles tendinopatia tendinose excentrico sever calcanhar gemeos soleo area avascular rutura tendao', x:'O tendão de Aquiles é o local mais frequente de tendinopatia na perna. Tem uma zona pouco vascularizada a cerca de 2 cm da inserção, onde surgem as roturas parciais e os nódulos da tendinose. Sintomas: rigidez, dor ao alongar, dor sob carga (ir para as pontas dos pés) e na corrida; limitação de dorsiflexão e perda de potência. Tratar a causa: sobrecarga de treino, problema mecânico ou compensação de fraqueza. Reduzir a carga agravante, depois alongar o gastrocnémio com joelho estendido e o sóleo com joelho fletido, e reforçar com ênfase excêntrica, em cadeia aberta e fechada. Em crianças com dor no calcanhar pensar na doença de Sever (8 a 12 anos): parar a atividade pelo menos 2 semanas. Rotura com tratamento conservador: a resistência do tendão fica em cerca de 30% do normal, por isso em pessoas ativas costuma operar-se.'},
  {b:'vella', t:'Princípios de treino segundo Vella', k:'vella principios treino individualidade said sobrecarga progressiva reversibilidade periodizacao intensidade hiit hivt fases motivacao', x:'Princípios: individualidade; adaptação específica às exigências (SAID); sobrecarga progressiva (frequência, intensidade, tipo e tempo), sempre com boa técnica e uma base de força antes de velocidade, potência e pliometria (pirâmide de progressão); reversibilidade; periodização; intensidade. HIIT: 4 a 12 minutos, raramente 20, a 80% ou mais da FC máxima prevista com recuperação a 40-50%; no máximo 2 vezes por semana, e muitos treinos chamados HIIT são na realidade de intensidade variável. Mobilidade antes do movimento. Fases da jornada do praticante: 0 a 3 meses (motivação baixa, 75% abandonam, treinar pelo menos 3 vezes por semana), 3 a 12 meses (mudanças visíveis, aumentar sobrecarga e variedade) e mais de 12 meses (motivação intrínseca, periodizar).'},
- {b:'delavier', t:'Strength Training Anatomy Workout (Delavier)', k:'delavier anatomia musculos exercicios ilustracoes imagem forca treino', x:'Livro de ilustrações anatómicas de exercícios de força. O ficheiro recebido não tem texto extraível, por isso o seu conteúdo não foi carregado no Meso.'},
+ {b:'delavier', t:'Strength Training Anatomy Workout (Delavier)', k:'delavier anatomia musculos exercicios ilustracoes imagem forca treino', x:'Livro de ilustrações anatómicas de exercícios de força. O ficheiro recebido não tem texto extraível, por isso o seu conteúdo não foi carregado no Kairós.'},
  {b:'mageep', t:'Cervical: exercício para dor no pescoço', k:'cervical pescoco dor exercicio flexores profundos isometrico extensores oculomotor whiplash', x:'Dois modelos de exercício: treino geral de força e resistência dos flexores do pescoço, com carga alta e recrutamento de todos os sinérgicos, e treino dos músculos profundos, com isométricos de baixa carga e controlo fino. Os isométricos reeducam melhor o papel estabilizador dos profundos e depois combinam-se com exercícios dinâmicos e globais. Rotação isométrica auto-resistida a 10%-30% da contração máxima, devagar e a controlar, em deitado, sentado ou em pé. Treino dos extensores durante 12 semanas aumentou a área transversal do pescoço cerca de 13%. Exercícios oculomotores começam com a cabeça parada e passam a movimento da cabeça com os olhos fixos num alvo; parar se surgir tontura ou instabilidade. Após uma entorse cervical (whiplash), 44% continuavam 5 anos depois sem conseguir manter a carga de trabalho anterior.'},
  {b:'mageep', t:'Ombro congelado (capsulite adesiva): fases e exercício', k:'ombro congelado capsulite adesiva fases dor rigidez amplitude mobilizacao escapula', x:'Três fases: dolorosa ou de congelamento (2 a 9 meses, dor e perda progressiva de amplitude), rígida ou congelada (4 a 12 meses, rigidez com dor decrescente) e de descongelamento. Mobilizações, alongamentos e amplitude passiva no início, porque a dor impede o doente de fazer sozinho. Se a dor é demasiada, educação, tranquilização, postura e exercícios de colocação da omoplata, mais uma atividade geral. Tudo dentro do limite da dor para não agravar o tecido.'},
  {b:'mageep', t:'Manguito rotador: tratamento não operatório e pós-operatório', k:'manguito rotador supraespinhoso ombro cirurgia reabilitacao dor isometrico excentrico escapula 3 meses fases', x:'A maioria das lesões do manguito (incluindo roturas parciais e algumas totais) começa por tratamento não operatório durante pelo menos 3 meses. Exceções: rotura traumática aguda em jovem ativo e roturas totais crónicas abaixo dos 65 anos. A evidência da fisioterapia é limitada. A dor inibe a ativação muscular; raramente se recomenda repouso total: reduz-se a intensidade ou a frequência e modifica-se a posição do braço (neutro em vez de acima da cabeça), a alavanca (cotovelo fletido) e a amplitude, sempre sem dor. Ativar o manguito é concêntrico, mas estabilizar é isométrico e excêntrico, por isso o programa tem os três tipos. Estabilizar a omoplata. Começar com pouca resistência em posições de baixo risco (cotovelo a 90° junto ao corpo). Pós-operatório: fase I 0 a 4-6 semanas, fase II até 12 semanas, fase III 12 a 24 semanas; a recuperação total pode demorar até 1 ano.'},
@@ -3904,7 +3907,7 @@ function mcFichaHtml(c){
   }catch(e){}
   const prot = PROTOCOLOS.filter(p=>p.pat && pk.includes(p.pat));
   if(prot.length) h += '<div class="mc-box">Protocolos para as patologias dele(a):<br>'+prot.map(p=>'<a href="#" onclick="mcProto(\''+p.id+'\');return false;">'+esc(p.nome)+'</a>').join('<br>')+'</div>';
-  h += '<div class="mc-acts"><button class="btn" onclick="closeModal(\'modal-mesochat\');openFicha(\''+c.id+'\')">Abrir ficha</button><button class="btn" onclick="closeModal(\'modal-mesochat\');openAssistente(\''+c.id+'\')">Planear com o Meso</button></div>';
+  h += '<div class="mc-acts"><button class="btn" onclick="closeModal(\'modal-mesochat\');openFicha(\''+c.id+'\')">Abrir ficha</button><button class="btn" onclick="closeModal(\'modal-mesochat\');openAssistente(\''+c.id+'\')">Planear com o Kairós</button></div>';
   return h;
 }
 function mcProtoHtml(p, curto){
@@ -3949,7 +3952,7 @@ function mcAnswer(q){
   if(cli) MC_CH.cli = cli.id;
   // 2) pedir plano
   if(/\b(planea|planear|planeamento|macrociclo|mesociclo|gera|gerar|cria|criar|monta|montar)\b.*\b(plano|treino|ciclo|macrociclo)\b|\bplanear\b/.test(qn)){
-    out.push('Para montar o plano uso o Meso (planeamento), que aplica as regras de patologia, nível e rotação de treinos.'+(cli?' Já abro com '+esc(cli.nome)+'.':'')+'<div class="mc-acts"><button class="btn btn-primary" onclick="closeModal(\'modal-mesochat\');openAssistente('+(cli?'\''+cli.id+'\'':'')+')">Abrir planeamento</button></div>');
+    out.push('Para montar o plano uso o Kairós (planeamento), que aplica as regras de patologia, nível e rotação de treinos.'+(cli?' Já abro com '+esc(cli.nome)+'.':'')+'<div class="mc-acts"><button class="btn btn-primary" onclick="closeModal(\'modal-mesochat\');openAssistente('+(cli?'\''+cli.id+'\'':'')+')">Abrir planeamento</button></div>');
     return out;
   }
   // 3) listas de clientes
@@ -4021,9 +4024,11 @@ function mcPush(who, html){
   box.appendChild(d); box.scrollTop = box.scrollHeight;
 }
 function mcSend(txt){
+  if(MC_IA.ctrl){ MC_IA.ctrl.abort(); return; }
   const inp = document.getElementById('mc-in');
   const q = (txt || inp.value).trim(); if(!q) return;
   inp.value = '';
+  if(mcIAOn() && !/^\s*planear\b/i.test(q)) return mcSendIA(q);
   mcPush('user', esc(q));
   let r;
   try{ if(!MC_KB) mcBuild(); r = mcAnswer(q); }catch(e){ r = ['Ocorreu um erro a procurar: '+esc(e.message)]; }
@@ -4035,20 +4040,531 @@ function mcEnsureModal(){
   st.textContent = '#mc-log{height:52vh;overflow:auto;border:1px solid var(--line);padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--bg)} .mc-msg{max-width:92%;padding:9px 12px;border-radius:10px;font-size:14px;line-height:1.45} .mc-user{align-self:flex-end;background:var(--indigo);color:#fff} .mc-bot{align-self:flex-start;background:var(--surface-raised);border:1px solid var(--line)} .mc-box{margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px} .mc-red{border-color:var(--danger)} .mc-acts{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap} .mc-msg a{color:var(--ochre)} .mc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0} .mc-chips button{font-size:12px;padding:4px 9px}';
   document.head.appendChild(st);
   const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'modal-mesochat';
-  d.innerHTML = '<div class="modal" style="max-width:860px;"><h3>Meso · conversa</h3>'
-   + '<div class="view-sub" style="margin-bottom:8px;">Pergunta sobre protocolos, patologias, exercícios, testes, bibliografia (McGill) e clientes. Responde só com o que está guardado na app, sem internet e sem enviar dados para fora.</div>'
+  d.innerHTML = '<div class="modal" style="max-width:860px;"><h3>Kairós · conversa</h3>'
+   + '<div class="view-sub" style="margin-bottom:8px;">Pergunta sobre protocolos, patologias, exercícios, testes, bibliografia (McGill) e clientes. Com o Kairós IA ligado, a resposta é escrita pelo Ollama no teu computador usando o que está na app; desligado, mostra só o que está guardado. Nada sai do computador.</div>'
    + '<div id="mc-log"></div>'
    + '<div class="mc-chips">'
    + ['Protocolo para estenose lombar','Como se faz o bird dog?','O que é bracing abdominal?','Clientes com lombar','Testes para espondilolistese','Que exercícios evitar na hérnia discal?'].map(x=>'<button class="btn" onclick="mcSend(\''+x+'\')">'+x+'</button>').join('')
    + '</div>'
-   + '<div class="row-2" style="grid-template-columns:1fr auto;gap:8px;"><input id="mc-in" type="text" placeholder="Escreve a tua pergunta…" onkeydown="if(event.key===\'Enter\')mcSend()"><button class="btn btn-primary" onclick="mcSend()">Enviar</button></div>'
-   + '<div class="modal-actions"><button class="btn" onclick="mcLimpar()">Limpar</button><button class="btn" onclick="closeModal(\'modal-mesochat\')">Fechar</button></div></div>';
+   + '<div class="row-2" style="grid-template-columns:1fr auto;gap:8px;"><input id="mc-in" type="text" placeholder="Escreve a tua pergunta…" onkeydown="if(event.key===\'Enter\')mcSend()"><button class="btn btn-primary" id="mc-send" onclick="mcSend()">Enviar</button></div>'
+   + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--chalk-dim);cursor:pointer;"><input type="checkbox" id="mc-ia" onchange="mcIAToggle()" style="width:auto;margin:0;"> ✦ Responder com o Kairós IA (Ollama, no teu computador)</label>'
+   + '<div class="modal-actions"><button class="btn" onclick="bibOpen()">📚 Bibliografia</button><button class="btn" onclick="mcLimpar()">Limpar</button><button class="btn" onclick="closeModal(\'modal-mesochat\')">Fechar</button></div></div>';
   document.body.appendChild(d);
 }
-function mcLimpar(){ MC_CH.msgs = []; MC_CH.cli = null; const b = document.getElementById('mc-log'); if(b) b.innerHTML = ''; mcBoasVindas(); }
-function mcBoasVindas(){ mcPush('bot', 'Olá, sou o Meso. Encontro o que a app tem sobre protocolos, patologias, exercícios, testes especiais, notas de McGill e fichas de clientes. Não invento: se não estiver na app, digo-o. Para montar um plano, escreve «planear» ou menciona um cliente.'); }
+// ---------- BIBLIOGRAFIA DA IA (pasta do OneDrive + embeddings do Ollama) ----------
+const BIB_LIBS = {
+  pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+  zip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+};
+const BIB_SCRIPTS = {};
+function bibScript(url){
+  if(!BIB_SCRIPTS[url]) BIB_SCRIPTS[url] = new Promise((ok, ko)=>{
+    const s = document.createElement('script'); s.src = url; s.onload = ok;
+    s.onerror = ()=>{ delete BIB_SCRIPTS[url]; ko(new Error('Não consegui carregar ' + url.split('/').pop() + ' (precisa de internet na primeira vez).')); };
+    document.head.appendChild(s);
+  });
+  return BIB_SCRIPTS[url];
+}
+let BIB_DB = null, BIB_CACHE = null, BIB_RUN = null;
+function bibDb(){
+  if(!BIB_DB) BIB_DB = new Promise((ok, ko)=>{
+    const r = indexedDB.open('kairos_biblio', 1);
+    r.onupgradeneeded = ()=>{
+      const db = r.result;
+      db.createObjectStore('meta');
+      db.createObjectStore('livros', { keyPath:'path' });
+      db.createObjectStore('chunks', { keyPath:'id', autoIncrement:true }).createIndex('livro', 'livro');
+    };
+    r.onsuccess = ()=>ok(r.result);
+    r.onerror = ()=>{ BIB_DB = null; ko(r.error); };
+  });
+  return BIB_DB;
+}
+const bibReq = r=>new Promise((ok, ko)=>{ r.onsuccess = ()=>ok(r.result); r.onerror = ()=>ko(r.error); });
+async function bibStore(nome, modo){ return (await bibDb()).transaction(nome, modo).objectStore(nome); }
+async function bibGet(st, k){ return bibReq((await bibStore(st, 'readonly')).get(k)); }
+async function bibPut(st, v, k){ return bibReq(k===undefined ? (await bibStore(st, 'readwrite')).put(v) : (await bibStore(st, 'readwrite')).put(v, k)); }
+async function bibAll(st){ return bibReq((await bibStore(st, 'readonly')).getAll()); }
+async function bibDelLivro(path){
+  const db = await bibDb();
+  await new Promise((ok, ko)=>{
+    const t = db.transaction(['chunks','livros'], 'readwrite');
+    const r = t.objectStore('chunks').index('livro').openCursor(IDBKeyRange.only(path));
+    r.onsuccess = ()=>{ const c = r.result; if(c){ c.delete(); c.continue(); } };
+    t.objectStore('livros').delete(path);
+    t.oncomplete = ok; t.onerror = ()=>ko(t.error);
+  });
+  BIB_CACHE = null;
+}
+async function bibPutChunks(arr){
+  const db = await bibDb();
+  await new Promise((ok, ko)=>{
+    const t = db.transaction('chunks', 'readwrite'), s = t.objectStore('chunks');
+    arr.forEach(x=>s.add(x));
+    t.oncomplete = ok; t.onerror = ()=>ko(t.error);
+  });
+}
+
+// --- extração de texto ---
+async function bibTextoPdf(file, prog){
+  await bibScript(BIB_LIBS.pdf);
+  const lib = window.pdfjsLib;
+  lib.GlobalWorkerOptions.workerSrc = BIB_LIBS.pdfWorker;
+  const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const partes = [];
+  for(let i = 1; i <= doc.numPages; i++){
+    if(BIB_RUN && BIB_RUN.parar) break;
+    const pg = await doc.getPage(i);
+    const tc = await pg.getTextContent();
+    let t = ''; tc.items.forEach(it=>{ t += (it.str || '') + (it.hasEOL ? '\n' : ' '); });
+    partes.push({ ref: 'p. ' + i, texto: t });
+    pg.cleanup();
+    if(prog && (i % 10 === 0 || i === doc.numPages)) prog(i, doc.numPages);
+  }
+  let titulo = '';
+  try{ const m = await doc.getMetadata(); titulo = (m && m.info && m.info.Title) || ''; }catch(e){}
+  await doc.destroy();
+  return { titulo, partes };
+}
+function bibJoin(base, rel){
+  const st = [];
+  (base + rel).split('/').forEach(p=>{ if(p === '..') st.pop(); else if(p && p !== '.') st.push(p); });
+  return st.join('/');
+}
+async function bibTextoEpub(file){
+  await bibScript(BIB_LIBS.zip);
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const xml = s=>new DOMParser().parseFromString(s, 'application/xml');
+  const cf = zip.file('META-INF/container.xml');
+  if(!cf) throw new Error('EPUB sem container.xml (ficheiro danificado ou protegido).');
+  const rf = xml(await cf.async('string')).getElementsByTagNameNS('*', 'rootfile')[0];
+  const opfPath = rf && rf.getAttribute('full-path');
+  if(!opfPath || !zip.file(opfPath)) throw new Error('EPUB sem índice (OPF).');
+  const base = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+  const opf = xml(await zip.file(opfPath).async('string'));
+  const tEl = opf.getElementsByTagNameNS('*', 'title')[0];
+  const titulo = tEl ? tEl.textContent.trim() : '';
+  const man = {};
+  Array.from(opf.getElementsByTagNameNS('*', 'item')).forEach(it=>{ man[it.getAttribute('id')] = it.getAttribute('href'); });
+  const partes = []; let n = 0;
+  for(const ir of Array.from(opf.getElementsByTagNameNS('*', 'itemref'))){
+    if(BIB_RUN && BIB_RUN.parar) break;
+    const href = man[ir.getAttribute('idref')]; if(!href) continue;
+    let path; try{ path = bibJoin(base, decodeURIComponent(href.split('#')[0])); }catch(e){ path = bibJoin(base, href.split('#')[0]); }
+    const f = zip.file(path); if(!f) continue;
+    const html = await f.async('string');
+    if(/<encryption|adept/i.test(html.slice(0, 500))) continue;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style').forEach(e=>e.remove());
+    doc.querySelectorAll('p,div,h1,h2,h3,h4,h5,li,br,tr,blockquote').forEach(e=>e.append('\n'));
+    n++;
+    const texto = doc.body ? doc.body.textContent : '';
+    if(texto.trim().length < 60) continue;
+    const h = doc.querySelector('h1,h2,h3');
+    const cap = (h && h.textContent.replace(/\s+/g, ' ').trim().slice(0, 70)) || ('secção ' + n);
+    partes.push({ ref: cap, texto });
+  }
+  if(zip.file('META-INF/encryption.xml') && !partes.length) throw new Error('EPUB protegido com DRM: não é possível ler.');
+  return { titulo, partes };
+}
+function bibPartir(partes, alvo){
+  alvo = alvo || 1200;
+  const out = []; let buf = '', ref = null;
+  const flush = ()=>{
+    const t = buf.replace(/[ \t ]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+    if(t.length > 120 && /[a-zà-ú]{3,}/i.test(t)) out.push({ ref, texto: t });
+    buf = ''; ref = null;
+  };
+  partes.forEach(p=>{
+    String(p.texto || '').split(/\n+/).forEach(par=>{
+      par = par.replace(/[ \t ]+/g, ' ').trim(); if(!par) return;
+      if(buf.length + par.length > alvo && buf.length > 300){ const cauda = buf.slice(-150); flush(); buf = cauda + ' '; }
+      if(ref === null) ref = p.ref;
+      while(par.length > alvo * 1.5){ buf += par.slice(0, alvo); flush(); ref = p.ref; par = par.slice(alvo - 150); }
+      buf += par + '\n';
+    });
+  });
+  flush();
+  return out;
+}
+
+// --- embeddings (Ollama) ---
+async function bibModelosEmbed(){
+  const d = await ollamaFetch('/api/tags', {}, 6000);
+  return (d.models || []).map(m=>m.name).filter(n=>/embed|bge|nomic|minilm|e5|gte|arctic|granite-embedding/i.test(n));
+}
+async function bibModeloEmbed(){
+  const lista = await bibModelosEmbed();
+  const sel = document.getElementById('bib-modelo');
+  let m = (sel && sel.value) || aiCfg().embed;
+  if(!lista.includes(m)) m = lista.find(n=>/bge-m3/i.test(n)) || lista.find(n=>/multilingual|e5/i.test(n)) || lista[0];
+  if(!m) throw new Error('Falta o modelo de embeddings. Na PowerShell corre: ollama pull bge-m3');
+  aiCfgSave({ embed: m });
+  return m;
+}
+function bibPrefixo(modelo, tipo){ return /nomic/i.test(modelo) ? (tipo === 'q' ? 'search_query: ' : 'search_document: ') : ''; }
+async function bibEmbed(textos, modelo, tipo){
+  const d = await ollamaFetch('/api/embed', {
+    method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ model: modelo, input: textos.map(t=>bibPrefixo(modelo, tipo) + t), truncate:true, keep_alive:'10m' })
+  }, 180000);
+  if(!Array.isArray(d.embeddings) || d.embeddings.length !== textos.length) throw new Error('O modelo de embeddings não respondeu como esperado. Confirma que escolheste um modelo de embeddings (ex.: bge-m3).');
+  return d.embeddings.map(v=>{
+    const a = Float32Array.from(v); let n = 0;
+    for(let i = 0; i < a.length; i++) n += a[i] * a[i];
+    n = Math.sqrt(n) || 1;
+    for(let i = 0; i < a.length; i++) a[i] /= n;
+    return a;
+  });
+}
+
+// --- indexação ---
+function bibProg(html){ const el = document.getElementById('bib-prog'); if(el) el.innerHTML = html; }
+function bibParar(){ if(BIB_RUN) BIB_RUN.parar = true; bibProg('A parar…'); }
+async function bibListarPasta(h, pre, out){
+  for await (const [nome, e] of h.entries()){
+    if(e.kind === 'directory') await bibListarPasta(e, pre + nome + '/', out);
+    else if(/\.(pdf|epub|azw3|azw|mobi)$/i.test(nome)) out.push({ path: pre + nome, handle: e });
+  }
+  return out;
+}
+async function bibEscolherPasta(){
+  if(!window.showDirectoryPicker){ bibProg('Este browser não deixa escolher pastas. Usa o Chrome ou o Edge, ou «Adicionar ficheiros».'); return; }
+  let h;
+  try{ h = await window.showDirectoryPicker({ id:'kairos-bib', mode:'read' }); }
+  catch(e){ if(e.name !== 'AbortError') bibProg('Erro: ' + esc(e.message)); return; }
+  await bibPut('meta', h, 'dir');
+  await bibAtualizar();
+}
+async function bibAtualizar(){
+  if(BIB_RUN) return;
+  try{
+    const h = await bibGet('meta', 'dir');
+    if(!h){ bibProg('Primeiro escolhe a pasta da bibliografia (por exemplo, a pasta do OneDrive com os livros).'); return; }
+    let perm = await h.queryPermission({ mode:'read' });
+    if(perm !== 'granted') perm = await h.requestPermission({ mode:'read' });
+    if(perm !== 'granted'){ bibProg('Sem autorização para ler a pasta.'); return; }
+    bibProg('A ler a pasta…');
+    const lista = await bibListarPasta(h, '', []);
+    const entradas = [];
+    for(const x of lista){
+      try{ entradas.push({ path: x.path, file: await x.handle.getFile() }); }
+      catch(e){ entradas.push({ path: x.path, erro: 'Não consegui abrir. Se está no OneDrive, escolhe «Manter sempre neste dispositivo».' }); }
+    }
+    await bibIndexar(entradas, 'pasta');
+  }catch(e){ bibProg('Erro: ' + esc(aiErroOllama(e))); }
+}
+async function bibAdicionarFicheiros(inp){
+  const fs = Array.from(inp.files || []); inp.value = '';
+  if(!fs.length || BIB_RUN) return;
+  try{ await bibIndexar(fs.map(f=>({ path: 'ficheiros/' + f.name, file: f })), 'ficheiro'); }
+  catch(e){ bibProg('Erro: ' + esc(aiErroOllama(e))); }
+}
+async function bibIndexar(entradas, origem){
+  const modelo = await bibModeloEmbed();
+  const livros = await bibAll('livros');
+  const porPath = {}; livros.forEach(l=>{ porPath[l.path] = l; });
+  if(origem === 'pasta'){
+    for(const l of livros) if(l.origem === 'pasta' && !entradas.some(e=>e.path === l.path)) await bibDelLivro(l.path);
+  }
+  BIB_RUN = { parar:false };
+  const pb = document.getElementById('bib-parar'); if(pb) pb.style.display = '';
+  let feitos = 0, novos = 0;
+  try{
+    for(let i = 0; i < entradas.length; i++){
+      if(BIB_RUN.parar) break;
+      const e = entradas[i], ant = porPath[e.path];
+      const assin = e.file ? e.file.size + ':' + e.file.lastModified : '';
+      const nome = e.path.split('/').pop();
+      if(ant && ant.assin === assin && ant.modelo === modelo && ant.estado !== 'erro'){ feitos++; continue; }
+      const base = { path: e.path, nome, origem, assin, modelo, data: Date.now() };
+      const cab = `<b>${i+1}/${entradas.length}</b> · ${esc(nome)}`;
+      if(e.erro){ await bibPut('livros', Object.assign({}, base, { estado:'erro', msg: e.erro })); continue; }
+      if(/\.(azw3|azw|mobi)$/i.test(nome)){ await bibPut('livros', Object.assign({}, base, { estado:'formato', msg:'Formato Kindle: converte para EPUB no Calibre (só livros sem DRM).' })); continue; }
+      try{
+        bibProg(cab + ' — a ler o texto…');
+        const ext = /\.pdf$/i.test(nome)
+          ? await bibTextoPdf(e.file, (a, b)=>bibProg(cab + ` — a ler página ${a}/${b}…`))
+          : await bibTextoEpub(e.file);
+        if(BIB_RUN.parar) break;
+        const chunks = bibPartir(ext.partes);
+        if(chunks.length < 2){ await bibPut('livros', Object.assign({}, base, { estado:'semtexto', msg:'Sem texto legível (PDF digitalizado ou protegido).' })); continue; }
+        await bibDelLivro(e.path);
+        const titulo = ((ext.titulo && ext.titulo.trim().length > 3 && !/^untitled|^microsoft word/i.test(ext.titulo)) ? ext.titulo.trim() : nome.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ')).slice(0, 120);
+        for(let j = 0; j < chunks.length; j += 16){
+          if(BIB_RUN.parar) throw new Error('__parado__');
+          const lote = chunks.slice(j, j + 16);
+          const vecs = await bibEmbed(lote.map(c=>titulo + ' — ' + c.texto), modelo, 'd');
+          await bibPutChunks(lote.map((c, k)=>({ livro: e.path, titulo, ref: c.ref, texto: c.texto, vec: vecs[k] })));
+          bibProg(cab + ` — a indexar ${Math.min(j + 16, chunks.length)}/${chunks.length} excertos…`);
+        }
+        await bibPut('livros', Object.assign({}, base, { titulo, estado:'ok', n: chunks.length }));
+        novos++; feitos++;
+      }catch(err){
+        if(err.message === '__parado__'){ await bibDelLivro(e.path); break; }
+        await bibPut('livros', Object.assign({}, base, { estado:'erro', msg: aiErroOllama(err) }));
+      }
+    }
+  }finally{
+    const parou = BIB_RUN && BIB_RUN.parar;
+    BIB_RUN = null; BIB_CACHE = null;
+    if(pb) pb.style.display = 'none';
+    bibProg(parou ? 'Parado. Carrega em «Atualizar» para continuar.' : `✓ Concluído: ${novos} novo(s) indexado(s), ${feitos} pronto(s) a usar.`);
+    bibRenderLista();
+  }
+}
+
+// --- pesquisa ---
+async function bibCarregar(){
+  if(!BIB_CACHE) BIB_CACHE = await bibAll('chunks');
+  return BIB_CACHE;
+}
+async function bibProcurar(q, k, minimo){
+  if(aiCfg().bib === false) return [];
+  let itens;
+  try{ itens = await bibCarregar(); }catch(e){ return []; }
+  if(!itens.length) return [];
+  const modelo = aiCfg().embed;
+  if(!modelo) return [];
+  const [qv] = await bibEmbed([q], modelo, 'q');
+  if(!itens[0].vec || itens[0].vec.length !== qv.length) return [];
+  const sc = new Array(itens.length);
+  for(let i = 0; i < itens.length; i++){
+    const v = itens[i].vec; let s = 0;
+    if(v.length === qv.length) for(let j = 0; j < v.length; j++) s += v[j] * qv[j];
+    sc[i] = [s, i];
+  }
+  sc.sort((a, b)=>b[0] - a[0]);
+  const out = [], porLivro = {};
+  for(const [s, i] of sc){
+    if(out.length >= (k || 4) || s < (minimo === undefined ? 0.3 : minimo)) break;
+    const it = itens[i];
+    if((porLivro[it.livro] || 0) >= 2) continue;
+    porLivro[it.livro] = (porLivro[it.livro] || 0) + 1;
+    out.push({ titulo: it.titulo, ref: it.ref, texto: it.texto, livro: it.livro, sc: s });
+  }
+  return out;
+}
+function bibFontesHtml(lista){
+  if(!lista || !lista.length) return '';
+  return '<div class="view-sub" style="margin-top:6px;">📚 ' + lista.map((x, i)=>`[${i+1}] ${esc(x.titulo)}${x.ref ? ', ' + esc(x.ref) : ''}`).join(' · ') + '</div>';
+}
+
+// --- janela ---
+function bibEnsureModal(){
+  if(document.getElementById('modal-bib')) return;
+  const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'modal-bib';
+  d.innerHTML = `<div class="modal" style="max-width:760px;">
+    <h3>📚 Bibliografia do Kairós</h3>
+    <div class="view-sub" style="margin-bottom:12px;">Livros e artigos em PDF ou EPUB que o Kairós consulta no chat e ao gerar ciclos. A app lê-os da pasta (por exemplo, a do OneDrive) e guarda um índice só neste computador.</div>
+    <div class="row-2">
+      <div class="field"><label>Modelo de embeddings (Ollama)</label><select id="bib-modelo" onchange="aiCfgSave({embed:this.value})"></select></div>
+      <div class="field"><label>Pasta</label><div id="bib-pasta" style="font-size:13px; padding-top:10px;">—</div></div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+      <button class="btn btn-primary" onclick="bibEscolherPasta()">Escolher pasta</button>
+      <button class="btn" onclick="bibAtualizar()">Atualizar</button>
+      <label class="btn" style="cursor:pointer;">Adicionar ficheiros<input type="file" multiple accept=".pdf,.epub,.azw3,.mobi" style="display:none;" onchange="bibAdicionarFicheiros(this)"></label>
+      <button class="btn" id="bib-parar" style="display:none;" onclick="bibParar()">Parar</button>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:10px; cursor:pointer;"><input type="checkbox" id="bib-usar" style="width:auto; margin:0;" onchange="aiCfgSave({bib:this.checked})"> Usar a bibliografia no chat e na geração de ciclos</label>
+    <div id="bib-prog" style="font-size:13px; min-height:20px; margin-bottom:8px;"></div>
+    <div id="bib-lista" style="max-height:34vh; overflow:auto; border:1px solid var(--line); border-radius:var(--radius-s); padding:4px 10px;"></div>
+    <div class="row-2" style="grid-template-columns:1fr auto; gap:8px; margin-top:12px;">
+      <input id="bib-q" type="text" placeholder="Testar pesquisa: ex. volume de treino na hipertensão" onkeydown="if(event.key==='Enter')bibTestar()">
+      <button class="btn" onclick="bibTestar()">Procurar</button>
+    </div>
+    <div id="bib-res" style="font-size:13px; margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="bibApagarTudo()">Apagar índice</button>
+      <button class="btn" onclick="closeModal('modal-bib')">Fechar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(d);
+}
+async function bibOpen(){
+  bibEnsureModal();
+  document.getElementById('bib-usar').checked = aiCfg().bib !== false;
+  document.getElementById('bib-res').innerHTML = '';
+  if(!BIB_RUN) bibProg('');
+  openModal('modal-bib');
+  const sel = document.getElementById('bib-modelo');
+  try{
+    const lista = await bibModelosEmbed();
+    if(!lista.length){
+      sel.innerHTML = '<option value="">(nenhum)</option>';
+      if(!BIB_RUN) bibProg('Falta o modelo de embeddings. Na PowerShell corre <b>ollama pull bge-m3</b> e volta a abrir esta janela.');
+    }else{
+      const g = aiCfg().embed;
+      const esc0 = lista.includes(g) ? g : (lista.find(n=>/bge-m3/i.test(n)) || lista[0]);
+      sel.innerHTML = lista.map(n=>`<option value="${esc(n)}"${n === esc0 ? ' selected' : ''}>${esc(n)}</option>`).join('');
+      aiCfgSave({ embed: esc0 });
+    }
+  }catch(e){ sel.innerHTML = '<option value="">(sem ligação)</option>'; if(!BIB_RUN) bibProg(esc(aiErroOllama(e))); }
+  bibRenderLista();
+}
+async function bibRenderLista(){
+  const el = document.getElementById('bib-lista'); if(!el) return;
+  try{
+    const h = await bibGet('meta', 'dir');
+    const pe = document.getElementById('bib-pasta'); if(pe) pe.textContent = h ? h.name : '— (nenhuma escolhida)';
+    const livros = (await bibAll('livros')).sort((a, b)=>a.path.localeCompare(b.path, 'pt'));
+    if(!livros.length){ el.innerHTML = '<div class="view-sub" style="padding:8px 0;">Ainda não há livros indexados.</div>'; return; }
+    const ok = livros.filter(l=>l.estado === 'ok'), tot = ok.reduce((s, l)=>s + (l.n || 0), 0);
+    el.innerHTML = `<div class="view-sub" style="padding:6px 0;">${ok.length} livro(s) prontos · ${tot} excertos</div>` + livros.map(l=>`
+      <div style="display:flex; gap:8px; align-items:flex-start; padding:6px 0; border-top:1px solid var(--line); font-size:13px;">
+        <div style="flex:1; min-width:0;">
+          <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.estado === 'ok' ? '✓' : '⚠'} ${esc(l.titulo || l.nome)}</div>
+          <div class="view-sub">${l.estado === 'ok' ? (l.n + ' excertos · ' + esc(l.path)) : esc(l.msg || l.estado)}</div>
+        </div>
+        <button class="btn" style="padding:2px 8px;" title="Remover do índice" data-p="${esc(l.path)}" onclick="bibRemover(this.dataset.p)">×</button>
+      </div>`).join('');
+  }catch(e){ el.innerHTML = '<div class="view-sub">Erro: ' + esc(e.message) + '</div>'; }
+}
+async function bibRemover(path){ if(BIB_RUN) return; await bibDelLivro(path); bibRenderLista(); }
+async function bibApagarTudo(){
+  if(BIB_RUN) return;
+  if(!confirm('Apagar o índice da bibliografia? Os livros na pasta não são apagados.')) return;
+  const db = await bibDb();
+  await new Promise((ok, ko)=>{ const t = db.transaction(['chunks','livros','meta'], 'readwrite'); t.objectStore('chunks').clear(); t.objectStore('livros').clear(); t.objectStore('meta').clear(); t.oncomplete = ok; t.onerror = ()=>ko(t.error); });
+  BIB_CACHE = null; bibProg('Índice apagado.'); bibRenderLista();
+}
+async function bibTestar(){
+  const q = document.getElementById('bib-q').value.trim(); if(!q) return;
+  const out = document.getElementById('bib-res');
+  out.textContent = 'A procurar…';
+  try{
+    const r = await bibProcurar(q, 4, 0);
+    out.innerHTML = r.length ? r.map((x, i)=>`<div style="border-left:3px solid var(--ochre); padding:4px 10px; margin-bottom:8px;"><b>[${i+1}] ${esc(x.titulo)}</b>${x.ref ? ', ' + esc(x.ref) : ''} <span class="view-sub">(semelhança ${Math.round(x.sc * 100)}%)</span><br>${esc(x.texto.slice(0, 350))}…</div>`).join('') : 'Sem resultados. Confirma que há livros indexados e que a opção «Usar a bibliografia» está ligada.';
+  }catch(e){ out.textContent = 'Erro: ' + aiErroOllama(e); }
+}
+
+// ---------- MESO + IA (Ollama) ----------
+var MC_IA = { hist:[], ctrl:null };
+function mcIAOn(){ const c = aiCfg(); return c.chat !== false; }
+function mcIAToggle(){
+  const on = document.getElementById('mc-ia').checked;
+  aiCfgSave({ chat: on });
+  mcPush('bot', on ? '✦ Kairós IA ligado: respondo com o modelo do Ollama no teu computador, usando o que está na app como contexto.' : 'Kairós IA desligado: volto a procurar só no que está guardado na app.');
+}
+function mcMd(t){
+  let h = esc(String(t||''));
+  h = h.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<i>$2</i>');
+  h = h.split('\n').map(l=>{
+    if(/^#{1,4}\s+/.test(l)) return '<b>'+l.replace(/^#{1,4}\s+/,'')+'</b>';
+    if(/^\s*[-*•]\s+/.test(l)) return '&nbsp;• '+l.replace(/^\s*[-*•]\s+/,'');
+    return l;
+  }).join('<br>');
+  return h;
+}
+function mcIACliente(c){
+  if(!c) return '';
+  const pk = clientPats(c);
+  const L = ['Cliente: '+c.nome];
+  if(c.cat) L.push('Tipo: '+c.cat);
+  if(c.idade) L.push('Idade: '+c.idade);
+  if(c.objetivo) L.push('Objetivo: '+c.objetivo);
+  if(c.nivel) L.push('Nível: '+c.nivel);
+  if(c.diasSemana) L.push('Dias/semana: '+c.diasSemana);
+  if(pk.length) L.push('Patologias: '+pk.map(k=>PATOLOGIAS[k].nome+' (evitar: '+PATOLOGIAS[k].contra+')').join('; '));
+  if(c.limitacoes) L.push('Limitações: '+c.limitacoes);
+  if(c.notas) L.push('Notas: '+String(c.notas).slice(0,400));
+  try{
+    const ciclos = DATA.cycles.filter(x=>x.clienteId===c.id || x.clientId===c.id).slice(-2);
+    ciclos.forEach(x=>L.push('Ciclo: '+(x.nome||'')+' ('+(x.numSemanas||(x.semanas||[]).length)+' semanas)'));
+  }catch(e){}
+  return L.join('\n');
+}
+async function mcIAContexto(q){
+  const qn = normName(q);
+  let cli = mcFindClient(qn);
+  if(!cli && MC_CH.cli) cli = DATA.clients.find(c=>c.id===MC_CH.cli);
+  if(cli) MC_CH.cli = cli.id;
+  const partes = [];
+  const fc = mcIACliente(cli); if(fc) partes.push(fc);
+  let hits = [];
+  try{ hits = mcSearch(q, null, cli ? clientPats(cli) : null).filter(h=>h.d.tipo!=='cliente').slice(0, 6); }catch(e){}
+  const nomes = { proto:'Protocolo', pat:'Patologia', ex:'Exercício da biblioteca', teste:'Teste', bib:'Nota bibliográfica' };
+  hits.forEach(h=>partes.push((nomes[h.d.tipo]||h.d.tipo)+': '+h.d.titulo+'\n'+String(h.d.texto||'').replace(/\s+/g,' ').slice(0, 600)+(h.d.ref?' (Fonte: '+h.d.ref+')':'')));
+  let bib = [];
+  try{
+    const ant = MC_IA.hist.filter(m=>m.role==='user').slice(-1).map(m=>m.content).join(' ');
+    const pq = (ant && q.length < 60 ? ant + ' ' : '') + q + (cli ? ' ' + clientPats(cli).map(k=>PATOLOGIAS[k].nome).join(' ') : '');
+    bib = await bibProcurar(pq, 4);
+  }catch(e){}
+  let texto = partes.join('\n\n').slice(0, bib.length ? 3500 : 6000);
+  if(bib.length) texto += '\n\nEXCERTOS DA BIBLIOGRAFIA DO TREINADOR (cita como [n]):\n' + bib.map((x,i)=>`[${i+1}] «${x.titulo}»${x.ref ? ', ' + x.ref : ''}: ${x.texto.replace(/\s+/g,' ').slice(0, 1100)}`).join('\n\n');
+  return { texto, cli, bib };
+}
+async function mcIAModelo(){
+  let m = aiCfg().modelo;
+  if(m) return m;
+  const lista = await ollamaModelos();
+  m = aiModeloSugerido(lista);
+  if(!m) throw new Error('O Ollama não tem modelos. No terminal: ollama pull qwen2.5:7b');
+  aiCfgSave({ modelo: m });
+  return m;
+}
+function mcIABusy(on){
+  const b = document.getElementById('mc-send'), i = document.getElementById('mc-in');
+  if(b) b.textContent = on ? 'Parar' : 'Enviar';
+  if(i) i.disabled = on;
+}
+async function mcSendIA(q){
+  if(MC_IA.ctrl) return;
+  mcPush('user', esc(q));
+  const box = document.getElementById('mc-log');
+  const d = document.createElement('div'); d.className = 'mc-msg mc-bot'; d.innerHTML = '<span class="view-sub">A pensar…</span>';
+  box.appendChild(d); box.scrollTop = box.scrollHeight;
+  const ctx = await mcIAContexto(q);
+  const sistema = 'És o Kairós, o assistente de inteligência artificial da app Kairós de um personal trainer em Portugal. Escreves sempre em português de Portugal, de forma prática, clara e curta (no máximo uns 200 palavras, salvo se pedirem mais). Segues as diretrizes ACSM e NSCA. Quando o CONTEXTO DA APP tiver informação relevante, usa-a e diz que vem da app; não inventes dados de clientes. Não fazes diagnósticos: perante dor forte, sinais de alarme ou dúvida clínica, recomenda avaliação por médico ou fisioterapeuta. Respeita sempre as contraindicações das patologias indicadas. Quando usares os excertos da bibliografia, cita-os como [1], [2], etc.'
+    + (ctx.texto ? '\n\nCONTEXTO DA APP:\n' + ctx.texto : '');
+  MC_IA.hist.push({ role:'user', content:q });
+  MC_IA.hist = MC_IA.hist.slice(-10);
+  let txt = '';
+  MC_IA.ctrl = new AbortController(); mcIABusy(true);
+  try{
+    const modelo = await mcIAModelo();
+    const res = await fetch(ollamaBase() + '/api/chat', {
+      method:'POST', headers:{ 'Content-Type':'application/json' }, signal: MC_IA.ctrl.signal,
+      body: JSON.stringify({ model: modelo, stream:true, keep_alive:'10m', options:{ temperature:0.5, num_ctx:8192 },
+        messages: [{ role:'system', content:sistema }, ...MC_IA.hist] })
+    });
+    if(!res.ok){ const t = await res.text().catch(()=> ''); throw new Error('Ollama respondeu ' + res.status + (t ? ': ' + t.slice(0,200) : '')); }
+    const rd = res.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for(;;){
+      const { value, done } = await rd.read(); if(done) break;
+      buf += dec.decode(value, { stream:true });
+      let nl;
+      while((nl = buf.indexOf('\n')) >= 0){
+        const linha = buf.slice(0, nl).trim(); buf = buf.slice(nl+1);
+        if(!linha) continue;
+        let j; try{ j = JSON.parse(linha); }catch(e){ continue; }
+        if(j.error) throw new Error(j.error);
+        if(j.message && j.message.content){ txt += j.message.content; d.innerHTML = mcMd(txt); box.scrollTop = box.scrollHeight; }
+      }
+    }
+    if(!txt) throw new Error('O modelo não respondeu. Tenta de novo.');
+    const fonte = bibFontesHtml(ctx.bib) + (ctx.cli ? '<div class="view-sub" style="margin-top:6px;">Com a ficha de '+esc(ctx.cli.nome)+' · '+esc(modelo)+'</div>' : '<div class="view-sub" style="margin-top:6px;">'+esc(modelo)+'</div>');
+    d.innerHTML = mcMd(txt) + fonte;
+    MC_IA.hist.push({ role:'assistant', content:txt });
+    MC_CH.msgs.push({ who:'user', html:esc(q) }, { who:'bot', html:d.innerHTML });
+  }catch(e){
+    if(e.name==='AbortError'){ d.innerHTML = mcMd(txt) + '<div class="view-sub">(parado)</div>'; if(txt) MC_IA.hist.push({ role:'assistant', content:txt }); }
+    else { d.innerHTML = 'Erro: ' + esc(aiErroOllama(e)); MC_IA.hist.pop(); }
+  }finally{
+    MC_IA.ctrl = null; mcIABusy(false);
+    const i = document.getElementById('mc-in'); if(i) i.focus();
+    box.scrollTop = box.scrollHeight;
+  }
+}
+function mcLimpar(){ if(MC_IA.ctrl) MC_IA.ctrl.abort(); MC_IA.hist = []; MC_CH.msgs = []; MC_CH.cli = null; const b = document.getElementById('mc-log'); if(b) b.innerHTML = ''; mcBoasVindas(); }
+function mcBoasVindas(){ mcPush('bot', 'Olá, sou o Kairós. Encontro o que a app tem sobre protocolos, patologias, exercícios, testes especiais, notas de McGill e fichas de clientes. Não invento: se não estiver na app, digo-o. Para montar um plano, escreve «planear» ou menciona um cliente.'); }
 function mcOpen(){
   mcEnsureModal(); MC_KB = null;
+  const ck = document.getElementById('mc-ia'); if(ck) ck.checked = mcIAOn();
   const box = document.getElementById('mc-log');
   if(!MC_CH.msgs.length){ box.innerHTML = ''; mcBoasVindas(); } else if(!box.children.length){ MC_CH.msgs.forEach(m=>{ const d = document.createElement('div'); d.className = 'mc-msg mc-'+m.who; d.innerHTML = m.html; box.appendChild(d); }); }
   openModal('modal-mesochat'); setTimeout(()=>{ const i = document.getElementById('mc-in'); if(i) i.focus(); box.scrollTop = box.scrollHeight; }, 50);
@@ -4057,7 +4573,7 @@ function mcOpen(){
 function astEnsureModal(){
   if(document.getElementById('modal-assist')) return;
   const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'modal-assist';
-  d.innerHTML = `<div class="modal" style="max-width:860px;"><h3>Meso · assistente de planeamento</h3>
+  d.innerHTML = `<div class="modal" style="max-width:860px;"><h3>Kairós · assistente de planeamento</h3>
     <div class="view-sub" style="margin-bottom:12px;">Usa a ficha do cliente (objetivo, nível, patologias, anamnese, postura e testes) para propor o macrociclo, os mesociclos e os microciclos, e cria os ciclos de treino.</div>
     <div class="row-2"><div class="field"><label>Cliente</label><select id="ast-cliente" onchange="astPrefill()"></select><input id="ast-novo" type="text" placeholder="Nome do cliente externo" style="display:none; margin-top:6px;"></div>
     <div class="field"><label>Objetivo</label><select id="ast-objetivo" onchange="astObjChange()">${OBJETIVOS.map(o=>`<option>${esc(o)}</option>`).join('')}</select></div></div>
@@ -4412,7 +4928,7 @@ function fichaSeccoes(c, cycles){
     const nS = cy.semanas.reduce((a,w)=>a+w.dias.filter(d=>d.workoutId).length,0);
     return fdet('cy'+cy.id, esc(cy.nome), (cy.inicio?'início '+formatDate(cy.inicio)+' · ':'')+cy.numSemanas+' semanas · '+nS+' sessões', sem+`<button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="openClientCycles('${c.id}')">Abrir nos Ciclos</button>`);
   }).join('');
-  h += fdet('ciclos', 'Ciclos de treino', cycles.length+(cycles.length===1?' ciclo':' ciclos'), cyc || `<div class="empty"><strong>Ainda sem ciclos</strong>Usa o Meso ou cria o primeiro ciclo para ${esc(c.nome.split(' ')[0])}.</div>`);
+  h += fdet('ciclos', 'Ciclos de treino', cycles.length+(cycles.length===1?' ciclo':' ciclos'), cyc || `<div class="empty"><strong>Ainda sem ciclos</strong>Usa o Kairós ou cria o primeiro ciclo para ${esc(c.nome.split(' ')[0])}.</div>`);
   const ids = []; cycles.forEach(cy=>cy.semanas.forEach(w=>w.dias.forEach(d=>{ if(d.workoutId && !ids.includes(d.workoutId)) ids.push(d.workoutId); })));
   const ws = ids.map(id=>DATA.workouts.find(x=>x.id===id)).filter(Boolean);
   const tr = ws.map(w=>fdet('w'+w.id, esc(w.nome), (w.exercicios||[]).length+' exercícios', fichaTreinoHtml(w))).join('');
@@ -4467,7 +4983,7 @@ function renderFicha(){
       </div>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn" onclick="openPlanModal('${c.id}')">⚡ Gerar plano</button>
-        <button class="btn" onclick="openAssistente('${c.id}')">🧭 Meso</button>
+        <button class="btn" onclick="openAssistente('${c.id}')">🧭 Kairós</button>
         <button class="btn btn-primary" onclick="openCycleModal('${c.id}')">+ Novo ciclo</button>
       </div>
     </div>
@@ -4980,7 +5496,7 @@ async function generateAI(){
 // ---------- IA OFFLINE (Ollama no computador do treinador) ----------
 function aiCfg(){
   let c = {}; try{ c = JSON.parse(localStorage.getItem('ciclo_ai_cfg')||'{}') || {}; }catch(e){}
-  return { motor: c.motor || 'ollama', ollama: c.ollama || 'http://localhost:11434', modelo: c.modelo || '' };
+  return Object.assign({}, c, { motor: c.motor || 'ollama', ollama: c.ollama || 'http://localhost:11434', modelo: c.modelo || '' });
 }
 function aiCfgSave(patch){
   const c = Object.assign(aiCfg(), patch||{});
@@ -5088,6 +5604,12 @@ async function generateAIOllama(){
   if(nomes.length < 8){ status.textContent = 'A biblioteca tem poucos exercícios compatíveis com este equipamento e estas patologias (' + nomes.length + '). Adiciona exercícios ou muda o equipamento.'; return; }
   const catalogo = Object.entries(grupos).map(([g,l])=>g + ': ' + l.filter(e=>nomes.includes(e.nome)).map(e=>e.nome).join('; ')).filter(x=>!/: $/.test(x)).join('\n');
 
+  let evid = [];
+  try{
+    status.textContent = 'A procurar na bibliografia…';
+    evid = await bibProcurar(`prescrição de treino de força para ${objetivo.toLowerCase()}, nível ${nivel.toLowerCase()}${keys.length ? ', ' + keys.map(k=>PATOLOGIAS[k].nome).join(', ') : ''}${limitacoes ? ', ' + limitacoes : ''}: séries, repetições, intensidade, descanso e progressão`, 4);
+  }catch(e){}
+  status.textContent = '';
   const nEx = duracao<=30 ? '4-5' : duracao<=45 ? '5-6' : '6-8';
   const pats = keys.map(k=>`- ${PATOLOGIAS[k].nome} (evitar: ${PATOLOGIAS[k].contra}; carga recomendada: ${PATOLOGIAS[k].carga})`).join('\n');
   const sistema = 'És um personal trainer certificado (diretrizes ACSM e NSCA). Escreves em português de Portugal. Crias planos de treino seguros, realistas e progressivos. Respondes apenas com JSON válido no formato pedido.';
@@ -5099,7 +5621,7 @@ async function generateAIOllama(){
 - Duração de cada treino: ${duracao} minutos
 - Equipamento: ${equip}
 ${pats ? 'Patologias do cliente:\n' + pats + '\n' : ''}${limitacoes ? '- Limitações indicadas: ' + limitacoes + '\n' : ''}
-Exercícios disponíveis (usa APENAS estes nomes, escritos exatamente assim):
+${evid.length ? 'Evidência da bibliografia do treinador (usa-a para decidir volume, intensidade, descanso e cuidados):\n' + evid.map((x,i)=>`[${i+1}] «${x.titulo}»${x.ref ? ', ' + x.ref : ''}: ${x.texto.replace(/\s+/g,' ').slice(0, 900)}`).join('\n') + '\n\n' : ''}Exercícios disponíveis (usa APENAS estes nomes, escritos exatamente assim):
 ${catalogo}
 
 Regras:
@@ -5109,7 +5631,7 @@ Regras:
 4. "series" é um número inteiro; "reps" texto (ex: "8-10"); "carga" em RPE ou RIR (ex: "RPE 7" ou "2 RIR"); "descanso" texto (ex: "90s").
 5. Ajusta séries, repetições e descanso ao objetivo e ao nível${keys.length ? ' e respeita as patologias (intensidade moderada, sem chegar à falha)' : ''}.
 6. "progressao" tem exatamente ${semanas} frases curtas, uma por semana, a descrever o que muda; ${semanas>=4 ? 'a cada 4.ª semana faz uma semana de descarga (deload)' : 'progride de forma gradual'}.
-7. "avisos": 1 a 3 notas práticas de segurança ou técnica para este cliente.`;
+7. "avisos": 1 a 3 notas práticas de segurança ou técnica para este cliente${evid.length ? '; quando te baseares na evidência, cita-a como [1], [2]' : ''}.`;
 
   const schema = {
     type:'object',
@@ -5185,7 +5707,7 @@ Regras:
     const prog = Array.isArray(r.progressao) ? r.progressao : [];
     const resultado = {
       nome: String(r.nome || `${objetivo} — ${semanas} semanas`).slice(0, 80),
-      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0,3) : []), 'Plano gerado por IA local: revê os exercícios e as cargas antes de o entregar ao cliente.'],
+      avisos: [...(Array.isArray(r.avisos) ? r.avisos.map(String).slice(0,3) : []), ...(evid.length ? ['Fontes: ' + evid.map((x,i)=>`[${i+1}] ${x.titulo}${x.ref ? ', ' + x.ref : ''}`).join('; ')] : []), 'Plano gerado pelo Kairós (IA local): revê os exercícios e as cargas antes de o entregar ao cliente.'],
       treinos,
       semanas: Array.from({ length: semanas }, (_, i)=>({
         numero: i+1,
@@ -5229,7 +5751,7 @@ function findOrCreateExercise(name){
   let e = DATA.exercises.find(x=>normText(x.nome)===n)
        || DATA.exercises.find(x=>{ const m = normText(x.nome); return m.includes(n) || n.includes(m); });
   if(e) return e.id;
-  const created = { id: uid(), nome: name, grupo: 'Corpo inteiro', equip: '', notas: 'Adicionado pela IA', padrao: 'isolamento', imagem: '', videoLink: '', videoData: '' };
+  const created = { id: uid(), nome: name, grupo: 'Corpo inteiro', equip: '', notas: 'Adicionado pelo Kairós', padrao: 'isolamento', imagem: '', videoLink: '', videoData: '' };
   DATA.exercises.push(created);
   return created.id;
 }
@@ -5335,7 +5857,7 @@ function layoutDays(ids, pick, allowPT){
   return out;
 }
 function importResult(r, clientId, pick, clientId2, meta){
-  const cycleName = r.nome || 'Ciclo gerado por IA';
+  const cycleName = r.nome || 'Ciclo gerado pelo Kairós';
 
   const workoutIds = {};
   r.treinos.forEach(t=>{
