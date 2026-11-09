@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 123</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 124</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -3944,7 +3944,7 @@ const BIB_NOTAS = [
 
 const MC_STOP = new Set('que para com uma uns umas dos das nos nas por como mais menos qual quais quem quando onde esta este isto isso esse essa estao sao ser tem tenho tens ter pode podes posso fazer faz fazem dar da do de em na no os as ao aos se me te lhe seu sua meu minha mas ou e a o um ja nao sim muito pouco sobre entre ate sem tambem so cada ela ele dela dele'.split(' '));
 var MC_KB = null, MC_AVG = 1, MC_DF = {};
-var MC_CH = { msgs:[], cli:null };
+var MC_CH = { msgs:[], cli:null, id:null };
 function mcTok(t){ return normName(t).split(' ').filter(w=>w.length>2 && !MC_STOP.has(w)).map(w=>w.slice(0,6)); }
 function mcPatNomes(c){ return clientPats(c).map(k=>PATOLOGIAS[k].nome); }
 function mcFlat(o, out, d){ d = d||0; if(o==null || d>3) return; if(typeof o==='string'){ if(o.length<300) out.push(o); } else if(Array.isArray(o)) o.forEach(v=>mcFlat(v,out,d+1)); else if(typeof o==='object') Object.keys(o).forEach(k=>{ if(typeof o[k]==='string' || typeof o[k]==='object') mcFlat(o[k],out,d+1); }); }
@@ -4127,6 +4127,7 @@ function mcEx(id){ const e = DATA.exercises.find(z=>z.id===id); if(e) mcPush('bo
 function mcTeste(k){ if(TE[k]) mcPush('bot', mcTesteHtml(TE[k])); }
 function mcPush(who, html){
   MC_CH.msgs.push({ who, html });
+  if(typeof mcConvSalvarDepois === 'function') mcConvSalvarDepois();
   const box = document.getElementById('mc-log'); if(!box) return;
   const d = document.createElement('div'); d.className = 'mc-msg mc-'+who; d.innerHTML = html;
   box.appendChild(d); box.scrollTop = box.scrollHeight;
@@ -4154,13 +4155,14 @@ function mcEnsureModal(){
   const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'modal-mesochat';
   d.innerHTML = '<div class="modal" style="max-width:860px;"><h3>Kairós · conversa</h3>'
    + '<div class="view-sub" style="margin-bottom:8px;">Pergunta sobre protocolos, patologias, exercícios, testes, bibliografia (McGill) e clientes. Com o Kairós IA ligado, a resposta é escrita pelo Ollama no teu computador usando o que está na app; desligado, mostra só o que está guardado. Nada sai do computador.</div>'
+   + '<div id="mc-convs" style="display:none; max-height:34vh; overflow:auto; border:1px solid var(--line); border-radius:var(--radius-s); padding:8px; margin-bottom:8px;"></div>'
    + '<div id="mc-log"></div>'
    + '<div class="mc-chips">'
    + ['Protocolo para estenose lombar','Como se faz o bird dog?','O que é bracing abdominal?','Clientes com lombar','Testes para espondilolistese','Que exercícios evitar na hérnia discal?'].map(x=>'<button class="btn" onclick="mcSend(\''+x+'\')">'+x+'</button>').join('')
    + '</div>'
    + '<div class="row-2" style="grid-template-columns:1fr auto;gap:8px;"><input id="mc-in" type="text" placeholder="Escreve a tua pergunta…" onkeydown="if(event.key===\'Enter\')mcSend()"><button class="btn btn-primary" id="mc-send" onclick="mcSend()">Enviar</button></div>'
    + '<label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--chalk-dim);cursor:pointer;"><input type="checkbox" id="mc-ia" onchange="mcIAToggle()" style="width:auto;margin:0;"> ✦ Responder com o Kairós IA (Ollama, no teu computador)</label>'
-   + '<div class="modal-actions"><button class="btn" onclick="bibOpen()">📚 Bibliografia</button><button class="btn" onclick="mcLimpar()">Limpar</button><button class="btn" onclick="closeModal(\'modal-mesochat\')">Fechar</button></div></div>';
+   + '<div class="modal-actions"><button class="btn" onclick="bibOpen()">📚 Bibliografia</button><button class="btn" onclick="mcConvToggle()">🕘 Conversas</button><button class="btn" onclick="mcConvNova()">＋ Nova conversa</button><button class="btn" onclick="closeModal(\'modal-mesochat\')">Fechar</button></div></div>';
   document.body.appendChild(d);
 }
 // ---------- BIBLIOGRAFIA DA IA (pasta do OneDrive + embeddings do Ollama) ----------
@@ -4552,6 +4554,100 @@ async function bibTestar(){
   }catch(e){ out.textContent = 'Erro: ' + aiErroOllama(e); }
 }
 
+// ---------- CONVERSAS GUARDADAS (retomar e memória) ----------
+let MC_SAVE_T = null;
+function mcConvTexto(html){ const d = document.createElement('div'); d.innerHTML = String(html || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+function mcConvSalvarDepois(){ clearTimeout(MC_SAVE_T); MC_SAVE_T = setTimeout(mcConvSalvar, 400); }
+function mcConvSalvar(){
+  const users = MC_CH.msgs.filter(m=>m.who === 'user');
+  if(!users.length) return;
+  DATA.conversas = DATA.conversas || [];
+  if(!MC_CH.id) MC_CH.id = uid();
+  let cv = DATA.conversas.find(x=>x.id === MC_CH.id);
+  if(!cv){ cv = { id: MC_CH.id, criada: new Date().toISOString() }; DATA.conversas.push(cv); }
+  cv.titulo = mcConvTexto(users[0].html).slice(0, 70);
+  cv.atualizada = new Date().toISOString();
+  cv.msgs = MC_CH.msgs.slice(-120);
+  cv.hist = MC_IA.hist.slice(-10);
+  cv.cli = MC_CH.cli || null;
+  DATA.conversas.sort((a, b)=>String(b.atualizada).localeCompare(String(a.atualizada)));
+  if(DATA.conversas.length > 60) DATA.conversas.length = 60;
+  saveData();
+  const lista = document.getElementById('mc-convs');
+  if(lista && lista.style.display !== 'none') mcConvRender();
+}
+function mcConvAbrir(id){
+  const cv = (DATA.conversas || []).find(x=>x.id === id); if(!cv) return;
+  if(MC_IA.ctrl) MC_IA.ctrl.abort();
+  MC_CH.id = cv.id; MC_CH.msgs = (cv.msgs || []).slice(); MC_CH.cli = cv.cli || null;
+  MC_IA.hist = (cv.hist || []).slice();
+  const box = document.getElementById('mc-log');
+  if(box){
+    box.innerHTML = '';
+    MC_CH.msgs.forEach(m=>{ const d = document.createElement('div'); d.className = 'mc-msg mc-' + m.who; d.innerHTML = m.html; box.appendChild(d); });
+    const n = document.createElement('div'); n.className = 'view-sub'; n.style.textAlign = 'center';
+    n.textContent = '— conversa retomada (' + new Date(cv.atualizada).toLocaleString('pt-PT', { dateStyle:'short', timeStyle:'short' }) + ') —';
+    box.appendChild(n);
+    box.scrollTop = box.scrollHeight;
+  }
+  const l = document.getElementById('mc-convs'); if(l) l.style.display = 'none';
+}
+function mcConvNova(){
+  if(MC_IA.ctrl) MC_IA.ctrl.abort();
+  mcConvSalvar();
+  MC_CH.id = uid(); MC_CH.msgs = []; MC_CH.cli = null; MC_IA.hist = [];
+  const b = document.getElementById('mc-log'); if(b) b.innerHTML = '';
+  const l = document.getElementById('mc-convs'); if(l) l.style.display = 'none';
+  mcBoasVindas();
+}
+function mcConvApagar(id, ev){
+  if(ev) ev.stopPropagation();
+  if(!confirm('Apagar esta conversa?')) return;
+  DATA.conversas = (DATA.conversas || []).filter(x=>x.id !== id);
+  saveData();
+  if(MC_CH.id === id){ MC_CH.id = null; mcConvNova(); }
+  mcConvRender();
+}
+function mcConvToggle(){
+  const l = document.getElementById('mc-convs');
+  if(l.style.display === 'none'){ mcConvRender(); l.style.display = ''; } else l.style.display = 'none';
+}
+function mcConvRender(){
+  const l = document.getElementById('mc-convs'); if(!l) return;
+  const cs = (DATA.conversas || []).slice().sort((a, b)=>String(b.atualizada).localeCompare(String(a.atualizada)));
+  l.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;"><b style="font-size:13px;">Conversas guardadas</b><button class="btn btn-sm" onclick="mcConvNova()">＋ Nova conversa</button></div>'
+    + (cs.length ? cs.map(c=>{
+      const cli = c.cli ? (DATA.clients.find(x=>x.id === c.cli) || {}).nome : '';
+      return `<div onclick="mcConvAbrir('${c.id}')" style="display:flex; gap:8px; align-items:center; padding:6px 8px; border-top:1px solid var(--line); cursor:pointer;${c.id === MC_CH.id ? ' background:rgba(127,127,127,.12);' : ''}">
+        <div style="flex:1; min-width:0;"><div style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(c.titulo || '(sem título)')}</div>
+        <div class="view-sub">${new Date(c.atualizada).toLocaleString('pt-PT', { dateStyle:'short', timeStyle:'short' })} · ${(c.msgs || []).filter(m=>m.who === 'user').length} pergunta(s)${cli ? ' · ' + esc(cli) : ''}${c.id === MC_CH.id ? ' · atual' : ''}</div></div>
+        <button class="btn btn-ghost btn-sm" title="Apagar" onclick="mcConvApagar('${c.id}', event)">×</button></div>`;
+    }).join('') : '<div class="view-sub">Ainda não há conversas guardadas.</div>');
+}
+// Memória: procurar em conversas anteriores
+function mcConvProcurar(texto, max){
+  const qw = normName(String(texto || '')).split(' ').filter(w=>w.length > 3);
+  const out = [];
+  (DATA.conversas || []).forEach(cv=>{
+    if(cv.id === MC_CH.id) return;
+    const h = cv.hist && cv.hist.length ? cv.hist : (cv.msgs || []).map(m=>({ role: m.who === 'user' ? 'user' : 'assistant', content: mcConvTexto(m.html) }));
+    for(let i = 0; i < h.length; i++){
+      if(h[i].role !== 'user') continue;
+      const resp = (h[i + 1] && h[i + 1].role === 'assistant') ? h[i + 1].content : '';
+      const t = normName(h[i].content + ' ' + resp);
+      const sc = qw.length ? qw.filter(w=>t.includes(w)).length / qw.length : 0;
+      if(sc >= 0.34 || !qw.length) out.push({ sc, data: cv.atualizada, titulo: cv.titulo, p: h[i].content, r: resp });
+    }
+  });
+  out.sort((a, b)=>b.sc - a.sc || String(b.data).localeCompare(String(a.data)));
+  return out.slice(0, max || 5);
+}
+function mcConvMemoriaTexto(texto){
+  const r = mcConvProcurar(texto, 5);
+  if(!r.length) return '';
+  return r.map(x=>`(${String(x.data).slice(0, 10)}, conversa «${x.titulo}») Treinador: ${String(x.p).slice(0, 300)}\nKairós: ${String(x.r).slice(0, 500)}`).join('\n\n');
+}
+
 // ---------- MESO + IA (Ollama) ----------
 var MC_IA = { hist:[], ctrl:null };
 function mcIAOn(){ const c = aiCfg(); return c.chat !== false; }
@@ -4610,6 +4706,10 @@ async function mcIAContexto(q){
     bib = await bibProcurar(pq, 4);
   }catch(e){}
   let texto = (fichaTxt ? fichaTxt.slice(0, 6500) + '\n\n' : '') + partes.join('\n\n').slice(0, bib.length ? 2500 : 4000);
+  if(/\b(lembr\w*|recorda\w*|falamos|falaste|conversamos|conversa anterior|conversas anteriores|ultima vez|outro dia|disseste|tinhamos|combinamos|ontem)\b/.test(qn)){
+    const mem = mcConvMemoriaTexto(q);
+    texto += '\n\nCONVERSAS ANTERIORES COM O TREINADOR (memória):\n' + (mem || 'Nenhuma conversa anterior encontrada sobre isto.');
+  }
   if(bib.length) texto += '\n\nEXCERTOS DE REFERÊNCIA (usa como base, mas nunca os cites):\n' + bib.map((x,i)=>`- ${x.texto.replace(/\s+/g,' ').slice(0, 1100)}`).join('\n\n');
   return { texto, cli, bib };
 }
@@ -4708,6 +4808,7 @@ async function mcSendIA(q){
     d.innerHTML = mcMd(txt) + rodape;
     MC_IA.hist.push({ role:'assistant', content:txt });
     MC_CH.msgs.push({ who:'bot', html:d.innerHTML });
+    mcConvSalvarDepois();
   }catch(e){
     if(e.name==='AbortError'){ d.innerHTML = mcMd(txt) + '<div class="view-sub">(parado)</div>'; if(txt) MC_IA.hist.push({ role:'assistant', content:txt }); }
     else { d.innerHTML = 'Erro: ' + esc(aiErroOllama(e)); MC_IA.hist.pop(); }
@@ -4717,7 +4818,7 @@ async function mcSendIA(q){
     box.scrollTop = box.scrollHeight;
   }
 }
-function mcLimpar(){ if(MC_IA.ctrl) MC_IA.ctrl.abort(); MC_IA.hist = []; MC_CH.msgs = []; MC_CH.cli = null; const b = document.getElementById('mc-log'); if(b) b.innerHTML = ''; mcBoasVindas(); }
+function mcLimpar(){ mcConvNova(); }
 function mcBoasVindas(){ mcPush('bot', mcIAOn()
   ? 'Olá, sou o Kairós. Tenho acesso às fichas e ao histórico dos clientes: basta dizeres o nome (anamnese, testes, RM, ciclos, treinos registados e monitorização). Também uso os protocolos da app e a tua bibliografia. Posso executar pedidos como «gera um ciclo para a Ana Coelho», «abre a ficha do Rui» ou «mostra os treinos da Ana Coelho».'
   : 'Olá, sou o Kairós. Encontro o que a app tem sobre protocolos, patologias, exercícios, testes especiais, notas de McGill e fichas de clientes. Não invento: se não estiver na app, digo-o. Para montar um plano, escreve «planear» ou menciona um cliente. Pedidos como «gera um ciclo para a Ana Coelho» ou «abre a ficha do Rui» também funcionam.'); }
@@ -4725,7 +4826,11 @@ function mcOpen(){
   mcEnsureModal(); MC_KB = null;
   const ck = document.getElementById('mc-ia'); if(ck) ck.checked = mcIAOn();
   const box = document.getElementById('mc-log');
-  if(!MC_CH.msgs.length){ box.innerHTML = ''; mcBoasVindas(); } else if(!box.children.length){ MC_CH.msgs.forEach(m=>{ const d = document.createElement('div'); d.className = 'mc-msg mc-'+m.who; d.innerHTML = m.html; box.appendChild(d); }); }
+  if(!MC_CH.msgs.length){
+    const ult = (DATA.conversas || []).slice().sort((a, b)=>String(b.atualizada).localeCompare(String(a.atualizada)))[0];
+    if(ult && !MC_CH.id) mcConvAbrir(ult.id);
+    else { box.innerHTML = ''; mcBoasVindas(); }
+  } else if(!box.children.length){ MC_CH.msgs.forEach(m=>{ const d = document.createElement('div'); d.className = 'mc-msg mc-'+m.who; d.innerHTML = m.html; box.appendChild(d); }); }
   openModal('modal-mesochat'); setTimeout(()=>{ const i = document.getElementById('mc-in'); if(i) i.focus(); box.scrollTop = box.scrollHeight; }, 50);
 }
 
@@ -5880,7 +5985,7 @@ function aiEvolucao(c){
   }
   return L.join('\n').slice(0, 3500);
 }
-const AI_CAPACIDADES = ' O que consegues fazer através da app: tens acesso às fichas e ao histórico de todos os clientes (dados, medidas, patologias, anamnese, avaliação postural, testes especiais, RM, ciclos e treinos com cargas, treinos registados com RPE e monitorização). Os dados de um cliente só te são enviados quando o treinador o menciona pelo nome; se te perguntarem se tens acesso ao histórico ou às fichas, responde que SIM e explica que basta indicar o nome (e apelido, se houver nomes repetidos). A app também executa pedidos como «gera um ciclo para a Ana Coelho», «abre a ficha do Rui», «mostra os treinos da Ana Coelho» ou «gera planos para todos os clientes PT», e cria a ficha de um cliente novo se o nome não existir. Nunca digas que não tens acesso aos dados da app.';
+const AI_CAPACIDADES = ' O que consegues fazer através da app: tens acesso às fichas e ao histórico de todos os clientes (dados, medidas, patologias, anamnese, avaliação postural, testes especiais, RM, ciclos e treinos com cargas, treinos registados com RPE e monitorização). Os dados de um cliente só te são enviados quando o treinador o menciona pelo nome; se te perguntarem se tens acesso ao histórico ou às fichas, responde que SIM e explica que basta indicar o nome (e apelido, se houver nomes repetidos). A app também executa pedidos como «gera um ciclo para a Ana Coelho», «abre a ficha do Rui», «mostra os treinos da Ana Coelho» ou «gera planos para todos os clientes PT», e cria a ficha de um cliente novo se o nome não existir. Nunca digas que não tens acesso aos dados da app. Tens também memória das conversas anteriores com o treinador (guardadas na app): usa a ferramenta procurar_conversas quando ele se referir a algo que falaram antes; nunca digas que não te lembras sem procurar.';
 
 // ---------- KAIRÓS IA: FERRAMENTAS (o modelo consulta e age na app) ----------
 function aiResolverCliente(nome){
@@ -5939,6 +6044,7 @@ const AI_TOOLS = [
   { nome:'procurar_exercicios', desc:'Procura exercícios na biblioteca da app, podendo excluir os contraindicados para patologias.', props:{ texto:{ type:'string' }, padrao:{ type:'string', description:'joelho, anca, empurrar, puxar, core…' }, equipamento:{ type:'string' }, patologias:{ type:'array', items:{ type:'string' } } } },
   { nome:'pesquisar_app', desc:'Pesquisa os protocolos, patologias, testes especiais, exercícios e notas da app sobre um tema.', props:{ texto:{ type:'string' } }, req:['texto'] },
   { nome:'pesquisar_bibliografia', desc:'Pesquisa excertos nos livros e artigos do treinador (bibliografia indexada).', props:{ texto:{ type:'string' } }, req:['texto'] },
+  { nome:'procurar_conversas', desc:'Procura nas conversas anteriores com o treinador (memória do Kairós): o que foi perguntado e respondido, com a data.', props:{ texto:{ type:'string', description:'Tema, cliente ou pergunta a procurar' } }, req:['texto'] },
   { nome:'guia_app', desc:'Explica como funciona a app Kairós: separadores, botões e fluxos.', props:{ tema:{ type:'string' } } },
   { nome:'abrir', desc:'Abre um ecrã da app para o treinador.', props:{ destino:{ type:'string', enum:['ficha','treinos','ciclos','monitorizacao','bibliografia','hoje','clientes','biblioteca','protocolos','prevencao'] }, cliente:{ type:'string' } }, req:['destino'] },
   { nome:'preparar_ciclo', desc:'Abre o gerador «✦ Gerar com Kairós» já preenchido para o treinador confirmar e carregar em Gerar (não gera sozinho). Para PT Grupo indica cliente2; para vários clientes usa clientes.', props:{ cliente:{ type:'string' }, cliente2:{ type:'string' }, clientes:{ type:'array', items:{ type:'string' }, description:'Vários clientes (um plano para cada)' }, objetivo:{ type:'string', enum:['Hipertrofia','Força','Perda de gordura','Condição física geral','Tonificação','Performance','Reabilitação'] }, nivel:{ type:'string', enum:['Iniciante','Intermédio','Avançado'] }, dias:{ type:'integer' }, semanas:{ type:'integer' }, duracao:{ type:'integer', enum:[30,45,60] }, patologias:{ type:'array', items:{ type:'string' } } } },
@@ -5949,7 +6055,7 @@ function aiToolsOllama(){
 }
 function aiToolRotulo(nome, a){
   const x = a || {};
-  return ({ listar_clientes:'a ver a lista de clientes', ver_cliente:'a abrir a ficha de ' + (x.nome || ''), ver_ciclo:'a ver o ciclo de ' + (x.cliente || ''), agenda:'a ver a agenda', procurar_exercicios:'a procurar exercícios', pesquisar_app:'a pesquisar na app', pesquisar_bibliografia:'a pesquisar na bibliografia', guia_app:'a consultar o guia da app', abrir:'a abrir ' + (x.destino || ''), preparar_ciclo:'a preparar o gerador', criar_cliente:'a propor uma ficha nova' })[nome] || nome;
+  return ({ listar_clientes:'a ver a lista de clientes', ver_cliente:'a abrir a ficha de ' + (x.nome || ''), ver_ciclo:'a ver o ciclo de ' + (x.cliente || ''), agenda:'a ver a agenda', procurar_exercicios:'a procurar exercícios', pesquisar_app:'a pesquisar na app', pesquisar_bibliografia:'a pesquisar na bibliografia', procurar_conversas:'a recordar conversas anteriores', guia_app:'a consultar o guia da app', abrir:'a abrir ' + (x.destino || ''), preparar_ciclo:'a preparar o gerador', criar_cliente:'a propor uma ficha nova' })[nome] || nome;
 }
 async function aiExecTool(nome, a){
   a = a || {};
@@ -5975,7 +6081,8 @@ async function aiExecTool(nome, a){
     case 'ver_cliente': {
       const r = aiResolverCliente(a.nome); if(r.erro) return r.erro;
       MC_CH.cli = r.c.id;
-      return corta(mcIACliente(r.c) + '\n' + aiEvolucao(r.c), 7000);
+      const cvs = (DATA.conversas || []).filter(x=>x.cli === r.c.id && x.id !== MC_CH.id).slice(0, 5);
+      return corta(mcIACliente(r.c) + '\n' + aiEvolucao(r.c) + (cvs.length ? '\nConversas anteriores sobre este cliente: ' + cvs.map(x=>`«${x.titulo}» (${String(x.atualizada).slice(0, 10)})`).join('; ') + ' (usa procurar_conversas para ver o conteúdo).' : ''), 7000);
     }
     case 'ver_ciclo': {
       const r = aiResolverCliente(a.cliente); if(r.erro) return r.erro;
@@ -6025,6 +6132,7 @@ async function aiExecTool(nome, a){
       return corta(r.map(x=>`- ${x.texto.replace(/\s+/g, ' ').slice(0, 1000)}`).join('\n\n'), 5000);
     }
     case 'guia_app': return KAIROS_GUIA;
+    case 'procurar_conversas': { const m = mcConvMemoriaTexto(a.texto); return m || 'Não encontrei conversas anteriores sobre isso.'; }
     case 'abrir': {
       const dest = normName(a.destino || '');
       let c = null;
@@ -6114,7 +6222,8 @@ const KAIROS_GUIA = `GUIA DA APP KAIRÓS (menu à esquerda; os dados ficam só n
 - Ciclos: periodização por cliente em semanas e sessões. «⚡ Gerar plano» gera por regras (o mais seguro para patologias); «✦ Gerar com Kairós» gera com a IA local para um cliente, para PT Grupo (escolher o 2.º cliente) ou para vários clientes de uma vez («Para quem» → «Vários clientes»); «🧭 Kairós» é o assistente de planeamento; «💬 Perguntar» é esta conversa; «📚 Bibliografia»; «Aulas de grupo»; «+ Novo ciclo». Em cada ciclo: «⚙ Ajustar plano» (inclui o 2.º cliente de PT Grupo), «📄 Exportar PDF», «🔗 Enviar ao cliente» e «Remover ciclo».
 - Prevenção: princípios, triagem de risco por cliente, programas de prevenção por região, reabilitação por fases e critérios de regresso.
 - Monitorização: registo diário de CMJ (melhor de 3 saltos), horas de sono e bem-estar (5 itens de 1 a 5). Compara com a média do próprio cliente e propõe reduzir a carga dos treinos que faltam na semana (20% em amarelo, 30% em vermelho).
-- Cópia de segurança: guardar e restaurar uma cópia dos dados (ficam só neste browser).
+- Cópia de segurança: guardar e restaurar uma cópia dos dados (ficam só neste browser; inclui as conversas com o Kairós).
+- Conversas com o Kairós: ficam guardadas automaticamente; ao abrir «💬 Perguntar» retoma a última conversa; «🕘 Conversas» mostra as anteriores para retomar ou apagar; «＋ Nova conversa» começa outra. O Kairós lembra-se do que foi falado em conversas anteriores.
 - Kairós IA: corre no Ollama do computador do treinador, só nesse PC e com o Ollama aberto. Configura-se em «✦ Gerar com Kairós» → «Definições do Kairós» (motor, endereço, modelo, «Testar ligação»). A «📚 Bibliografia» indexa uma pasta de PDF e EPUB (por exemplo do OneDrive) com o modelo bge-m3; os AZW3 do Kindle não são lidos.
 - Com um modelo que suporta ferramentas (ex.: qwen2.5:7b ou llama3.1:8b), o Kairós consulta sozinho a lista de clientes, as fichas, os ciclos, a agenda, a biblioteca, os protocolos e a bibliografia, abre ecrãs, prepara o gerador e propõe fichas novas (com confirmação).
 - Pedidos que o Kairós executa nesta conversa: «gera um ciclo para a Ana», «gera um ciclo de PT Grupo para a Ana e o Rui», «gera planos para todos os clientes PT», «gera um plano por regras para a Ana», «abre a ficha da Ana», «mostra os treinos da Ana», «abre a monitorização da Ana», «abre a bibliografia». Se o nome não existir nos clientes (ex.: «gera um ciclo para o João Silva com hipertensão»), o Kairós pergunta se deve criar a ficha e, com «sim», cria-a e abre o gerador. O gerador tem um campo de Patologias que vem da ficha e pode ser alterado para esse plano (com opção de guardar na ficha).`;
