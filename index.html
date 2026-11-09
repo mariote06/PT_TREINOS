@@ -441,7 +441,7 @@
       <div class="view-head">
         <div>
           <h1 class="view-title">Clientes</h1>
-          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 124</div>
+          <div class="view-sub">A lista de clientes usada para atribuir ciclos. · versão 129</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" onclick="createTestClient()">Cliente de teste</button>
@@ -1757,6 +1757,542 @@ function exFuncao(e){
   if(['agachamento','dobradica','empurrar_h','empurrar_v','puxar_h','puxar_v'].includes(p)) return /barra|halter|multipower|m[áa]quina|polia|kettle|landmine/i.test(e.equip||n) ? 'Força e hipertrofia (multiarticular)' : 'Força-resistência (multiarticular)';
   return 'Condição física geral';
 }
+// ---------- ANIMAÇÃO 2D DA EXECUÇÃO (manequim em vista lateral) ----------
+const XA_L = { shin:42, thigh:44, torso:52, ua:30, fa:27, foot:14 };
+const XA_GROUND = 180;
+const xaDir = a=>{ const r = a * Math.PI / 180; return [Math.sin(r), -Math.cos(r)]; };
+const xaAdd = (p, a, l)=>{ const d = xaDir(a); return [p[0] + d[0] * l, p[1] + d[1] * l]; };
+const xaSub = (p, a, l)=>{ const d = xaDir(a); return [p[0] - d[0] * l, p[1] - d[1] * l]; };
+// Poses: ângulos absolutos em graus (0 = cima, 90 = frente/direita, 180 = baixo, -90 = trás/esquerda)
+const XA_T = {
+  squat:   { A:{ ankle:[95,180], shin:0, thigh:0, torso:0 }, B:{ ankle:[95,180], shin:32, thigh:-75, torso:40 }, mus:['quad','glut'], alt:['barra','halteres','kettlebell'] },
+  hinge:   { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180 }, B:{ ankle:[95,180], shin:8, thigh:-14, torso:80, ua:180, fa:180 }, mus:['isq','glut','lomb'], alt:['barra','halteres','kettlebell'] },
+  deadlift:{ A:{ ankle:[95,180], shin:24, thigh:-55, torso:62, ua:180, fa:180 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180 }, mus:['glut','isq','quad','lomb'], alt:['barra','halteres','kettlebell'] },
+  swing:   { A:{ ankle:[95,180], shin:14, thigh:-40, torso:70, ua:205, fa:205 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:-4, ua:95, fa:95 }, mus:['glut','isq','lomb'], alt:['kettlebell','halteres'] },
+  lunge:   { A:{ ankle:[120,180], shin:5, thigh:-5, torso:0, thigh2:20, shin2:25, ua:180, fa:180 }, B:{ ankle:[120,180], shin:20, thigh:-80, torso:5, thigh2:0, shin2:85, ua:180, fa:180 }, mus:['quad','glut'], alt:['halteres','barra','kettlebell'] },
+  bench:   { A:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:0, fa:0 }, B:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:160, fa:-10 }, mus:['peit','tric','delt'], alt:['barra','halteres'], banco:true },
+  fly:     { A:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:0, fa:0 }, B:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:172, fa:165 }, mus:['peit','delt'], alt:['halteres','cabo'], banco:true },
+  pushup:  { A:{ ankle:[40,178], shin:66, thigh:66, torso:66, ua:180, fa:180, foot:180 }, B:{ ankle:[40,178], shin:78, thigh:78, torso:78, ua:250, fa:160, foot:180 }, mus:['peit','tric','delt'], alt:[] },
+  plank:   { A:{ ankle:[40,178], shin:78, thigh:78, torso:78, ua:180, fa:90, foot:180 }, B:{ ankle:[40,178], shin:79, thigh:79, torso:79, ua:180, fa:90, foot:180 }, mus:['abd'], alt:[] },
+  row:     { A:{ ankle:[95,180], shin:10, thigh:-20, torso:70, ua:180, fa:180 }, B:{ ankle:[95,180], shin:10, thigh:-20, torso:70, ua:-95, fa:180 }, mus:['dors','bic'], alt:['barra','halteres','kettlebell'] },
+  seatrow: { A:{ hip:[95,150], torso:18, thigh:-105, shin:-80, ua:90, fa:90 }, B:{ hip:[95,150], torso:-8, thigh:-105, shin:-80, ua:205, fa:95 }, mus:['dors','bic'], alt:['cabo','elastico'], anc:[192,null], assento:true },
+  pulldown:{ A:{ hip:[100,140], torso:0, thigh:-95, shin:0, ua:8, fa:4 }, B:{ hip:[100,140], torso:-8, thigh:-95, shin:0, ua:195, fa:15 }, mus:['dors','bic'], alt:['cabo','elastico'], anc:[null,8], assento:true },
+  pullup:  { A:{ hip:[100,129], torso:0, thigh:0, shin:120, ua:0, fa:0 }, B:{ hip:[100,69], torso:0, thigh:0, shin:120, ua:190, fa:10 }, mus:['dors','bic'], alt:[], semChao:true, barraFixa:20 },
+  ohp:     { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:150, fa:-15 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:0, fa:0 }, mus:['delt','tric'], alt:['barra','halteres','kettlebell'] },
+  raise:   { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:175 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:90, fa:85 }, mus:['delt'], alt:['halteres','cabo','elastico'] },
+  curl:    { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:175, fa:20 }, mus:['bic','ante'], alt:['halteres','barra','cabo'] },
+  curlSeat:{ A:{ hip:[95,140], torso:-14, thigh:-95, shin:0, ua:198, fa:198 }, B:{ hip:[95,140], torso:-14, thigh:-95, shin:0, ua:195, fa:30 }, mus:['bic','ante'], alt:['halteres'], assento:true },
+  pushdown:{ A:{ ankle:[95,180], shin:0, thigh:0, torso:10, ua:185, fa:60 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:10, ua:185, fa:180 }, mus:['tric'], alt:['cabo','elastico'], anc:[125,10] },
+  tricOver:{ A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:5, fa:200 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:5, fa:5 }, mus:['tric'], alt:['halteres','cabo','kettlebell'] },
+  skull:   { A:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:15, fa:-115 }, B:{ hip:[118,125], torso:-90, thigh:-75, shin:0, ua:15, fa:15 }, mus:['tric'], alt:['barra','halteres'], banco:true },
+  legext:  { A:{ hip:[100,128], torso:-10, thigh:-90, shin:0, ua:180, fa:180 }, B:{ hip:[100,128], torso:-10, thigh:-90, shin:-90, ua:180, fa:180 }, mus:['quad'], alt:['maquina','elastico'], assento:true },
+  legcurl: { A:{ hip:[100,128], torso:-10, thigh:-90, shin:-90, ua:180, fa:180 }, B:{ hip:[100,128], torso:-10, thigh:-90, shin:30, ua:180, fa:180 }, mus:['isq'], alt:['maquina','elastico'], assento:true },
+  calf:    { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180, foot:90 }, B:{ ankle:[95,172], shin:0, thigh:0, torso:0, ua:180, fa:180, foot:125 }, mus:['gem'], alt:['halteres','maquina'] },
+  crunch:  { A:{ hip:[110,172], torso:-90, thigh:-135, shin:-35, ua:160, fa:20, armRel:true }, B:{ hip:[110,172], torso:-60, thigh:-135, shin:-35, ua:160, fa:20, armRel:true }, mus:['abd'], alt:[] },
+  bridge:  { A:{ ankle:[150,180], shin:-20, thigh:-137, torso:-90, ua:90, fa:90 }, B:{ ankle:[150,180], shin:-20, thigh:-80, torso:-117, ua:90, fa:90 }, mus:['glut','isq'], alt:['barra','halteres'], cargaAnca:true },
+  shrug:   { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:180, tl:6 }, mus:['trap'], alt:['halteres','barra'] },
+  quad:    { A:{ hip:[95,124], torso:90, thigh:0, shin:90, ua:180, fa:180 }, B:{ hip:[95,124], torso:90, thigh:0, shin:90, thigh2:90, shin2:90, ua:90, fa:90, ua2:180, fa2:180 }, mus:['lomb','glut','abd'], alt:[] },
+  backext: { A:{ hip:[100,172], torso:90, thigh:90, shin:90, ua:-100, fa:-100 }, B:{ hip:[100,172], torso:70, thigh:100, shin:100, ua:-100, fa:-100 }, mus:['lomb','glut'], alt:[] },
+  march:   { A:{ hip:[100,92], torso:0, thigh:0, shin:0, thigh2:-90, shin2:0, ua:160, fa:120, ua2:200, fa2:160 }, B:{ hip:[100,92], torso:0, thigh:-90, shin:0, thigh2:0, shin2:0, ua:200, fa:160, ua2:160, fa2:120 }, mus:['quad'], alt:[], vai:true },
+  idle:    { A:{ ankle:[95,180], shin:0, thigh:0, torso:0, ua:180, fa:178 }, B:{ ankle:[95,180], shin:0, thigh:0, torso:1, ua:176, fa:172, tl:1 }, mus:[], alt:[] }
+};
+const XA_HOLD = {   // posição dos braços conforme o equipamento (relativa ao tronco) para o agachamento e o afundo
+  barra:     { ua:215, fa:-15, armRel:true },
+  halteres:  { ua:180, fa:180 },
+  kettlebell:{ ua:165, fa:20, armRel:true },
+  corpo:     { ua:100, fa:100, armRel:true },
+  maquina:   { ua:215, fa:-15, armRel:true }
+};
+function xaTemplate(e){
+  const n = normName(e.nome || ''), g = e.grupo || '', p = e.padrao || '';
+  const T = (re)=>re.test(n);
+  if(T(/curl femoral|leg curl|mesa flexora|cadeira flexora|flexao (de |dos )?joelho/)) return 'legcurl';
+  if(T(/extensao (de |das |da )?(perna|joelho)|leg extension|cadeira extensora/)) return 'legext';
+  if(T(/gemeo|calf|elevacao (de |dos )?calcanhar|flexao plantar/)) return 'calf';
+  if(T(/hip thrust|ponte|bridge|elevacao (da |de )?(anca|pelvica)/)) return 'bridge';
+  if(T(/swing/)) return 'swing';
+  if(T(/romeno|stiff|good ?morning|rdl|dobradica/)) return 'hinge';
+  if(T(/peso morto|deadlift/)) return 'deadlift';
+  if(T(/afundo|lunge|passada|bulgar|split|step.?up|subida (ao|no|para o) (banco|caixa|step)/)) return 'lunge';
+  if(T(/agachamento|squat|goblet|sissy|pistol|wall sit|cadeira na parede|leg press|prensa/)) return 'squat';
+  if(T(/encolhimento|shrug/)) return 'shrug';
+  if(T(/crucifixo|\bfly\b|peck|aberturas|voador/)) return 'fly';
+  if(T(/testa|skull|frances deitado/)) return 'skull';
+  if(T(/frances|tricep.*(acima|overhead|cabeca)|extensao (de )?triceps (acima|sobre)/)) return 'tricOver';
+  if(T(/triceps|pushdown|kickback|mergulho|dips|extensao (de )?cotovelo/)) return 'pushdown';
+  if(T(/(flexao|extensao|isometrico).*cotovelo|pronacao|supinacao|punho/)) return 'curl';
+  if(T(/curl|biceps|martelo|rosca/)) return T(/sentado|inclinado|scott|concentrado|banco/) ? 'curlSeat' : 'curl';
+  if(T(/elevacao (lateral|frontal)|lateral raise|front raise|abducao (do |de )?ombro|elevacoes laterais/)) return 'raise';
+  if(T(/supino|bench|press (de |no )?peito|chest press|floor press/)) return 'bench';
+  if(T(/flexao (de |dos )?bracos|flexoes|push.?up/)) return 'pushup';
+  if(T(/prancha|plank|hollow/)) return 'plank';
+  if(T(/elevacoes (na |em )?barra|pull.?up|chin.?up|barra fixa/)) return 'pullup';
+  if(T(/puxada|pulldown|pullover|lat /)) return 'pulldown';
+  if(T(/remada|row|face pull/)) return T(/sentad|polia|cabo|maquina|baixa/) ? 'seatrow' : 'row';
+  if(T(/press (de |dos )?ombros|desenvolvimento|militar|overhead|arnold|push press|thruster|landmine press/)) return 'ohp';
+  if(T(/abdominal|crunch|sit.?up|enrolamento|dead.?bug|v.?up/)) return 'crunch';
+  if(T(/bird.?dog|quadrupede|gato|quatro apoios/)) return 'quad';
+  if(T(/superman|hiperextens|extensao lombar|extensao (da |de )?coluna/)) return 'backext';
+  if(T(/corrida|marcha|skipping|jumping|polichinelo|burpee|salto|corda|sprint|caminhada|joelhos ao peito/) || g === 'Cardio' || p === 'cardio' || p === 'pliometria') return 'march';
+  const porPadrao = { agachamento:'squat', dobradica:'hinge', afundo:'lunge', ponte:'bridge', empurrar_h:'bench', empurrar_v:'ohp', puxar_h:'row', puxar_v:'pulldown', core:'plank' };
+  if(porPadrao[p]) return porPadrao[p];
+  const porGrupo = { 'Pernas':'squat', 'Glúteos':'bridge', 'Peito':'bench', 'Costas':'row', 'Ombros':'ohp', 'Bíceps':'curl', 'Tríceps':'pushdown', 'Core':'plank', 'Antebraço':'curl' };
+  if(g !== 'Mobilidade' && porGrupo[g]) return porGrupo[g];
+  return 'idle';
+}
+function xaEquip(e, tpl){
+  const t = normName((e.equip || '') + ' ' + (e.nome || ''));
+  if(/kettlebell/.test(t)) return 'kettlebell';
+  if(/halter|dumbbell/.test(t)) return 'halteres';
+  if(/elastic|band|mini band/.test(t)) return 'elastico';
+  if(/cabo|polia|cable|crossover/.test(t)) return 'cabo';
+  if(/maquina|machine|smith|multipower|cadeira|mesa|prensa|leg press/.test(t)) return 'maquina';
+  if(/barra|barbell|landmine/.test(t) && tpl !== 'pullup') return 'barra';
+  if(['seatrow','pulldown','pushdown'].includes(tpl)) return 'cabo';
+  if(['legext','legcurl'].includes(tpl)) return 'maquina';
+  return 'corpo';
+}
+const XA_MUSC_RE = [[/quadr/i,'quad'],[/isquio/i,'isq'],[/glut/i,'glut'],[/adut/i,'adut'],[/gemeo|gémeo|perna \(gem/i,'gem'],[/peito|peitoral/i,'peit'],[/dorsa|costas/i,'dors'],[/lombar/i,'lomb'],[/trap/i,'trap'],[/deltoid|ombro/i,'delt'],[/bicep|bícep/i,'bic'],[/tricep|trícep/i,'tric'],[/antebra/i,'ante'],[/abdom|core/i,'abd']];
+function xaMusculos(e, tpl){
+  let prim = [];
+  try{ const m = exMusculo(e) || ''; XA_MUSC_RE.forEach(([re, k])=>{ if(re.test(m)) prim.push(k); }); }catch(_){}
+  const sec = (XA_T[tpl] || {}).mus || [];
+  if(!prim.length && sec.length) prim = [sec[0]];
+  return { prim, sec: sec.filter(k=>!prim.includes(k)) };
+}
+function xaPose(P, hold){
+  const L = XA_L, q = Object.assign({}, P);
+  if(hold){ ['ua','fa','armRel'].forEach(k=>{ if(hold[k] !== undefined) q[k] = hold[k]; }); }
+  const tl = L.torso + (q.tl || 0);
+  let ankle, knee, hip;
+  if(q.hip){ hip = q.hip.slice(); knee = xaSub(hip, q.thigh, L.thigh); ankle = xaSub(knee, q.shin, L.shin); }
+  else { ankle = q.ankle.slice(); knee = xaAdd(ankle, q.shin, L.shin); hip = xaAdd(knee, q.thigh, L.thigh); }
+  const knee2 = xaSub(hip, q.thigh2 !== undefined ? q.thigh2 : q.thigh, L.thigh);
+  const ankle2 = xaSub(knee2, q.shin2 !== undefined ? q.shin2 : q.shin, L.shin);
+  const sh = xaAdd(hip, q.torso, tl);
+  const head = xaAdd(sh, q.torso, 16);
+  const ua = q.ua === undefined ? 180 : q.ua, fa = q.fa === undefined ? 180 : q.fa;
+  const rel = q.armRel ? q.torso : 0;
+  const elb = xaAdd(sh, ua + rel, L.ua), wr = xaAdd(elb, fa + rel, L.fa);
+  const ua2 = q.ua2 !== undefined ? q.ua2 : ua, fa2 = q.fa2 !== undefined ? q.fa2 : fa;
+  const elb2 = xaAdd(sh, ua2 + rel, L.ua), wr2 = xaAdd(elb2, fa2 + rel, L.fa);
+  const fa_ = q.foot === undefined ? 90 : q.foot;
+  return { ankle, knee, hip, knee2, ankle2, sh, head, elb, wr, elb2, wr2, toe: xaAdd(ankle, fa_, L.foot), toe2: xaAdd(ankle2, q.foot === undefined ? 90 : q.foot, L.foot), torso:q.torso };
+}
+function xaLerpPose(A, B, t){
+  const o = {};
+  Object.keys(A).forEach(k=>{
+    const a = A[k], b = B[k] === undefined ? a : B[k];
+    if(Array.isArray(a)) o[k] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    else if(typeof a === 'number') o[k] = a + (b - a) * t;
+    else o[k] = t < .5 ? a : b;
+  });
+  Object.keys(B).forEach(k=>{ if(o[k] === undefined) o[k] = B[k]; });
+  return o;
+}
+function xaSeg(a, b, w, cor, extra){ return `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${cor}" stroke-width="${w}" stroke-linecap="round"${extra || ''}/>`; }
+function xaHl(a, b, lado, w, f0, f1, cor, op, ccw){
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+  const nx = (ccw ? dy : -dy) / len, ny = (ccw ? -dx : dx) / len;
+  const o = lado * w * .28;
+  const p0 = [a[0] + dx * f0 + nx * o, a[1] + dy * f0 + ny * o], p1 = [a[0] + dx * f1 + nx * o, a[1] + dy * f1 + ny * o];
+  return xaSeg(p0, p1, (w * (lado ? .55 : .9)).toFixed(1), cor, ` opacity="${op}"`);
+}
+// ---------- corpo anatómico (perfis de largura por segmento) ----------
+const XA_PERF = {
+  m: {
+    shin:  { f:[3.8,4.0,4.6,5.2,5.8,6.0], b:[3.4,4.8,7.6,8.8,8.0,6.4] },
+    thigh: { f:[6.2,7.6,9.4,10.2,10.0,9.4], b:[6.0,7.2,8.2,9.6,11.2,12.4] },
+    torso: { f:[11.4,10.2,10.0,11.0,13.6,14.4,12.0], b:[13.2,11.0,10.0,10.8,12.4,13.6,12.4] },
+    ua:    { f:[6.6,6.6,7.0,6.0,4.8], b:[7.6,7.2,6.6,5.4,4.8] },
+    fa:    { f:[4.8,5.4,5.0,3.8,3.1], b:[4.8,5.2,4.6,3.6,3.1] }
+  },
+  f: {
+    shin:  { f:[3.3,3.6,4.2,4.8,5.3,5.5], b:[3.0,4.3,6.8,8.0,7.3,5.9] },
+    thigh: { f:[5.7,7.1,9.0,10.0,10.0,9.6], b:[5.6,7.0,8.4,10.2,12.4,13.6] },
+    torso: { f:[11.6,9.4,8.4,9.4,12.8,13.4,10.4], b:[14.6,11.2,9.0,9.4,10.8,11.6,10.6] },
+    ua:    { f:[5.4,5.4,5.6,4.9,4.0], b:[6.2,6.0,5.6,4.6,4.0] },
+    fa:    { f:[4.1,4.6,4.2,3.4,2.7], b:[4.1,4.4,3.9,3.2,2.7] }
+  }
+};
+function xaInterp(arr, t){ const x = Math.max(0, Math.min(1, t)) * (arr.length - 1), i = Math.min(arr.length - 2, Math.floor(x)), f = x - i; return arr[i] * (1 - f) + arr[i + 1] * f; }
+function xaNorm(A, B, ccw){ const dx = B[0] - A[0], dy = B[1] - A[1], l = Math.hypot(dx, dy) || 1; return { d:[dx / l, dy / l], n: ccw ? [dy / l, -dx / l] : [-dy / l, dx / l], l }; }
+function xaSmooth(P){
+  const n = P.length; let s = `M${P[0][0].toFixed(1)} ${P[0][1].toFixed(1)}`;
+  for(let i = 0; i < n; i++){
+    const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    s += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return s + 'Z';
+}
+function xaMembro(A, B, prof, ccw, capA, capB){
+  const g = xaNorm(A, B, ccw), N = 9, F = [], Bk = [];
+  for(let i = 0; i < N; i++){
+    const t = i / (N - 1), c = [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t];
+    const wf = xaInterp(prof.f, t), wb = xaInterp(prof.b, t);
+    F.push([c[0] + g.n[0] * wf, c[1] + g.n[1] * wf]); Bk.push([c[0] - g.n[0] * wb, c[1] - g.n[1] * wb]);
+  }
+  const eB = [B[0] + g.d[0] * (capB || 3), B[1] + g.d[1] * (capB || 3)], eA = [A[0] - g.d[0] * (capA || 3), A[1] - g.d[1] * (capA || 3)];
+  return xaSmooth([...F, eB, ...Bk.reverse(), eA]);
+}
+// zona de um músculo: lado 1 = frente, -1 = trás, 0 = toda a volta
+function xaZona(A, B, prof, ccw, lado, t0, t1, reta){
+  const g = xaNorm(A, B, ccw), N = 7, out = [], inn = [];
+  for(let i = 0; i < N; i++){
+    const t = t0 + (t1 - t0) * i / (N - 1), c = [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t];
+    const taper = reta ? 1.04 : Math.sin(Math.PI * i / (N - 1)) * .25 + .75;
+    const wf = xaInterp(prof.f, t) * .96, wb = xaInterp(prof.b, t) * .96;
+    if(lado >= 0) out.push([c[0] + g.n[0] * wf * taper, c[1] + g.n[1] * wf * taper]);
+    else out.push([c[0] - g.n[0] * wb * taper, c[1] - g.n[1] * wb * taper]);
+    if(lado === 0) inn.push([c[0] - g.n[0] * wb * taper, c[1] - g.n[1] * wb * taper]);
+    else { const k = lado > 0 ? -.1 : .1, w = lado > 0 ? wf : wb; inn.push([c[0] + g.n[0] * w * k, c[1] + g.n[1] * w * k]); }
+  }
+  return xaSmooth([...out, ...inn.reverse()]);
+}
+function xaPe(ankle, toe, ccwUp, cor, contorno){
+  const g = xaNorm(ankle, toe, false), l = g.l;
+  const up = ccwUp ? [g.n[0], g.n[1]] : [-g.n[0], -g.n[1]];
+  const P = (a, u)=>[ankle[0] + g.d[0] * a + up[0] * u, ankle[1] + g.d[1] * a + up[1] * u];
+  return `<path d="${xaSmooth([P(-4.5, 1.5), P(-4, -2.2), P(l * .45, -2.4), P(l + 1.5, -1.6), P(l + 2, 0.4), P(l * .6, 3), P(1, 5.5)])}" fill="${cor}" stroke="${contorno}" stroke-width=".7"/>`;
+}
+let XA_UID = 0;
+function xaElipse(c, rx, ry, rot){
+  const P = [], r = rot * Math.PI / 180;
+  for(let i = 0; i < 16; i++){ const a = i / 16 * 2 * Math.PI, x = Math.sin(a) * rx, y = -Math.cos(a) * ry; P.push([c[0] + x * Math.cos(r) - y * Math.sin(r), c[1] + x * Math.sin(r) + y * Math.cos(r)]); }
+  return xaSmooth(P);
+}
+// grupo com silhueta única: 1.ª passagem com contorno, 2.ª só preenchimento por cima
+function xaGrupo(ds, fill, contorno, sw){
+  return '<g>' + ds.map(d=>`<path d="${d}" fill="${contorno}" stroke="${contorno}" stroke-width="${sw}" stroke-linejoin="round"/>`).join('') + ds.map(d=>`<path d="${d}" fill="${fill}"/>`).join('') + '</g>';
+}
+function xaJuntaSuave(c, r){ return `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="${r}" fill="none" stroke="#9a9488" stroke-width=".7" opacity=".9"/><circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="1.2" fill="#8a8478"/>`; }
+function xaSvgPose(S, cfg){
+  const fem = cfg.sexo === 'f', PR = XA_PERF[fem ? 'f' : 'm'];
+  const hlc = '#f26b2a', dark = '#2b3038';
+  const prim = new Set(cfg.mus.prim), sec = new Set(cfg.mus.sec);
+  const op = k=>prim.has(k) ? .95 : sec.has(k) ? .5 : 0;
+  const tpl = XA_T[cfg.tpl];
+  const u = 'xa' + (++XA_UID % 100000);
+  let s = `<defs>
+    <linearGradient id="${u}p" gradientUnits="userSpaceOnUse" x1="40" y1="20" x2="165" y2="190"><stop offset="0" stop-color="#f7f4ee"/><stop offset=".5" stop-color="#e2ddd3"/><stop offset="1" stop-color="#b9b3a7"/></linearGradient>
+    <linearGradient id="${u}f" gradientUnits="userSpaceOnUse" x1="40" y1="20" x2="165" y2="190"><stop offset="0" stop-color="#b4afa3"/><stop offset="1" stop-color="#7c786f"/></linearGradient>
+    <radialGradient id="${u}c" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+    <filter id="${u}b" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation=".7"/></filter></defs>`;
+  // cenário
+  if(!tpl.semChao) s += `<ellipse cx="${((S.ankle[0] + S.sh[0]) / 2).toFixed(1)}" cy="${XA_GROUND + 3}" rx="70" ry="7" fill="url(#${u}c)"/><line x1="6" y1="${XA_GROUND + 2}" x2="194" y2="${XA_GROUND + 2}" stroke="#3a3f47" stroke-width="1.5"/>`;
+  if(tpl.banco) s += `<rect x="36" y="${(S.hip[1] + 9).toFixed(1)}" width="94" height="8" rx="3" fill="#454b55"/><rect x="47" y="${S.hip[1] + 17}" width="5" height="${XA_GROUND - S.hip[1] - 17}" fill="#3a4049"/><rect x="114" y="${S.hip[1] + 17}" width="5" height="${XA_GROUND - S.hip[1] - 17}" fill="#3a4049"/>`;
+  if(tpl.assento){
+    s += `<rect x="${(S.hip[0] - 22).toFixed(1)}" y="${(S.hip[1] + 9).toFixed(1)}" width="42" height="8" rx="3" fill="#454b55"/><rect x="${(S.hip[0] - 2).toFixed(1)}" y="${S.hip[1] + 17}" width="5" height="${XA_GROUND - S.hip[1] - 17}" fill="#3a4049"/>`;
+    if(['curlSeat','legext','legcurl'].includes(cfg.tpl)) s += xaSeg([S.hip[0] - 20, S.hip[1] + 9], xaAdd([S.hip[0] - 20, S.hip[1] + 9], -14, 62), 7, '#454b55');
+  }
+  if(tpl.barraFixa) s += `<line x1="36" y1="${tpl.barraFixa}" x2="174" y2="${tpl.barraFixa}" stroke="#9aa0a8" stroke-width="3" stroke-linecap="round"/>`;
+  if(cfg.eq === 'cabo' || cfg.eq === 'elastico'){
+    const anc = tpl.anc ? [tpl.anc[0] === null ? S.wr[0] : tpl.anc[0], tpl.anc[1] === null ? S.wr[1] : tpl.anc[1]] : [190, cfg.eq === 'elastico' ? XA_GROUND : S.sh[1]];
+    s += xaSeg(S.wr, anc, cfg.eq === 'elastico' ? 3 : 1.4, cfg.eq === 'elastico' ? '#3fb27f' : '#c8ccd2');
+    if(cfg.eq === 'cabo') s += `<circle cx="${anc[0].toFixed(1)}" cy="${anc[1].toFixed(1)}" r="5" fill="#454b55" stroke="#9aa0a8"/>`;
+  }
+  const pePath = (ankle, toe)=>{ const g = xaNorm(ankle, toe, false), l = g.l, up = [g.n[0], g.n[1]]; const P = (a, v)=>[ankle[0] + g.d[0] * a + up[0] * v, ankle[1] + g.d[1] * a + up[1] * v]; return xaSmooth([P(-4.5, 1.5), P(-4, -2.4), P(l * .45, -2.6), P(l + 1.5, -1.8), P(l + 2, .4), P(l * .6, 3.2), P(1, 5.8)]); };
+  const maoPath = (elb, wr)=>xaElipse(xaAdd(wr, xaAng(elb, wr), 2.5), fem ? 3.3 : 3.8, fem ? 4.2 : 4.8, xaAng(elb, wr));
+  // ---- membros afastados (uma silhueta, mais escura) ----
+  const far = [xaMembro(S.knee2, S.hip, PR.thigh, false, 4, 5), xaMembro(S.ankle2, S.knee2, PR.shin, false, 2, 3), pePath(S.ankle2, S.toe2), xaMembro(S.sh, S.elb2, PR.ua, true, 4, 3), xaMembro(S.elb2, S.wr2, PR.fa, true, 2, 2), maoPath(S.elb2, S.wr2)];
+  s += xaGrupo(far, `url(#${u}f)`, '#4f4c46', 1.4);
+  // ---- corpo (tronco, pescoço, cabeça e perna próxima) numa só silhueta ----
+  const topo = xaAdd(S.sh, S.torso, 4), frente = xaNorm(S.hip, topo, false).n, up = xaDir(S.torso);
+  const hc = xaAdd(S.sh, S.torso, 18.5);
+  const corpo = [
+    xaMembro(S.hip, topo, PR.torso, false, 6, 3),
+    xaMembro(xaAdd(S.sh, S.torso, 1), xaAdd(S.sh, S.torso, 12), { f:[4.4,4.0,4.3], b:[5.0,4.4,4.6] }, false, 1, 1),
+    xaElipse(hc, fem ? 8.4 : 9, fem ? 9.6 : 10.2, S.torso),
+    xaMembro(S.knee, S.hip, PR.thigh, false, 4, 5),
+    xaMembro(S.ankle, S.knee, PR.shin, false, 2, 3),
+    pePath(S.ankle, S.toe)
+  ];
+  s += `<clipPath id="${u}k">${corpo.map(d=>`<path d="${d}"/>`).join('')}</clipPath>`;
+  s += xaGrupo(corpo, `url(#${u}p)`, '#7a756b', 1.6);
+  // músculos pintados na pele (cortados pela silhueta e com bordas suaves)
+  const Z = (k, A, B, pf, ccw, lado, t0, t1)=>op(k) ? `<path d="${xaZona(A, B, pf, ccw, lado, t0, t1)}" fill="${hlc}" opacity="${op(k)}"/>` : '';
+  let mus = '';
+  mus += Z('abd', S.hip, topo, PR.torso, false, 1, .14, .56) + Z('peit', S.hip, topo, PR.torso, false, 1, .6, .9) + Z('lomb', S.hip, topo, PR.torso, false, -1, .1, .44) + Z('dors', S.hip, topo, PR.torso, false, -1, .44, .86) + Z('trap', S.hip, topo, PR.torso, false, -1, .8, 1);
+  mus += Z('gem', S.ankle, S.knee, PR.shin, false, -1, .3, .9);
+  mus += Z('quad', S.knee, S.hip, PR.thigh, false, 1, .1, .86) + Z('isq', S.knee, S.hip, PR.thigh, false, -1, .12, .8) + Z('adut', S.knee, S.hip, PR.thigh, false, 0, .45, .8);
+  if(op('glut')) mus += `<path d="${xaZona(S.hip, topo, PR.torso, false, -1, -.1, .17)}" fill="${hlc}" opacity="${op('glut')}"/><path d="${xaZona(S.knee, S.hip, PR.thigh, false, -1, .72, 1.06)}" fill="${hlc}" opacity="${op('glut')}"/>`;
+  // costuras e articulações discretas
+  const cost = (A, B, pf, t)=>{ const g = xaNorm(A, B, false), c = [A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t], wf = xaInterp(pf.f, t), wb = xaInterp(pf.b, t); return `<path d="M${(c[0] + g.n[0] * wf).toFixed(1)} ${(c[1] + g.n[1] * wf).toFixed(1)} Q${(c[0] + g.d[0] * 2).toFixed(1)} ${(c[1] + g.d[1] * 2).toFixed(1)} ${(c[0] - g.n[0] * wb).toFixed(1)} ${(c[1] - g.n[1] * wb).toFixed(1)}" stroke="#a49e92" stroke-width=".8" fill="none"/>`; };
+  let det = cost(S.hip, topo, PR.torso, .2) + cost(S.hip, topo, PR.torso, .5);
+  det += xaJuntaSuave(S.knee, 4.4) + xaJuntaSuave(S.ankle, 3) + xaJuntaSuave(S.hip, 4.8);
+  const qx = [hc[0] + frente[0] * 6.4, hc[1] + frente[1] * 6.4];
+  det += `<path d="M${(qx[0] + up[0] * 5).toFixed(1)} ${(qx[1] + up[1] * 5).toFixed(1)} Q${(qx[0] + frente[0] * 3).toFixed(1)} ${(qx[1] + frente[1] * 3).toFixed(1)} ${(qx[0] - up[0] * 6).toFixed(1)} ${(qx[1] - up[1] * 6).toFixed(1)}" stroke="#a49e92" stroke-width=".8" fill="none"/>`;
+  det += xaAlvo([hc[0] - frente[0] * 1.5 + up[0] * 1.5, hc[1] - frente[1] * 1.5 + up[1] * 1.5], 3.4, S.torso) + xaAlvo(xaAdd(S.hip, S.torso, 4), 4.6, S.torso);
+  s += `<g clip-path="url(#${u}k)"><g filter="url(#${u}b)">${mus}</g>${det}</g>`;
+  if(tpl.cargaAnca && cfg.eq === 'barra') s += `<circle cx="${S.hip[0].toFixed(1)}" cy="${(S.hip[1] - 15).toFixed(1)}" r="13" fill="${dark}" stroke="#6b717a" stroke-width="2"/>`;
+  // ---- braço próximo (silhueta própria, à frente do tronco) ----
+  const dAng = xaAng(S.sh, S.elb), dc = xaAdd(S.sh, dAng, 3);
+  const braco = [xaElipse(dc, fem ? 5.8 : 7, fem ? 6.8 : 8.2, dAng), xaMembro(S.sh, S.elb, PR.ua, true, 4, 3), xaMembro(S.elb, S.wr, PR.fa, true, 2, 2), maoPath(S.elb, S.wr)];
+  s += `<clipPath id="${u}a">${braco.map(d=>`<path d="${d}"/>`).join('')}</clipPath>`;
+  s += xaGrupo(braco, `url(#${u}p)`, '#7a756b', 1.5);
+  let mb = '';
+  mb += Z('bic', S.sh, S.elb, PR.ua, true, 1, .22, .86) + Z('tric', S.sh, S.elb, PR.ua, true, -1, .15, .85) + Z('ante', S.elb, S.wr, PR.fa, true, 0, .1, .65);
+  if(op('delt')) mb += `<path d="${xaElipse(dc, fem ? 5 : 6.2, fem ? 6 : 7.4, dAng)}" fill="${hlc}" opacity="${op('delt')}"/>`;
+  const mj = xaJuntaSuave(S.elb, 3.6) + xaJuntaSuave(S.wr, 2.4) + xaJuntaSuave(S.sh, 3);
+  s += `<g clip-path="url(#${u}a)"><g filter="url(#${u}b)">${mb}</g>${mj}</g>`;
+  // ---- equipamento ----
+  const w = xaAdd(S.wr, xaAng(S.elb, S.wr), 2.5);
+  if(!tpl.cargaAnca){
+    if(cfg.eq === 'barra') s += `<circle cx="${w[0].toFixed(1)}" cy="${w[1].toFixed(1)}" r="15" fill="${dark}" stroke="#6b717a" stroke-width="2"/><circle cx="${w[0].toFixed(1)}" cy="${w[1].toFixed(1)}" r="9" fill="none" stroke="#444a53" stroke-width="1"/><circle cx="${w[0].toFixed(1)}" cy="${w[1].toFixed(1)}" r="2.6" fill="#a7adb5"/>`;
+    else if(cfg.eq === 'halteres') s += `<rect x="${(w[0] - 8).toFixed(1)}" y="${(w[1] - 4).toFixed(1)}" width="16" height="8" rx="3.5" fill="${dark}" stroke="#6b717a"/>`;
+    else if(cfg.eq === 'kettlebell') s += `<circle cx="${w[0].toFixed(1)}" cy="${(w[1] + 10).toFixed(1)}" r="8.5" fill="${dark}" stroke="#6b717a" stroke-width="1.5"/><path d="M${(w[0] - 4.5).toFixed(1)} ${(w[1] + 4).toFixed(1)} Q${w[0].toFixed(1)} ${(w[1] - 4).toFixed(1)} ${(w[0] + 4.5).toFixed(1)} ${(w[1] + 4).toFixed(1)}" stroke="#6b717a" stroke-width="2.2" fill="none"/>`;
+    else if(cfg.eq === 'maquina' && (cfg.tpl === 'legext' || cfg.tpl === 'legcurl')) s += `<circle cx="${S.ankle[0].toFixed(1)}" cy="${S.ankle[1].toFixed(1)}" r="6.5" fill="${dark}" stroke="#6b717a" stroke-width="2"/>`;
+  }
+  return s;
+}
+
+function xaAlvo(c, r, rot){
+  const x = c[0].toFixed(1), y = c[1].toFixed(1), q = (a0)=>{ const a = (a0 + rot) * Math.PI / 180, b = (a0 + 90 + rot) * Math.PI / 180; return `M${x} ${y} L${(c[0] + Math.cos(a) * r).toFixed(1)} ${(c[1] + Math.sin(a) * r).toFixed(1)} A${r} ${r} 0 0 1 ${(c[0] + Math.cos(b) * r).toFixed(1)} ${(c[1] + Math.sin(b) * r).toFixed(1)}Z`; };
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="#f2c230" stroke="#3a372f" stroke-width=".6"/><path d="${q(0)}${q(180)}" fill="#2a2823"/>`;
+}
+function xaAng(A, B){ return Math.atan2(B[0] - A[0], -(B[1] - A[1])) * 180 / Math.PI; }
+
+const XA_RUN = new Set();
+// ---------- definição efetiva de uma animação (padrão + equipamento + afinações guardadas) ----------
+function xaHoldDe(tpl, eq){ return tpl === 'squat' ? (XA_HOLD[eq] || XA_HOLD.corpo) : tpl === 'lunge' ? (eq === 'barra' ? XA_HOLD.barra : eq === 'kettlebell' ? XA_HOLD.kettlebell : null) : null; }
+function xaResolver(P, hold){ const q = JSON.parse(JSON.stringify(P)); if(hold) ['ua','fa','armRel'].forEach(k=>{ if(hold[k] !== undefined) q[k] = hold[k]; }); return q; }
+function xaDef(e, tpl, eq, usarEx){
+  const T = XA_T[tpl], hold = xaHoldDe(tpl, eq);
+  let A = xaResolver(T.A, hold), B = xaResolver(T.B, hold), dur = T.vai ? 1400 : 2800, mus = null;
+  const g = (DATA.xaTpl || {})[tpl + '|' + eq];
+  if(g){ A = JSON.parse(JSON.stringify(g.A)); B = JSON.parse(JSON.stringify(g.B)); if(g.dur) dur = g.dur; }
+  if(usarEx && e && e.anim && e.anim.tpl === tpl && e.anim.eq === eq){ A = JSON.parse(JSON.stringify(e.anim.A)); B = JSON.parse(JSON.stringify(e.anim.B)); if(e.anim.dur) dur = e.anim.dur; if(e.anim.mus) mus = e.anim.mus; }
+  return { A, B, dur, mus };
+}
+function xaMontar(svg, e, opts){
+  opts = opts || {};
+  const usarEx = !opts.tpl && !opts.eq;
+  const tpl = opts.tpl || (e && e.anim && e.anim.tpl) || xaTemplate(e);
+  const eq = opts.eq || (usarEx && e && e.anim && e.anim.eq) || xaEquip(e, tpl);
+  const def = opts.def || xaDef(e, tpl, eq, usarEx);
+  const cfg = { tpl, eq, sexo: opts.sexo || 'm', mus: def.mus || xaMusculos(e, tpl) };
+  const job = { svg, PA: xaPose(def.A), PB: xaPose(def.B), cfg, t0: performance.now(), dur: def.dur || 2800 };
+  if(opts.parado !== undefined){ job.pausa = true; job.tPausa = opts.parado; }
+  svg._xa = job;
+  XA_RUN.add(job);
+  if(XA_RUN.size === 1) requestAnimationFrame(xaTick);
+  return cfg;
+}
+
+// ---------- EDITOR ----------
+let XA_ED = null;
+const XA_ED_CAMPOS = [['torso','Tronco'],['thigh','Coxa'],['shin','Perna'],['foot','Pé'],['ua','Braço'],['fa','Antebraço'],['thigh2','Coxa (lado de trás)'],['shin2','Perna (lado de trás)'],['ua2','Braço (lado de trás)'],['fa2','Antebraço (lado de trás)'],['tl','Encolher ombros']];
+const XA_ED_LIG = { thigh2:'thigh', shin2:'shin', ua2:'ua', fa2:'fa' };
+function xaEdValor(P, k){ if(P[k] !== undefined) return P[k]; if(XA_ED_LIG[k]) return xaEdValor(P, XA_ED_LIG[k]); return k === 'foot' ? 90 : k === 'tl' ? 0 : k === 'ua' || k === 'fa' ? 180 : 0; }
+function xaEdAbrir(){
+  const e = XA_CUR; if(!e) return;
+  const tpl = (e.anim && e.anim.tpl) || xaTemplate(e), eq = (e.anim && e.anim.eq) || xaEquip(e, tpl);
+  const def = xaDef(e, tpl, eq, true);
+  XA_ED = { tpl, eq, A: def.A, B: def.B, dur: def.dur, mus: def.mus || xaMusculos(e, tpl), kf: 'A' };
+  document.getElementById('xa-ed').style.display = '';
+  document.getElementById('xa-ed-btn').style.display = 'none';
+  document.getElementById('xa-alt-box').style.display = 'none';
+  document.getElementById('xa-dica').textContent = 'Modo de edição: arrasta as articulações';
+  xaEdRender();
+}
+function xaEdFechar(){ XA_ED = null; document.getElementById('xa-ed').style.display = 'none'; document.getElementById('xa-ed-btn').style.display = ''; xaRender(); }
+function xaEdMontar(){
+  const svg = document.getElementById('xa-main');
+  xaMontar(svg, XA_CUR, { tpl: XA_ED.tpl, eq: XA_ED.eq, sexo: XA_SEXO, def: { A: XA_ED.A, B: XA_ED.B, dur: XA_ED.dur, mus: XA_ED.mus }, parado: XA_ED.kf === 'A' ? 0 : XA_ED.kf === 'B' ? 1 : undefined });
+}
+function xaEdRender(){
+  const E = XA_ED; if(!E) return;
+  const opt = (v, l, cur)=>`<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`;
+  const nomesT = { squat:'Agachamento', hinge:'Peso morto romeno / dobradiça', deadlift:'Peso morto', swing:'Swing', lunge:'Afundo', bench:'Supino', fly:'Crucifixo', pushup:'Flexões', plank:'Prancha', row:'Remada curvada', seatrow:'Remada sentada', pulldown:'Puxada', pullup:'Elevações na barra', ohp:'Press de ombros', raise:'Elevação frontal/lateral', curl:'Curl de pé', curlSeat:'Curl sentado', pushdown:'Tríceps na polia', tricOver:'Tríceps acima da cabeça', skull:'Tríceps testa', legext:'Extensão de pernas', legcurl:'Flexão de pernas', calf:'Gémeos', crunch:'Abdominal', bridge:'Ponte / hip thrust', shrug:'Encolhimentos', quad:'Quatro apoios (bird dog)', backext:'Extensão lombar', march:'Marcha / cardio', idle:'Estático' };
+  const P = E.kf === 'B' ? E.B : E.A;
+  const root = P.hip ? 'hip' : 'ankle';
+  const lin = (k, l, min, max, v)=>`<div style="display:grid; grid-template-columns:118px 1fr 44px; gap:6px; align-items:center; font-size:12px;"><span>${l}</span><input type="range" min="${min}" max="${max}" step="1" value="${Math.round(v)}" oninput="xaEdSet('${k}', this.value)" style="width:100%;"><span id="xa-ed-v-${k}" style="text-align:right;">${Math.round(v)}${k === 'rx' || k === 'ry' || k === 'tl' ? '' : '°'}</span></div>`;
+  const mus = Object.keys(XA_MUS_NOME).map(k=>{ const st = E.mus.prim.includes(k) ? 2 : E.mus.sec.includes(k) ? 1 : 0; return `<button type="button" class="btn btn-sm" onclick="xaEdMus('${k}')" style="${st === 2 ? 'background:#f26b2a; color:#111; border-color:#f26b2a;' : st === 1 ? 'border-color:#f26b2a; color:#f6a27a;' : ''}">${XA_MUS_NOME[k]}</button>`; }).join(' ');
+  document.getElementById('xa-ed').innerHTML = `
+    <div class="row-2" style="gap:8px;">
+      <div class="field" style="margin:0;"><label>Padrão de movimento</label><select onchange="xaEdTpl(this.value)">${Object.keys(XA_T).map(t=>opt(t, nomesT[t] || t, E.tpl)).join('')}</select></div>
+      <div class="field" style="margin:0;"><label>Equipamento</label><select onchange="xaEdEq(this.value)">${Object.keys(XA_EQ_NOME).map(q=>opt(q, XA_EQ_NOME[q], E.eq)).join('')}</select></div>
+    </div>
+    <div style="display:flex; gap:6px; margin:10px 0; flex-wrap:wrap;">
+      <button type="button" class="btn btn-sm${E.kf === 'A' ? ' btn-primary' : ''}" onclick="xaEdKf('A')">Posição inicial</button>
+      <button type="button" class="btn btn-sm${E.kf === 'B' ? ' btn-primary' : ''}" onclick="xaEdKf('B')">Posição final</button>
+      <button type="button" class="btn btn-sm${E.kf === 'play' ? ' btn-primary' : ''}" onclick="xaEdKf('play')">▶ Pré-visualizar</button>
+      <button type="button" class="btn btn-sm" onclick="xaEdCopiar()">${E.kf === 'B' ? 'Copiar da inicial' : 'Copiar da final'}</button>
+    </div>
+    ${E.kf === 'play' ? `<div class="view-sub" style="margin-bottom:8px;">A pré-visualizar. Escolhe «Posição inicial» ou «Posição final» para afinar.</div>` : `
+    <div class="view-sub" style="margin-bottom:6px;">Arrasta as articulações no desenho (joelho, anca, ombro, cotovelo, mão, pé) ou afina aqui. Ângulos: 0° = para cima, 90° = para a frente, 180° = para baixo, −90° = para trás.</div>
+    <div style="display:grid; gap:4px; max-height:240px; overflow-y:auto; padding-right:4px;">
+      ${lin('rx', root === 'hip' ? 'Anca (horizontal)' : 'Pé de apoio (horizontal)', 0, 200, P[root][0])}
+      ${lin('ry', root === 'hip' ? 'Anca (vertical)' : 'Pé de apoio (vertical)', 0, 200, P[root][1])}
+      ${XA_ED_CAMPOS.map(([k, l])=>lin(k, l, k === 'tl' ? -6 : -180, k === 'tl' ? 12 : 270, xaEdValor(P, k))).join('')}
+      <label style="display:flex; gap:6px; align-items:center; font-size:12px; margin-top:4px;"><input type="checkbox" ${P.armRel ? 'checked' : ''} onchange="xaEdSet('armRel', this.checked)" style="width:auto; margin:0;"> Braços acompanham o tronco (ângulos relativos ao tronco)</label>
+    </div>`}
+    <div style="display:grid; grid-template-columns:118px 1fr 44px; gap:6px; align-items:center; font-size:12px; margin-top:8px;"><span>Duração do ciclo</span><input type="range" min="1000" max="6000" step="100" value="${E.dur}" oninput="XA_ED.dur=+this.value; document.getElementById('xa-ed-dur').textContent=(this.value/1000).toFixed(1)+'s'; xaEdMontar();"><span id="xa-ed-dur" style="text-align:right;">${(E.dur / 1000).toFixed(1)}s</span></div>
+    <div style="margin-top:10px;"><div style="font-size:12px; margin-bottom:4px;">Músculos (clica: secundário → principal → nenhum)</div><div style="display:flex; flex-wrap:wrap; gap:4px;">${mus}</div></div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="xaEdGuardar('ex')">Guardar neste exercício</button>
+      <button type="button" class="btn btn-sm" onclick="xaEdGuardar('tpl')">Guardar para todos: ${esc(nomesT[E.tpl] || E.tpl)} com ${esc(XA_EQ_NOME[E.eq])}</button>
+      <button type="button" class="btn btn-sm" onclick="xaEdRepor()">Repor o original</button>
+      <button type="button" class="btn btn-sm" onclick="xaEdFechar()">Cancelar</button>
+    </div>
+    <div id="xa-ed-msg" class="view-sub" style="margin-top:6px;"></div>`;
+  xaEdMontar();
+}
+function xaEdKf(k){ XA_ED.kf = k; xaEdRender(); }
+function xaEdSet(k, v){
+  const E = XA_ED; if(!E || E.kf === 'play') return;
+  const P = E.kf === 'B' ? E.B : E.A;
+  if(k === 'armRel') P.armRel = !!v;
+  else if(k === 'rx' || k === 'ry'){ const r = P.hip ? 'hip' : 'ankle'; P[r] = P[r].slice(); P[r][k === 'rx' ? 0 : 1] = +v; }
+  else P[k] = +v;
+  const el = document.getElementById('xa-ed-v-' + k); if(el) el.textContent = Math.round(+v) + (k === 'rx' || k === 'ry' || k === 'tl' ? '' : '°');
+  xaEdMontar();
+}
+function xaEdCopiar(){ const E = XA_ED; if(E.kf === 'B') E.B = JSON.parse(JSON.stringify(E.A)); else E.A = JSON.parse(JSON.stringify(E.B)); xaEdRender(); }
+function xaEdTpl(t){ const E = XA_ED; const d = xaDef(XA_CUR, t, E.eq, false); E.tpl = t; E.A = d.A; E.B = d.B; E.dur = d.dur; E.mus = xaMusculos(XA_CUR, t); xaEdRender(); }
+function xaEdEq(q){ const E = XA_ED; E.eq = q; const h = xaHoldDe(E.tpl, q); if(h){ E.A = xaResolver(E.A, h); E.B = xaResolver(E.B, h); } xaEdRender(); }
+function xaEdMus(k){
+  const m = XA_ED.mus; const st = m.prim.includes(k) ? 2 : m.sec.includes(k) ? 1 : 0;
+  m.prim = m.prim.filter(x=>x !== k); m.sec = m.sec.filter(x=>x !== k);
+  if(st === 0) m.sec.push(k); else if(st === 1) m.prim.push(k);
+  xaEdRender();
+}
+function xaEdGuardar(onde){
+  const E = XA_ED, e = XA_CUR; if(!E || !e) return;
+  const pack = { tpl: E.tpl, eq: E.eq, A: JSON.parse(JSON.stringify(E.A)), B: JSON.parse(JSON.stringify(E.B)), dur: E.dur };
+  if(onde === 'ex'){ pack.mus = { prim: E.mus.prim.slice(), sec: E.mus.sec.slice() }; e.anim = pack; }
+  else {
+    if(!confirm('Aplicar esta animação a todos os exercícios com este padrão e equipamento? (Os exercícios com afinações próprias mantêm as suas.)')) return;
+    DATA.xaTpl = DATA.xaTpl || {};
+    DATA.xaTpl[E.tpl + '|' + E.eq] = { A: pack.A, B: pack.B, dur: pack.dur };
+    if(e.anim && e.anim.tpl === E.tpl && e.anim.eq === E.eq) delete e.anim;
+  }
+  saveData();
+  XA_ED = null;
+  document.getElementById('xa-ed').style.display = 'none'; document.getElementById('xa-ed-btn').style.display = '';
+  xaRender();
+  document.getElementById('xa-sub').textContent += onde === 'ex' ? ' · ✓ animação guardada neste exercício' : ' · ✓ animação guardada para o padrão';
+}
+function xaEdRepor(){
+  const e = XA_CUR, E = XA_ED; if(!e || !E) return;
+  const k = E.tpl + '|' + E.eq, temG = DATA.xaTpl && DATA.xaTpl[k];
+  if(e.anim) delete e.anim;
+  else if(temG){ if(!confirm('Repor o padrão original para todos os exercícios com este padrão e equipamento?')) return; delete DATA.xaTpl[k]; }
+  saveData();
+  xaEdAbrir();
+  document.getElementById('xa-ed-msg').textContent = 'Reposto.';
+}
+// arrastar articulações no desenho
+function xaEdPonto(svg, ev){ const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY; const m = svg.getScreenCTM(); if(!m) return null; const r = pt.matrixTransform(m.inverse()); return [r.x, r.y]; }
+let XA_DRAG = null;
+function xaEdDown(ev){
+  const E = XA_ED; if(!E || E.kf === 'play') return false;
+  const svg = document.getElementById('xa-main'), p = xaEdPonto(svg, ev); if(!p) return false;
+  const P = E.kf === 'B' ? E.B : E.A, S = xaPose(P);
+  const cand = [['knee', S.knee], ['hip', S.hip], ['sh', S.sh], ['head', xaAdd(S.sh, P.torso, 18.5)], ['elb', S.elb], ['wr', S.wr], ['knee2', S.knee2], ['ankle2', S.ankle2], ['elb2', S.elb2], ['wr2', S.wr2], ['toe', S.toe], ['ankle', S.ankle]];
+  let best = null, bd = 12;
+  cand.forEach(([k, c])=>{ const d = Math.hypot(c[0] - p[0], c[1] - p[1]); if(d < bd){ bd = d; best = k; } });
+  if(!best) return false;
+  XA_DRAG = best; svg.setPointerCapture(ev.pointerId); ev.preventDefault();
+  return true;
+}
+function xaEdMove(ev){
+  const E = XA_ED; if(!XA_DRAG || !E) return;
+  const svg = document.getElementById('xa-main'), p = xaEdPonto(svg, ev); if(!p) return;
+  const P = E.kf === 'B' ? E.B : E.A, S = xaPose(P), rel = P.armRel ? P.torso : 0, hipRoot = !!P.hip;
+  const r = v=>Math.round(((v + 180) % 360 + 360) % 360 - 180 + (v > 180 ? 0 : 0));
+  const a = (A, B)=>{ let v = xaAng(A, B); return Math.round(v); };
+  switch(XA_DRAG){
+    case 'knee': if(hipRoot) P.thigh = a(p, S.hip); else P.shin = a(S.ankle, p); break;
+    case 'hip': if(hipRoot){ P.hip = [Math.round(p[0]), Math.round(p[1])]; } else P.thigh = a(S.knee, p); break;
+    case 'sh': case 'head': P.torso = a(S.hip, p); break;
+    case 'elb': P.ua = a(S.sh, p) - rel; break;
+    case 'wr': P.fa = a(S.elb, p) - rel; break;
+    case 'knee2': P.thigh2 = a(p, S.hip); break;
+    case 'ankle2': P.shin2 = a(p, S.knee2); break;
+    case 'elb2': P.ua2 = a(S.sh, p) - rel; break;
+    case 'wr2': P.fa2 = a(S.elb2, p) - rel; break;
+    case 'toe': P.foot = a(S.ankle, p); break;
+    case 'ankle': if(hipRoot) P.shin = a(p, S.knee); else P.ankle = [Math.round(p[0]), Math.round(p[1])]; break;
+  }
+  xaEdMontar();
+}
+function xaEdUp(){ if(XA_DRAG){ XA_DRAG = null; xaEdRender(); } }
+
+function xaTick(now){
+  XA_RUN.forEach(job=>{
+    if(!job.svg.isConnected){ XA_RUN.delete(job); return; }
+    if(job.svg._xa !== job){ XA_RUN.delete(job); return; }
+    let ph = ((now - job.t0) % job.dur) / job.dur, t;
+    if(job.cfg.tpl === 'march') t = .5 - .5 * Math.cos(ph * 2 * Math.PI);
+    else t = ph < .12 ? 0 : ph < .5 ? (ph - .12) / .38 : ph < .62 ? 1 : 1 - (ph - .62) / .38;
+    t = t * t * (3 - 2 * t);
+    if(job.pausa) t = job.tPausa;
+    job.tAtual = t;
+    job.svg.innerHTML = xaSvgPose(xaLerpPose(job.PA, job.PB, t), job.cfg);
+  });
+  if(XA_RUN.size) requestAnimationFrame(xaTick);
+}
+const XA_EQ_NOME = { barra:'Barra', halteres:'Halteres', kettlebell:'Kettlebell', cabo:'Cabo / polia', elastico:'Elástico', maquina:'Máquina', corpo:'Peso corporal' };
+const XA_MUS_NOME = { quad:'Quadríceps', isq:'Isquiotibiais', glut:'Glúteos', adut:'Adutores', gem:'Gémeos', peit:'Peitoral', dors:'Dorsais', lomb:'Lombar', trap:'Trapézio', delt:'Deltoides', bic:'Bíceps', tric:'Tríceps', ante:'Antebraço', abd:'Abdominais' };
+let XA_SEXO = (()=>{ try{ return localStorage.getItem('kairos_xa_sexo') || 'm'; }catch(e){ return 'm'; } })();
+function xaEnsureModal(){
+  if(document.getElementById('modal-xa')) return;
+  const d = document.createElement('div'); d.className = 'modal-backdrop'; d.id = 'modal-xa';
+  d.innerHTML = `<div class="modal" style="max-width:560px; background:#101318;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;"><h3 id="xa-titulo" style="margin:0;"></h3>
+      <div style="display:flex; gap:4px;"><button class="btn btn-sm" id="xa-m" onclick="xaSexo('m')">Masculino</button><button class="btn btn-sm" id="xa-f" onclick="xaSexo('f')">Feminino</button></div></div>
+    <div id="xa-sub" class="view-sub" style="margin:6px 0 10px;"></div>
+    <div style="position:relative; background:radial-gradient(ellipse at 50% 85%, #2a2f37 0%, #14171c 70%); border-radius:12px; overflow:hidden;">
+      <svg id="xa-main" viewBox="0 0 200 200" style="width:100%; display:block; aspect-ratio:1/1; cursor:pointer; touch-action:none;" onclick="if(!XA_ED) xaPausa(this)" onpointerdown="xaEdDown(event)" onpointermove="xaEdMove(event)" onpointerup="xaEdUp()" onpointercancel="xaEdUp()"></svg>
+      <div id="xa-dica" class="view-sub" style="position:absolute; left:10px; bottom:8px; font-size:11px;">Clica para pausar</div>
+    </div>
+    <div id="xa-mus" style="display:flex; flex-wrap:wrap; gap:6px; margin:10px 0;"></div>
+    <button type="button" class="btn btn-sm" id="xa-ed-btn" onclick="xaEdAbrir()">✏️ Editar animação</button>
+    <div id="xa-ed" style="display:none; border:1px solid var(--line); border-radius:10px; padding:10px; margin-top:8px;"></div>
+    <div id="xa-alt-box"><div style="font-size:11px; letter-spacing:2px; text-align:center; color:var(--chalk-dim); margin:8px 0;">ALTERNATIVAS</div>
+      <div id="xa-alt" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;"></div></div>
+    <div id="xa-notas" class="view-sub" style="margin-top:10px; white-space:pre-wrap;"></div>
+    <div class="view-sub" style="margin-top:8px; font-size:11px;">Animação esquemática do padrão de movimento, gerada pela app. Não substitui a demonstração do treinador.</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('modal-xa')">Fechar</button></div>
+  </div>`;
+  document.body.appendChild(d);
+}
+let XA_CUR = null;
+function xaOpen(id){
+  const e = DATA.exercises.find(x=>x.id === id); if(!e) return;
+  XA_CUR = e;
+  xaEnsureModal();
+  XA_ED = null; XA_DRAG = null;
+  document.getElementById('xa-ed').style.display = 'none'; document.getElementById('xa-ed-btn').style.display = '';
+  xaRender();
+  openModal('modal-xa');
+}
+function xaSexo(s){
+  XA_SEXO = s; try{ localStorage.setItem('kairos_xa_sexo', s); }catch(_){}
+  if(XA_ED){ document.getElementById('xa-m').classList.toggle('btn-primary', s === 'm'); document.getElementById('xa-f').classList.toggle('btn-primary', s === 'f'); xaEdMontar(); }
+  else xaRender();
+}
+function xaPausa(svg){ const j = svg._xa; if(!j) return; j.pausa = !j.pausa; j.tPausa = j.tAtual || 0; }
+function xaRender(){
+  const e = XA_CUR; if(!e) return;
+  const dica = document.getElementById('xa-dica'); if(dica) dica.textContent = 'Clica para pausar';
+  document.getElementById('xa-m').classList.toggle('btn-primary', XA_SEXO === 'm');
+  document.getElementById('xa-f').classList.toggle('btn-primary', XA_SEXO === 'f');
+  document.getElementById('xa-titulo').textContent = e.nome;
+  const cfg = xaMontar(document.getElementById('xa-main'), e, { sexo: XA_SEXO });
+  document.getElementById('xa-sub').textContent = [XA_EQ_NOME[cfg.eq], e.padrao ? (PATTERN_LABELS[e.padrao] || e.padrao) : '', (()=>{ try{ return exMusculo(e); }catch(_){ return ''; } })()].filter(Boolean).join(' · ');
+  document.getElementById('xa-mus').innerHTML = cfg.mus.prim.map(k=>`<span class="tag" style="background:#f26b2a; color:#111; border-color:#f26b2a;">${XA_MUS_NOME[k]}</span>`).join('') + cfg.mus.sec.map(k=>`<span class="tag" style="border-color:#f26b2a; color:#f6a27a;">${XA_MUS_NOME[k]}</span>`).join('');
+  const alts = (XA_T[cfg.tpl].alt || []).filter(a=>a !== cfg.eq).slice(0, 3);
+  const box = document.getElementById('xa-alt');
+  document.getElementById('xa-alt-box').style.display = alts.length ? '' : 'none';
+  box.innerHTML = alts.map((a, i)=>`<div style="text-align:center;"><svg id="xa-alt-${i}" viewBox="0 0 200 200" style="width:100%; aspect-ratio:1/1; background:radial-gradient(ellipse at 50% 85%, #2a2f37 0%, #14171c 70%); border-radius:10px;"></svg><div style="font-size:12px; margin-top:4px;">${XA_EQ_NOME[a]}</div></div>`).join('');
+  alts.forEach((a, i)=>xaMontar(document.getElementById('xa-alt-' + i), e, { tpl: cfg.tpl, eq: a, sexo: XA_SEXO }));
+  const vars = (e.variantes || []).map(v=>typeof v === 'string' ? v : (v && (v.nome || v.n)) || '').filter(Boolean);
+  document.getElementById('xa-notas').textContent = [e.notas || '', vars.length ? 'Variantes: ' + vars.join(' · ') : ''].filter(Boolean).join('\n\n');
+}
+
 var LIBOK = false;   // as bibliotecas por patologia só se aplicam depois de o script todo carregar
 function migrateAulas(d){
   (d.exercises||[]).forEach(e=>{ if(e && /xtenção/.test(e.nome||'')) e.nome = e.nome.replace(/xtenção/g, 'xtensão'); });
@@ -2878,6 +3414,7 @@ function renderLibrary(){
           </div>
           <div class="list-row-actions">
             ${esqModelo(e) ? `<button class="btn btn-ghost btn-sm" onclick="toggleEsqEx('${e.id}')">Esquema</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="xaOpen('${e.id}')">🏃 Execução${e.anim ? ' ✏️' : ''}</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleBiom('${e.id}')">Biomecânica</button>
             <button class="btn btn-ghost btn-sm" onclick="toggleVariants('${e.id}')">Variantes (${(e.variantes||[]).length})</button>
             ${e.videoData ? `<button class="btn btn-ghost btn-sm" onclick="openVideoPlayer('${e.id}')">▶ Ver vídeo</button>` : (e.videoLink ? `<a class="btn btn-ghost btn-sm" href="${esc(e.videoLink)}" target="_blank" rel="noopener">Vídeo ↗</a>` : '')}
@@ -6216,7 +6753,7 @@ function aiConfirmar(id, sim, btn){
 const KAIROS_GUIA = `GUIA DA APP KAIRÓS (menu à esquerda; os dados ficam só neste browser):
 - Hoje: agenda do dia com as sessões dos ciclos (dia anterior/seguinte). Ligação ao Google Calendar com o Client ID OAuth; «↻ Ajustar ciclos ao calendário» acerta as datas.
 - Clientes: lista de clientes («+ Novo cliente», «Importar Excel» e «Modelo Excel», «Cliente de teste»). Cada cliente é PT ou só plano. Ao clicar num cliente abre a ficha: dados, objetivo, nível, dias, patologias, limitações, notas, anamnese, «Registar treino» (data, treino, RPE da sessão, minutos, nota), ciclos do cliente e os botões «⚡ Gerar plano», «🧭 Kairós» (planear macrociclo) e «+ Novo ciclo».
-- Biblioteca: exercícios para montar os treinos («+ Novo exercício», «Carregar biblioteca completa», «⬇ Exportar Excel» com a lista completa, «Esquemas», vídeo de cada exercício).
+- Biblioteca: cada exercício tem «🏃 Execução», uma animação 2D do movimento que se pode afinar em «✏️ Editar animação» (arrastar articulações nas posições inicial e final, padrão, equipamento, duração e músculos; guardar no exercício ou para todos do mesmo padrão) (manequim masculino ou feminino, equipamento, músculos a laranja e alternativas com outro equipamento). Exercícios para montar os treinos («+ Novo exercício», «Carregar biblioteca completa», «⬇ Exportar Excel» com a lista completa, «Esquemas», vídeo de cada exercício).
 - Protocolos: protocolos de treino (provas e performance por fases), de prevenção e de patologias; criam o treino de uma fase ou o ciclo completo para um cliente; «+ Patologia» cria patologias próprias.
 - Treinos: sessões com exercícios, séries, repetições e carga, organizadas em separadores por cliente (e «Sem cliente»). Cada treino tem «Biomecânica» («Equilibrar o treino»), «Editar» e «Remover»; «☑ Selecionar para eliminar» atua no separador aberto.
 - Ciclos: periodização por cliente em semanas e sessões. «⚡ Gerar plano» gera por regras (o mais seguro para patologias); «✦ Gerar com Kairós» gera com a IA local para um cliente, para PT Grupo (escolher o 2.º cliente) ou para vários clientes de uma vez («Para quem» → «Vários clientes»); «🧭 Kairós» é o assistente de planeamento; «💬 Perguntar» é esta conversa; «📚 Bibliografia»; «Aulas de grupo»; «+ Novo ciclo». Em cada ciclo: «⚙ Ajustar plano» (inclui o 2.º cliente de PT Grupo), «📄 Exportar PDF», «🔗 Enviar ao cliente» e «Remover ciclo».
